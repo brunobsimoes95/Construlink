@@ -1,0 +1,954 @@
+﻿@page "/Horarios"
+@using System.Globalization
+@using System.Text.Json;
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject LayoutUpdateService LayoutUpdateService
+@inject IDbContextFactoryService DbContextFactory
+
+
+
+<div class="row mt-2 mb-2">
+
+
+    <div class="col-md-6 col-sm-12 col-12 mt-2">
+        <div class="mb-2" style="display: flex; align-items: center;">
+            <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+            <h4 class="ms-2 mt-2 hide-on-mobile">Horários</h4>
+
+        </div>
+    </div>
+
+    <div class="col-md-6 col-sm-12 col-12 mt-4 hide-on-mobile">
+        <ol class="breadcrumb" style="float:right;">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item active">Administração</li>
+            <li class="breadcrumb-item active">Organização</li>
+            <li class="breadcrumb-item active">Horários</li>
+        </ol>
+    </div>
+
+    <div class="col-md-5 col-sm-12 col-12 show-on-mobile">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item active">Administração</li>
+            <li class="breadcrumb-item active">Organização</li>
+            <li class="breadcrumb-item active">Horários</li>
+        </ol>
+    </div>
+
+</div>
+
+<div class="card shadow mb-3">
+    <div class="card-header vitro-cor-secundaria d-flex justify-content-between align-items-center">
+        <!-- lado esquerdo: título -->
+        <span>
+            <MudIcon Icon="@Utils.GetSvgPathData("web","light","arrow-right")"
+                     Color="Color.Primary" Style="font-size:1.1rem;" />
+            <span class="ms-2" style="min-width:200px;display:inline-block;">
+                Turnos e Horários
+            </span>
+        </span>
+
+        <!-- lado direito: botões -->
+        <span>
+            <!-- botão preto “+ Adicionar Turno” -->
+            <MudButton Style="background-color:#000;color:#fff;"  
+                       StartIcon="@Icons.Material.Filled.Add"
+                       Variant="Variant.Filled"
+                       Class="me-2"
+                       OnClick="@(()=> SelectedHorario = new CrmHorario{Tipo="Dia"})">
+                Adicionar Turno
+            </MudButton>
+
+            <!-- pausa -->
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Coffee"
+                       Class="me-2"
+                       OnClick="@(()=> SelectedHorario = new CrmHorario{Tipo="Geral", Ispausa=true, DayOfWeek="Seg"})">
+                Definir Pausa
+            </MudButton>
+
+            <!-- feriados -->
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.BeachAccess"
+                       OnClick="@(()=> NavigationManager.NavigateTo("Feriados"))">
+                Feriados
+            </MudButton>
+        </span>
+    </div>
+
+    <!-- resto do conteúdo (stats, tabela, etc.) -->
+    <div class="card-body p-0">
+        @* cola aqui o teu bloco de STATS e depois a MudCard/tabela *@
+    </div>
+</div>
+
+@if (Erro != "")
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Erro!</strong> @Erro
+    </div>
+}
+@if (Mensagem != "")
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @Mensagem
+    </div>
+}
+
+
+@* STATS *@
+<div class="row mt-2 p-3">
+    <div class="col-md-4 border-start border-theme">
+        <h3>@(stat_hsemanais.ToString("#,0.00", CultureInfo.CreateSpecificCulture("pt-PT")) ?? "0,00") H</h3>
+        <p>Total de horas semanais</p>
+    </div>
+    <div class="col-md-4 border-start border-theme">
+        <h3>@(stat_psemanais.ToString("#,0.00", CultureInfo.CreateSpecificCulture("pt-PT")) ?? "0,00") H</h3>
+        <p>Total de pausas semanais</p>
+    </div>
+    <div class="col-md-4 border-start border-theme">
+        <h3>@((stat_hsemanais - stat_psemanais).ToString("#,0.00", CultureInfo.CreateSpecificCulture("pt-PT")) ?? "0,00") H</h3>
+        <p>Total efetivo de trabalho</p>
+    </div>
+</div>
+
+@* INFO *@
+<div class="row p-3">
+    @if (listaHorarios.Count > 0)
+    {
+        <MudCard Class="mb-4 me-2 p-0 pb-5" Elevation="4">
+            <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+                <CardHeaderContent>
+                    <MudText Typo="Typo.button" HtmlTag="h3"><MudIcon Icon="fa-solid fa-table" Class="me-2" Style="font-size: 1.0rem !important;" />Tabela de Horários</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <hr style="margin: 0; border: 0; border-top: 1px solid #000 !important;" />
+            <MudCardContent Class="p-0">
+                <div class="card-body">
+                    <table id="tab_horario" class='display responsive nowrap' style='width:100%;'>
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Tipo</th>
+                                <th>Seg</th>
+                                <th>Ter</th>
+                                <th>Qua</th>
+                                <th>Qui</th>
+                                <th>Sex</th>
+                                <th>Sáb</th>
+                                <th>Dom</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (CrmHorario item in listaHorarios.Where(w => w.Tipo == "Geral"))
+                            {
+                                //horario geral
+                                @if (item.Tipo == "Geral" && item.Ispausa != true)
+                                {
+                                    <tr>
+                                        <td style="width:60px">
+                                            <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="() => { CloneItem(item);}"><i class="far fa-pen-to-square d-inline p-2"></i></a>
+                                            @* <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="()=> { DeletedHorario= item;}"><i class="far fa-trash-can d-inline p-2"></i></a> *@
+                                        </td>
+                                        <td>Horário</td>
+
+                                        <td style="vertical-align:top">
+                                            @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Seg" && w.Ispausa != true) != null)
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Seg" && w.Ispausa != true).StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Seg" && w.Ispausa != true).EndTime
+                                                <div class="my-1" style="min-width:30px;">
+                                                    <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="@(()=> { CloneItem(listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Seg" && w.Ispausa != true));})"><i class="far fa-pen-to-square d-inline"></i></a>
+                                                    <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="@(()=> { DeletedHorario= listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Seg" && w.Ispausa != true);})"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @item.StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @item.EndTime
+                                            }
+                                        </td>
+                                        <td style="vertical-align:top">
+                                            @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Ter" && w.Ispausa != true) != null)
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Ter" && w.Ispausa != true).StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Ter" && w.Ispausa != true).EndTime
+                                                <div class="my-1" style="min-width:30px;">
+                                                    <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="@(()=> { CloneItem(listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Ter" && w.Ispausa != true));})"><i class="far fa-pen-to-square d-inline"></i></a>
+                                                    <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="@(()=> { DeletedHorario= listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Ter" && w.Ispausa != true);})"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @item.StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @item.EndTime
+                                            }
+                                        </td>
+                                        <td style="vertical-align:top">
+                                            @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qua" && w.Ispausa != true) != null)
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qua" && w.Ispausa != true).StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qua" && w.Ispausa != true).EndTime
+                                                <div class="my-1" style="min-width:30px;">
+                                                    <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="@(()=> { CloneItem(listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qua" && w.Ispausa != true));})"><i class="far fa-pen-to-square d-inline"></i></a>
+                                                    <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="@(()=> { DeletedHorario= listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qua" && w.Ispausa != true);})"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @item.StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @item.EndTime
+                                            }
+                                        </td>
+                                        <td style="vertical-align:top">
+                                            @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qui" && w.Ispausa != true) != null)
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qui" && w.Ispausa != true).StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qui" && w.Ispausa != true).EndTime
+                                                <div class="my-1" style="min-width:30px;">
+                                                    <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="@(()=> { CloneItem(listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qui" && w.Ispausa != true));})"><i class="far fa-pen-to-square d-inline"></i></a>
+                                                    <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="@(()=> { DeletedHorario= listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qui" && w.Ispausa != true);})"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @item.StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @item.EndTime
+                                            }
+                                        </td>
+                                        <td style="vertical-align:top">
+                                            @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sex" && w.Ispausa != true) != null)
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sex" && w.Ispausa != true).StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sex" && w.Ispausa != true).EndTime
+                                                <div class="my-1" style="min-width:30px;">
+                                                    <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="@(()=> { CloneItem(listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sex" && w.Ispausa != true));})"><i class="far fa-pen-to-square d-inline"></i></a>
+                                                    <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="@(()=> { DeletedHorario= listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sex" && w.Ispausa != true);})"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @item.StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @item.EndTime
+                                            }
+                                        </td>
+
+                                        <td style="vertical-align:top">
+                                            @if (item.Sabado == true)
+                                            {
+                                                @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sab" && w.Ispausa != true) != null)
+                                                {
+                                                    <i class="fa-regular fa-clock me-1"></i> @listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sab" && w.Ispausa != true).StartTime <br />
+                                                    <i class="fa-regular fa-clock me-1"></i> @listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sab" && w.Ispausa != true).EndTime
+                                                    <div class="my-1" style="min-width:30px;">
+                                                        <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="@(()=> { CloneItem(listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sab" && w.Ispausa != true));})"><i class="far fa-pen-to-square d-inline"></i></a>
+                                                        <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="@(()=> { DeletedHorario= listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sab" && w.Ispausa != true);})"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <i class="fa-regular fa-clock me-1"></i> @item.StartTime <br />
+                                                    <i class="fa-regular fa-clock me-1"></i> @item.EndTime
+                                                }
+                                            }
+                                        </td>
+                                        <td style="vertical-align:top">
+                                            @if (item.Domingo == true)
+                                            {
+                                                @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Dom" && w.Ispausa != true) != null)
+                                                {
+                                                    <i class="fa-regular fa-clock me-1"></i> @listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Dom" && w.Ispausa != true).StartTime <br />
+                                                    <i class="fa-regular fa-clock me-1"></i> @listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Dom" && w.Ispausa != true).EndTime
+                                                    <div class="my-1" style="min-width:30px;">
+                                                        <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="@(()=> { CloneItem(listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Dom" && w.Ispausa != true));})"><i class="far fa-pen-to-square d-inline"></i></a>
+                                                        <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="@(()=> { DeletedHorario= listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Dom" && w.Ispausa != true);})"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <i class="fa-regular fa-clock me-1"></i> @item.StartTime <br />
+                                                    <i class="fa-regular fa-clock me-1"></i> @item.EndTime
+                                                }
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+
+                                //pausas gerais
+                                @if (item.Tipo == "Geral" && item.Ispausa == true)
+                                {
+                                    <tr>
+                                        <td style="width:60px">
+                                            <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="() => { CloneItem(item);}"><i class="far fa-pen-to-square d-inline p-2"></i></a>
+                                            <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="()=> { DeletedHorario= item;}"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                        </td>
+                                        <td>Pausas Gerais</td>
+
+                                        <td style="vertical-align:top">
+                                            <i class="fa-regular fa-clock me-1"></i> @item.StartTime <br />
+                                            <i class="fa-regular fa-clock me-1"></i> @item.EndTime <br />
+                                        </td>
+                                        <td style="vertical-align:top">
+                                            <i class="fa-regular fa-clock me-1"></i> @item.StartTime <br />
+                                            <i class="fa-regular fa-clock me-1"></i> @item.EndTime <br />
+                                        </td>
+                                        <td style="vertical-align:top">
+                                            <i class="fa-regular fa-clock me-1"></i> @item.StartTime <br />
+                                            <i class="fa-regular fa-clock me-1"></i> @item.EndTime <br />
+                                        </td>
+                                        <td style="vertical-align:top">
+                                            <i class="fa-regular fa-clock me-1"></i> @item.StartTime <br />
+                                            <i class="fa-regular fa-clock me-1"></i> @item.EndTime <br />
+                                        </td>
+                                        <td style="vertical-align:top">
+                                            <i class="fa-regular fa-clock me-1"></i> @item.StartTime <br />
+                                            <i class="fa-regular fa-clock me-1"></i> @item.EndTime <br />
+                                        </td>
+
+                                        <td style="vertical-align:top">
+                                            @if (item.Sabado == true)
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @item.StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @item.EndTime <br />
+                                            }
+                                        </td>
+                                        <td style="vertical-align:top">
+                                            @if (item.Domingo == true)
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @item.StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @item.EndTime <br />
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            }
+
+                            @if (listaHorarios.Where(w => w.Tipo != "Geral" && w.Ispausa == true).Count() > 0)
+                            {
+                                //pausas específicas
+                                <tr>
+                                    <td style="width:60px">
+                                    </td>
+
+                                    <td>Pausas Específicas</td>
+
+                                    <td style="vertical-align:top">
+                                        @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Seg" && w.Ispausa == true) != null)
+                                        {
+                                            foreach (CrmHorario npausa in listaHorarios.Where(w => w.Tipo == "Dia" && w.DayOfWeek == "Seg" && w.Ispausa == true))
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @npausa.StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @npausa.EndTime
+                                                <div class="my-1" style="min-width:30px;">
+                                                    <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="@(()=> { CloneItem(@npausa);})"><i class="far fa-pen-to-square d-inline"></i></a>
+                                                    <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="@(()=> { DeletedHorario= @npausa;})"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                                </div>
+                                            }
+                                        }
+                                    </td>
+                                    <td style="vertical-align:top">
+                                        @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Ter" && w.Ispausa == true) != null)
+                                        {
+                                            foreach (CrmHorario npausa in listaHorarios.Where(w => w.Tipo == "Dia" && w.DayOfWeek == "Ter" && w.Ispausa == true))
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @npausa.StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @npausa.EndTime
+                                                <div class="my-1" style="min-width:30px;">
+                                                    <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="@(()=> { CloneItem(@npausa);})"><i class="far fa-pen-to-square d-inline"></i></a>
+                                                    <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="@(()=> { DeletedHorario= @npausa;})"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                                </div>
+                                            }
+                                        }
+                                    </td>
+                                    <td style="vertical-align:top">
+                                        @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qua" && w.Ispausa == true) != null)
+                                        {
+                                            foreach (CrmHorario npausa in listaHorarios.Where(w => w.Tipo == "Dia" && w.DayOfWeek == "Qua" && w.Ispausa == true))
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @npausa.StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @npausa.EndTime
+                                                <div class="my-1" style="min-width:30px;">
+                                                    <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="@(()=> { CloneItem(@npausa);})"><i class="far fa-pen-to-square d-inline"></i></a>
+                                                    <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="@(()=> { DeletedHorario= @npausa;})"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                                </div>
+                                            }
+                                        }
+                                    </td>
+                                    <td style="vertical-align:top">
+                                        @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qui" && w.Ispausa == true) != null)
+                                        {
+                                            foreach (CrmHorario npausa in listaHorarios.Where(w => w.Tipo == "Dia" && w.DayOfWeek == "Qui" && w.Ispausa == true))
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @npausa.StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @npausa.EndTime
+                                                <div class="my-1" style="min-width:30px;">
+                                                    <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="@(()=> { CloneItem(@npausa);})"><i class="far fa-pen-to-square d-inline"></i></a>
+                                                    <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="@(()=> { DeletedHorario= @npausa;})"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                                </div>
+                                            }
+                                        }
+                                    </td>
+                                    <td style="vertical-align:top">
+                                        @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sex" && w.Ispausa == true) != null)
+                                        {
+                                            foreach (CrmHorario npausa in listaHorarios.Where(w => w.Tipo == "Dia" && w.DayOfWeek == "Sex" && w.Ispausa == true))
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @npausa.StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @npausa.EndTime
+                                                <div class="my-1" style="min-width:30px;">
+                                                    <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="@(()=> { CloneItem(@npausa);})"><i class="far fa-pen-to-square d-inline"></i></a>
+                                                    <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="@(()=> { DeletedHorario= @npausa;})"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                                </div>
+                                            }
+                                        }
+                                    </td>
+                                    <td style="vertical-align:top">
+                                        @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sab" && w.Ispausa == true) != null)
+                                        {
+                                            foreach (CrmHorario npausa in listaHorarios.Where(w => w.Tipo == "Dia" && w.DayOfWeek == "Sab" && w.Ispausa == true))
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @npausa.StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @npausa.EndTime
+                                                <div class="my-1" style="min-width:30px;">
+                                                    <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="@(()=> { CloneItem(@npausa);})"><i class="far fa-pen-to-square d-inline"></i></a>
+                                                    <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="@(()=> { DeletedHorario= @npausa;})"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                                </div>
+                                            }
+                                        }
+                                    </td>
+                                    <td style="vertical-align:top">
+                                        @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Dom" && w.Ispausa == true) != null)
+                                        {
+                                            foreach (CrmHorario npausa in listaHorarios.Where(w => w.Tipo == "Dia" && w.DayOfWeek == "Dom" && w.Ispausa == true))
+                                            {
+                                                <i class="fa-regular fa-clock me-1"></i> @npausa.StartTime <br />
+                                                <i class="fa-regular fa-clock me-1"></i> @npausa.EndTime
+                                                <div class="my-1" style="min-width:30px;">
+                                                    <a href="javascript:void(0)" title="Editar" style="cursor:pointer" @onclick="@(()=> { CloneItem(@npausa);})"><i class="far fa-pen-to-square d-inline"></i></a>
+                                                    <a href="javascript:void(0)" title="Eliminar" style="cursor:pointer; color:red" @onclick="@(()=> { DeletedHorario= @npausa;})"><i class="far fa-trash-can d-inline p-2"></i></a>
+                                                </div>
+                                            }
+                                        }
+                                    </td>
+
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </MudCardContent>
+        </MudCard>
+
+
+        <script>
+            jQuery(function () {
+                jQuery('#tab_horario').DataTable({
+                    "responsive": false, "dom": 'flrtip',
+                    "autoWidth": false,
+                    "columnDefs": [
+                        { "responsivePriority": 1, "targets": 0 },
+                        { "responsivePriority": 2, "targets": 1 }
+                    ],
+                    "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
+                    "pagingType": "simple_numbers_no_ellipses",
+                    "ordering": false,
+                    //"order": [[2, 'asc'], [3, 'asc']],
+                    "searching": false,
+                    "paging": false,
+                    "info": false,
+                    "iDisplayLength": 10,
+                    "language": { "url": "js/plugins/datatables/Portuguese.json" },
+                    "initComplete": function (settings, json) {
+                        jQuery("#tab_horario").parent().parent().css("overflow-x", "auto");
+                    }
+                });
+            });
+        </script>
+    }
+</div>
+
+
+<!-- Add/Edit Modal -->
+@if (SelectedHorario != null)
+{
+    <div class="modal fade" id="horarioModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="horarioModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    @if (SelectedHorario.Id == 0)
+                    {
+                        <h5 class="modal-title" id="horarioModalLabel">
+                            <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Class="me-2" />
+                            Adicionar Horário/Pausa
+                        </h5>
+                    }
+                    else
+                    {
+                        <h5 class="modal-title" id="horarioModalLabel">
+                            <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Class="me-2" />
+                            Editar Horário/Pausa
+                        </h5>
+                    }
+                    <MudButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" Variant="Variant.Text" OnClick="@(() => { SelectedHorario=null; })" />
+                </div>
+                <div class="modal-body">
+                    @if (SelectedHorario.Id != 0 && SelectedHorario.Tipo == "Geral")
+                    {
+                        <div class="ms-0 mb-3 form-check">
+                            <label class="form-label">Horário</label>
+                            <select class="d-block w-100" @bind="@SelectedHorario.Tipo" disabled>
+                                <option value="Geral">Geral</option>
+                                <option value="Dia">Dia de semana específico</option>
+                            </select>
+                        </div>
+                    }
+                    else
+                    {
+                        @if (SelectedHorario.Ispausa == true)
+                        {
+                            <div class="ms-0 mb-3 form-check">
+                                <label class="form-label">Horário</label>
+                                <select class="d-block w-100" @bind="@SelectedHorario.Tipo">
+                                    <option value="Geral">Geral</option>
+                                    <option value="Dia">Dia de semana específico</option>
+                                </select>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="ms-0 mb-3 form-check">
+                                <label class="form-label">Horário</label>
+                                <select class="d-block w-100" @bind="@SelectedHorario.Tipo">
+                                    <option value="Dia">Dia de semana específico</option>
+                                </select>
+                            </div>
+                        }
+                    }
+
+                    @if (SelectedHorario.Tipo == "Dia")
+                    {
+                        <div class="ms-0 mb-3 form-check">
+                            <label class="form-label">Dia da Semana</label>
+                            <select class="d-block w-100" @bind="@SelectedHorario.DayOfWeek">
+                                <option value="Seg">Segunda</option>
+                                <option value="Ter">Terça</option>
+                                <option value="Qua">Quarta</option>
+                                <option value="Qui">Quinta</option>
+                                <option value="Sex">Sexta</option>
+                                <option value="Sab">Sábado</option>
+                                <option value="Dom">Domingo</option>
+                            </select>
+                        </div>
+                    }
+
+                    @if (SelectedHorario.Tipo == "Data")
+                    {
+                        <div class="ms-0 mb-3 form-check">
+                            <label class="form-label">Data</label>
+                            <MudDatePicker @bind-Date="SelectedHorario.Data" Label="Data" Variant="Variant.Outlined" />
+                        </div>
+                    }
+
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="ms-0 mb-3 form-check">
+                                <MudTextField @bind-Value="SelectedHorario.StartTime" Label="Inicio" InputType="InputType.Time" Variant="Variant.Outlined" />
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="ms-0 mb-3 form-check">
+                                <MudTextField @bind-Value="SelectedHorario.EndTime" Label="Fim" InputType="InputType.Time" Variant="Variant.Outlined" />
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (SelectedHorario.Tipo == "Geral")
+                    {
+                        <div class="ms-0 mt-3 mb-3 form-check">
+                            <label id="access_prod" class='cnk-switch'><input type='checkbox' @bind="@SelectedHorario.Sabado" /><span class='cnk-switch-slider round'></span></label>
+                            <label for="access_prod" class="form-label">Aplicável aos Sábados</label>
+                        </div>
+                        <div class="ms-0 mt-3 mb-3 form-check">
+                            <label id="access_prod" class='cnk-switch'><input type='checkbox' @bind="@SelectedHorario.Domingo" /><span class='cnk-switch-slider round'></span></label>
+                            <label for="access_prod" class="form-label">Aplicável aos Domingos</label>
+                        </div>
+                    }
+
+                    <p class="text-danger">@Erro</p>
+                </div>
+                <div class="modal-footer mt-1">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="@(()=> { SelectedHorario=null; })" Class="me-2" data-bs-dismiss="modal">
+                        Cancelar
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(()=>{ SaveHorario(); })">
+                        Guardar
+                    </MudButton>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Delete Modal -->
+@if (DeletedHorario != null)
+{
+    <div class="modal fade" id="delhorarioModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="delhorarioModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="delhorarioModalLabel">
+                        <MudIcon Icon="@Icons.Material.Filled.Delete" Class="me-2" />
+                        Eliminar Horário
+                    </h5>
+                    <MudButton Icon="@Icons.Material.Filled.Close" Color="Color.Default" Variant="Variant.Text" OnClick="@(()=>{ DeletedHorario = null; })" />
+                </div>
+                <div class="modal-body">
+                    <p>A eliminação de registos é permanente e irreversível.</p>
+                    <p>Pretende realmente eliminar o horário?</p>
+                </div>
+                <div class="modal-footer">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="@(()=>{ DeletedHorario = null; })" Class="me-2">
+                        Cancelar
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(()=>{SaveHorario();})">
+                        Confirmar
+                    </MudButton>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+
+<!-- Add/Edit Modal -->
+
+
+
+<script>
+    function cleanTables_horario() {
+        if (document.getElementById("tab_horario_wrapper")) {
+            document.getElementById("tab_horario_wrapper").remove();
+        }
+    }
+
+    function showModal(modalId, comportamento) {
+        jQuery(modalId).modal(comportamento);
+    }
+</script>
+
+
+@code {
+
+    EmpresaUserSession who = null;
+    private string path = "";
+    private string Erro = "";
+    private string Mensagem = "";
+    private readonly object updateLock = new object();
+
+    private List<CrmHorario> listaHorarios = new List<CrmHorario>();
+    CrmHorario SelectedHorario = null;
+    CrmHorario DeletedHorario = null;
+    private DbContext dbContext;
+
+    private double stat_hsemanais = 0;
+    private double stat_psemanais = 0;
+
+    protected override void OnInitialized()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        dbContext = DbContextFactory.GetDbContext(who.Empresa.BaseNome);
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender == true)
+        {
+            if (dbContext.Set<CrmHorario>().FirstOrDefault(f => f.Tipo == "Geral") == null)
+            {
+                CrmHorario rhor = new CrmHorario()
+                    {
+                        Tipo = "Geral",
+                        Data = DateTime.Now,
+                        StartTime = new TimeOnly(8, 0),
+                        EndTime = new TimeOnly(18, 0),
+                    };
+
+                dbContext.Set<CrmHorario>().Add(rhor);
+                dbContext.SaveChanges();
+            }
+
+            GetAll();
+        }
+        else
+        {
+            if (SelectedHorario != null)
+            {
+                JSRuntime.InvokeAsync<object>("showModal", "#horarioModal", "show");
+            }
+            if (DeletedHorario != null)
+            {
+                JSRuntime.InvokeAsync<object>("showModal", "#delhorarioModal", "show");
+            }
+        }
+        base.OnAfterRender(firstRender);
+    }
+
+    // obter dados
+    private async Task GetAll()
+    {
+        stat_hsemanais = 0;
+        stat_psemanais = 0;
+
+        if (listaHorarios.Count > 0)
+        {
+            listaHorarios.Clear();
+            await JSRuntime.InvokeAsync<object>("cleanTables_horario");
+            StateHasChanged();
+        }
+
+        lock (updateLock)
+        {
+            try
+            {
+                listaHorarios = dbContext.Set<CrmHorario>().ToList();
+
+                //stats
+                foreach (CrmHorario item in listaHorarios.Where(w => w.Tipo == "Geral"))
+                {
+                    if (item.Ispausa != true)
+                    {
+                        @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Seg" && w.Ispausa != true) != null)
+                        {
+                            stat_hsemanais += (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Seg" && w.Ispausa != true).EndTime - listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Seg" && w.Ispausa != true).StartTime).TotalHours;
+                        }
+                        else
+                        {
+                            stat_hsemanais += (item.EndTime - item.StartTime).TotalHours;
+                        }
+
+                        @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Ter" && w.Ispausa != true) != null)
+                        {
+                            stat_hsemanais += (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Ter" && w.Ispausa != true).EndTime - listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Ter" && w.Ispausa != true).StartTime).TotalHours;
+                        }
+                        else
+                        {
+                            stat_hsemanais += (item.EndTime - item.StartTime).TotalHours;
+                        }
+
+                        @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qua" && w.Ispausa != true) != null)
+                        {
+                            stat_hsemanais += (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qua" && w.Ispausa != true).EndTime - listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qua" && w.Ispausa != true).StartTime).TotalHours;
+                        }
+                        else
+                        {
+                            stat_hsemanais += (item.EndTime - item.StartTime).TotalHours;
+                        }
+
+                        @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qui" && w.Ispausa != true) != null)
+                        {
+                            stat_hsemanais += (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qui" && w.Ispausa != true).EndTime - listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Qui" && w.Ispausa != true).StartTime).TotalHours;
+                        }
+                        else
+                        {
+                            stat_hsemanais += (item.EndTime - item.StartTime).TotalHours;
+                        }
+
+                        @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sex" && w.Ispausa != true) != null)
+                        {
+                            stat_hsemanais += (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sex" && w.Ispausa != true).EndTime - listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sex" && w.Ispausa != true).StartTime).TotalHours;
+                        }
+                        else
+                        {
+                            stat_hsemanais += (item.EndTime - item.StartTime).TotalHours;
+                        }
+
+
+                        @if (item.Sabado == true)
+                        {
+                            @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sab" && w.Ispausa != true) != null)
+                            {
+                                stat_hsemanais += (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sab" && w.Ispausa != true).EndTime - listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Sab" && w.Ispausa != true).StartTime).TotalHours;
+                            }
+                            else
+                            {
+                                stat_hsemanais += (item.EndTime - item.StartTime).TotalHours;
+                            }
+                        }
+                        @if (item.Domingo == true)
+                        {
+                            @if (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Dom" && w.Ispausa != true) != null)
+                            {
+                                stat_hsemanais += (listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Dom" && w.Ispausa != true).EndTime - listaHorarios.FirstOrDefault(w => w.Tipo == "Dia" && w.DayOfWeek == "Dom" && w.Ispausa != true).StartTime).TotalHours;
+                            }
+                            else
+                            {
+                                stat_hsemanais += (item.EndTime - item.StartTime).TotalHours;
+                            }
+                        }
+                    }
+
+                    //pausas gerais
+                    if (item.Ispausa == true)
+                    {
+                        for (int i = 0; i < 5; i++)
+                        {
+                            stat_psemanais += (item.EndTime - item.StartTime).TotalHours;
+                        }
+
+                        if (item.Sabado == true)
+                        {
+                            stat_psemanais += (item.EndTime - item.StartTime).TotalHours;
+                        }
+                        if (item.Domingo == true)
+                        {
+                            stat_psemanais += (item.EndTime - item.StartTime).TotalHours;
+                        }
+                    }
+                }
+
+                //pausas específicas
+                foreach (CrmHorario item in listaHorarios.Where(w => w.Tipo != "Geral" && w.Ispausa == true))
+                {
+                    stat_psemanais += (item.EndTime - item.StartTime).TotalHours;
+                }
+
+            }
+            catch (Exception)
+            {
+            }
+            finally
+            {
+                StateHasChanged();
+            }
+        }
+    }
+
+    // guardar horário
+    private async Task SaveHorario()
+    {
+        Erro = "";
+        Mensagem = "";
+
+        if (SelectedHorario != null)
+        {
+            //verifica as horas
+            if (SelectedHorario.EndTime < SelectedHorario.StartTime)
+            {
+                Erro = "Erro! O horário de fim não pode ser anterior ao de ínicio";
+                StateHasChanged();
+            }
+            else
+            {
+                //novo
+                if (SelectedHorario.Id == 0)
+                {
+                    dbContext.Set<CrmHorario>().Add(SelectedHorario);
+                    dbContext.SaveChanges();
+
+                    if (SelectedHorario.Ispausa == true)
+                    {
+                        await utils.UserLogAsync(who.User.Id, $"Criou pausa {SelectedHorario.Tipo}");
+                    }
+                    else
+                    {
+                        await utils.UserLogAsync(who.User.Id, $"Criou horário {SelectedHorario.Tipo}");
+                    }
+                }
+                else
+                {
+                    CrmHorario docfinal = dbContext.Set<CrmHorario>().FirstOrDefault(f => f.Id == SelectedHorario.Id);
+                    if (docfinal != null)
+                    {
+                        dbContext.Entry(docfinal).CurrentValues.SetValues(SelectedHorario);
+                    }
+                    dbContext.SaveChanges();
+
+                    if (SelectedHorario.Ispausa == true)
+                    {
+                        await utils.UserLogAsync(who.User.Id, $"Criou pausa {SelectedHorario.Tipo}");
+                    }
+                    else
+                    {
+                        await utils.UserLogAsync(who.User.Id, $"Criou horário {SelectedHorario.Tipo}");
+                    }
+                }
+
+                SelectedHorario = null;
+                await JSRuntime.InvokeAsync<object>("showModal", "#horarioModal", "toggle");
+            }
+        }
+        else
+        {
+            //eliminar
+            if (DeletedHorario != null)
+            {
+                dbContext.Set<CrmHorario>().Remove(DeletedHorario);
+                dbContext.SaveChanges();
+
+                if (DeletedHorario.Ispausa == true)
+                {
+                    await utils.UserLogAsync(who.User.Id, $"Elim. pausa {DeletedHorario.Tipo}");
+                }
+                else
+                {
+                    await utils.UserLogAsync(who.User.Id, $"Elim. horario {DeletedHorario.Tipo}");
+                }
+
+                DeletedHorario = null;
+                await JSRuntime.InvokeAsync<object>("showModal", "#delhorarioModal", "toggle");
+            }
+        }
+
+        if (Erro == "")
+        {
+            Mensagem = $"Horário definido com sucesso!";
+            await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+            GetAll();
+        }
+
+        TimerMessages();
+    }
+
+
+    //Clonar os dados
+    public void CloneItem(object item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        SelectedHorario = System.Text.Json.JsonSerializer.Deserialize<CrmHorario>(json);
+    }
+
+    //temporizador para eliminar as mensagems
+    private void TimerElapsed(object sender, ElapsedEventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            Erro = "";
+            Mensagem = "";
+            StateHasChanged();
+        });
+    }
+    private void TimerMessages()
+    {
+        var timer = new System.Timers.Timer(5000); // 5 segundos
+        timer.Elapsed += TimerElapsed;
+        timer.AutoReset = false;
+        timer.Start();
+    }
+}

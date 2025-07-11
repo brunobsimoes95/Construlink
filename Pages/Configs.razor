@@ -1,0 +1,301 @@
+﻿@page "/Configs"
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject LayoutUpdateService LayoutUpdateService
+@inject IDbContextFactoryService DbContextFactory
+
+<PageTitle>Configurações</PageTitle>
+
+<div class="row">
+
+    <div class="col-md-6 col-sm-12 col-12">
+        <div style="display: flex; align-items: center;" class="mb-2 mt-2">
+            <span class="fas fa-cog fa-lg icone-color"></span>
+            <h3 class="ms-2">Configurações</h3>
+        </div>
+    </div>
+
+    <div class="col-md-6 col-sm-12 col-12 mt-2 hide-on-mobile">
+        <ol class="breadcrumb" style="float:right;">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item"><a href="@path/">Administração</a></li>
+            <li class="breadcrumb-item active">Configurações</li>
+        </ol>
+    </div>
+
+    <div class="col-md-6 col-sm-12 col-12 show-on-mobile">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item"><a href="@path/">Administração</a></li>
+            <li class="breadcrumb-item active">Configurações</li>
+        </ol>
+    </div>
+
+</div>
+
+@if (Erro != "")
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Erro!</strong> @Erro
+    </div>
+}
+@if (Mensagem != "")
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @Mensagem
+    </div>
+}
+
+
+<div class="row">
+    <div class="col-md-12">
+       
+        <div class="card mb-4" id="help_geo">
+            <div class="card-header vitro-cor-secundaria"><span class="fas fa-location-dot me-1"></span> Geolocalização</div>
+            <div class="card-body">
+                <div class="ms-0 mt-3 mb-3 form-check">
+                    <label id="geolocation" class='cnk-switch me-1'><input type='checkbox' @bind="geolocation" /><span class='cnk-switch-slider round'></span></label>
+                    <label for="geolocation" class="form-label">Utilizar Geolocalização</label>
+                </div>
+            </div>
+        </div>
+      
+
+    </div>
+</div>
+<div class="row mb-4">
+    <div class="ms-0 mb-3 form-check" id="help_guardar">
+        <button class="btn btn-theme shadow" @onclick="@(()=> { SaveConfigs(); })">Guardar Dados</button>
+    </div>
+</div>
+
+
+
+@* HELP *@
+<script>
+    jQuery('#help').off('click');
+    jQuery('#help').click(function () {
+        var steps = [
+            {
+                element: "#help_tipos",
+                popover: {
+                    title: "Tipos de Login",
+                    description: "Aqui pode definir os métodos através dos quais os utilizadores podem fazer login além da utilização do método de utilizador/password. Desta forma pode permitir aos utilizadores fazerem login através de PIN ou através de reconhecimento facial",
+                    showButtons: true,
+                    closeBtnText: 'Fechar',
+                    nextBtnText: 'Próximo',
+                    prevBtnText: 'Anterior',
+                    side: "top",
+                    align: 'start'
+                },
+            },
+            {
+                element: "#help_geo",
+                popover: {
+                    title: "Geolocalização",
+                    description: "Aqui pode definir a utilização geral de mecanismos de geolocalização. Se estiver desativada, os utilizadores podem fazer picagens independentemente da sua localização. Se estiver ativada, os utilizadores com geolocalização definida só poderão fazer picagens nas áreas de localização que lhe foram atribuídas de forma geral ou individualmente.",
+                    showButtons: true,
+                    closeBtnText: 'Fechar',
+                    nextBtnText: 'Próximo',
+                    prevBtnText: 'Anterior',
+                    side: "top",
+                    align: 'start'
+                },
+            },
+            {
+                element: "#help_primavera",
+                popover: {
+                    title: "Ligação ao Primavera",
+                    description: "Aqui pode definir os documentos e séries do Primavera que serão utilizados pelos motores de integração no registo de dados no Primavera.",
+                    showButtons: true,
+                    closeBtnText: 'Fechar',
+                    nextBtnText: 'Próximo',
+                    prevBtnText: 'Anterior',
+                    side: "top",
+                    align: 'start'
+                },
+            },
+            {
+                element: "#help_guardar",
+                popover: {
+                    title: "Guardar dados",
+                    description: "Após efetuar as alterações pretendidas deve guardar os dados.",
+                    showButtons: true,
+                    closeBtnText: 'Fechar',
+                    nextBtnText: 'Próximo',
+                    prevBtnText: 'Anterior',
+                    doneBtnText: 'OK',
+                    side: "top",
+                    align: 'start'
+                },
+            },
+        ];
+        var driver = new Driver({ allowClose: false, });
+        driver.defineSteps(steps);
+        driver.start();
+    });
+</script>
+
+@code {
+
+    EmpresaUserSession who = null;
+    private string path = "";
+    private List<CrmConfig> configs = new List<CrmConfig>();
+    private bool loginPin = false;
+    private bool loginFacial = false;
+    private bool geolocation = false;
+    private string Erro = "";
+    private string Mensagem = "";
+    private List<CompanySelection> selections = new List<CompanySelection>();
+    BaseControleContext dbContext = new BaseControleContext();
+
+    protected override void OnInitialized()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        if (who.User.Isadmin != true)
+        {
+            NavigationManager.NavigateTo("/");
+        }
+        else
+        {
+            //configurações
+            configs = dbContext.CrmConfigs.ToList();
+            foreach (CrmConfig config in configs)
+            {
+                if (config.Option.Trim().ToLower() == "loginpin")
+                {
+                    loginPin = bool.Parse(config.Value.Trim().ToString());
+                }
+                if (config.Option.Trim().ToLower() == "loginfacial")
+                {
+                    loginFacial = bool.Parse(config.Value.Trim().ToString());
+                }
+                if (config.Option.Trim().ToLower() == "geolocation")
+                {
+                    geolocation = bool.Parse(config.Value.Trim().ToString());
+                }
+            }
+        }
+        base.OnInitialized();
+    }
+
+    //Guarda os dados de configuração
+    private async void SaveConfigs()
+    {
+        Erro = "";
+        Mensagem = "";
+
+        if (Erro == "")
+        {
+            CrmConfig dbloginpin = dbContext.CrmConfigs.Where(u => u.Option == "loginpin").FirstOrDefault();
+            if (dbloginpin != null)
+            {
+                dbloginpin.Value = loginPin.ToString();
+            }
+            else
+            {
+                dbloginpin = new CrmConfig() { Option = "loginpin", Value = loginPin.ToString() };
+                dbContext.CrmConfigs.Add(dbloginpin);
+            }
+
+            CrmConfig dbloginface = dbContext.CrmConfigs.Where(u => u.Option == "loginfacial").FirstOrDefault();
+            if (dbloginface != null)
+            {
+                dbloginface.Value = loginFacial.ToString();
+            }
+            else
+            {
+                dbloginface = new CrmConfig() { Option = "loginfacial", Value = loginFacial.ToString() };
+                dbContext.CrmConfigs.Add(dbloginface);
+            }
+
+            CrmConfig dbgeolocation = dbContext.CrmConfigs.Where(u => u.Option == "geolocation").FirstOrDefault();
+            if (dbgeolocation != null)
+            {
+                dbgeolocation.Value = geolocation.ToString();
+            }
+            else
+            {
+                dbgeolocation = new CrmConfig() { Option = "geolocation", Value = geolocation.ToString() };
+                dbContext.CrmConfigs.Add(dbgeolocation);
+            }
+
+
+            //documentos e séries
+            foreach (var item in selections)
+            {
+                CrmConfig primaveradocs = dbContext.CrmConfigs.Where(u => u.Option == "prim_d_" + item.Empresa).FirstOrDefault();
+                if (primaveradocs != null)
+                {
+                    primaveradocs.Value = item.SelectedDoc.ToString();
+                }
+                else
+                {
+                    primaveradocs = new CrmConfig() { Option = "prim_d_" + item.Empresa, Value = item.SelectedDoc.ToString() };
+                    dbContext.CrmConfigs.Add(primaveradocs);
+                }
+
+                CrmConfig primaveraseries = dbContext.CrmConfigs.Where(u => u.Option == "prim_s_" + item.Empresa).FirstOrDefault();
+                if (primaveraseries != null)
+                {
+                    primaveraseries.Value = item.SelectedSeries.ToString();
+                }
+                else
+                {
+                    primaveraseries = new CrmConfig() { Option = "prim_s_" + item.Empresa, Value = item.SelectedSeries.ToString() };
+                    dbContext.CrmConfigs.Add(primaveraseries);
+                }
+            }
+
+            await dbContext.SaveChangesAsync();
+            Mensagem = "Os dados foram alterados com sucesso!";
+            await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+            await utils.UserLogAsync(who.User.Id, $"Alterou dados de configuração");
+        }
+
+        var timer = new System.Timers.Timer(5000); // 5 segundos
+        timer.Elapsed += TimerElapsed;
+        timer.AutoReset = false;
+        timer.Start();
+
+        StateHasChanged();
+        InvokeAsync(() => { LayoutUpdateService.RequestLayoutUpdate(); } );
+    }
+
+    //temporizador para eliminar as mensagems
+    private void TimerElapsed(object sender, ElapsedEventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            Erro = "";
+            Mensagem = "";
+            StateHasChanged();
+        });
+    }
+
+    //seleção de documentos e séries
+    private void HandleChange(ChangeEventArgs e, CompanySelection empresa)
+    {
+        var selectedValue = e.Value.ToString();
+        empresa.SelectedDoc = selectedValue;
+        empresa.SelectedSeries = "";
+    }
+
+    //tipos de dados
+    public class CompanySelection
+    {
+        public string Empresa { get; set; }
+        public string SelectedDoc { get; set; }
+        public string SelectedSeries { get; set; }
+    }
+}

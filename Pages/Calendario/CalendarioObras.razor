@@ -1,0 +1,372 @@
+﻿@page "/calendario-obras"
+@using System.Globalization
+@using System.Text.Json
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService DbContextFactory
+@inject IDialogService DialogService
+@inject IConfiguration _configuration
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Cronograma de Obras</PageTitle>
+
+<div class="row mt-2 mb-2">
+    <div class="col-md-6 mt-3">
+        <div class="row">
+            <div class="col-md-5" style="display: flex; align-items: center;">
+                <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                <MudText Typo="Typo.h5" Class="ms-1">Calendário de Obras</MudText>
+
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mt-3 hide-on-mobile">
+        <ol class="breadcrumb" style="float:right;">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item active">Calendário de Obras</li>
+        </ol>
+    </div>
+</div>
+
+<MudGrid GutterSize="3px" Class="mb-2">
+    <MudItem xs="12" sm="4">
+        <MudAutocomplete T="CrmUtilizador"
+        Label="Colaborador"
+        SearchFunc="BuscaColaborador"
+        ToStringFunc="@(i => i?.Name)"
+        Value="funcionarioSelecionado"
+        ValueChanged="OnSelecaoColaborador"
+        ValueExpression="@(() => funcionarioSelecionado)"
+        Clearable="true"
+        ResetValueOnEmptyText
+        Dense="true"
+        Variant="Variant.Outlined"
+        Margin="Margin.Dense"
+        Placeholder="Colaborador"
+        Style="padding: 0; min-height: 36px;" />
+    </MudItem>
+
+    <MudItem xs="12" sm="4">
+        <MudAutocomplete T="OsusrN2pObra"
+        Label="Obra"
+        SearchFunc="BuscaObra"
+        ToStringFunc="@(i => i?.Nome)"
+        Value="ObraSelecionada"
+        ValueChanged="OnSelecaoObra"
+        ValueExpression="@(() => ObraSelecionada)"
+        Clearable="true"
+        MaxItems="null"
+        ResetValueOnEmptyText
+        Dense="true"
+        Variant="Variant.Outlined"
+        Margin="Margin.Dense"
+        Placeholder="Obra"
+        Style="padding: 0; min-height: 36px;" />
+    </MudItem>
+
+    <MudItem xs="12" sm="4">
+        <MudAutocomplete T="string"
+        Label="Mês"
+        Dense="true"
+        MaxItems="null"
+        Variant="Variant.Outlined"
+        Margin="Margin.Dense"
+        SearchFunc="@PesquisarMes"
+        ToStringFunc="(x => x)"
+        Value="mesSelecionadoNome"
+        ValueChanged="OnMesAutocompleteSelecionado"
+        Clearable="true"
+        Placeholder="Mês"
+        Style="padding: 0; min-height: 36px;" />
+    </MudItem>
+</MudGrid>
+
+
+<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-0" Style="display: contents;" ActiveTabClass="border-solid border-2 mud-border-dark"
+ActivePanelIndex="@_activeTabIndex" ActivePanelIndexChanged="@OnTabChanged">
+
+    <MudTabPanel Style="text-transform: capitalize !important; background-color: white; color : black" Text="Calendário">
+        <ChildContent>
+            <div id="calendario-obras" style="height: 800px;"></div>
+        </ChildContent>
+    </MudTabPanel>
+
+    <MudTabPanel Style="text-transform: capitalize !important; background-color: white; color : black" Text="Agendamentos">
+        <ChildContent>
+
+            <MudTable Items="agendamentosFiltrados"
+            Striped="true"
+            Bordered="true"
+            Hover="true"
+            Dense="true">
+                <HeaderContent>
+                    <MudTh>Colaborador</MudTh>
+                    <MudTh>Obra</MudTh>
+                    <MudTh>Início</MudTh>
+                    <MudTh>Fim</MudTh>
+                    <MudTh>Entrada</MudTh>
+                    <MudTh>Saída</MudTh>
+                </HeaderContent>
+
+                <RowTemplate>
+                    <MudTd>@context.NomeFuncionario</MudTd>
+                    <MudTd>@context.NomeObra</MudTd>
+                    <MudTd>@context.DataInicio.ToString("dd/MM/yyyy")</MudTd>
+                    <MudTd>@context.DataFim.ToString("dd/MM/yyyy")</MudTd>
+                    <MudTd>@(context.HoraEntrada.HasValue ? context.HoraEntrada.Value.ToString(@"hh\:mm") : "")</MudTd>
+                    <MudTd>@(context.HoraSaida.HasValue ? context.HoraSaida.Value.ToString(@"hh\:mm") : "")</MudTd>
+
+                </RowTemplate>
+
+                <NoRecordsContent>
+                    Não existem agendamentos a exibir.
+                </NoRecordsContent>
+
+                <PagerContent>
+                    <MudTablePager />
+                </PagerContent>
+            </MudTable>
+
+        </ChildContent>
+    </MudTabPanel>
+
+</MudTabs>
+
+@code {
+    private CrmUtilizador? funcionarioSelecionado;
+    private OsusrN2pObra? ObraSelecionada;
+    private DbContext db;
+    private BaseControleContext? dbBase;
+    private EmpresaUserSession who;
+    private List<CrmUtilizador> listaUtilizadores = new List<CrmUtilizador>() { };
+    private List<OsusrN2pObra> empreendimentos = new List<OsusrN2pObra>() { };
+
+    private bool calendarioJaInicializado = false;
+    private int _activeTabIndex = 0;
+
+    private List<FuncionarioObraAgendamento> agendamentos = new List<FuncionarioObraAgendamento>();
+    private List<FuncionarioObraAgendamento> agendamentosFiltrados = new List<FuncionarioObraAgendamento>();
+    private List<string> mesesDisponiveis =>
+    Enumerable.Range(1, 12)
+              .Select(i => CultureInfo.GetCultureInfo("pt-PT").DateTimeFormat.GetMonthName(i))
+              .ToList();
+
+    private string? mesSelecionadoNome;
+    private string path = "";
+
+    private int mesEscolhido = DateTime.Now.Month;  
+
+    private async Task FiltrarEventos()
+    {
+        var colaboradorId = funcionarioSelecionado?.Id;
+        var obraId = ObraSelecionada?.Id;
+
+        var eventosFiltrados = new List<object>();
+
+        foreach (FuncionarioObraAgendamento agendamento in agendamentosFiltrados)
+        {
+            if (agendamento.IdFuncionario > 0 && agendamento.IdObra > 0)
+            {
+                var title = $"{agendamento.NomeFuncionario} - {agendamento.NomeObra}";
+                var obraCodigo = empreendimentos.FirstOrDefault(o => o.Id == agendamento.IdObra)?.Codigo;
+
+                for (var d = agendamento.DataInicio.Date; d <= agendamento.DataFim.Date; d = d.AddDays(1))
+                {
+                    eventosFiltrados.Add(new
+                    {
+                        id = $"{agendamento.Id}_{d:yyyyMMdd}",
+                        title = title,
+                        start = d.ToString("yyyy-MM-dd"),
+                        end = d.ToString("yyyy-MM-dd"),
+                        allDay = true,
+                        color = "#3f51b5",
+                        obraCodigo = obraCodigo // <- custom prop aqui
+                    });
+                }
+            }
+        }
+
+        var recursos = listaUtilizadores.Select(u => new
+        {
+            id = u.Id,
+            name = u.Name
+        }).ToList();
+
+        await JS.InvokeVoidAsync("fullCalendarObras.destroy");
+        await JS.InvokeVoidAsync("fullCalendarObras.init",
+                                 recursos, eventosFiltrados, mesEscolhido);
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        db = DbContextFactory.GetDbContext(who.Empresa.BaseNome);
+
+        BaseControleContext dbBaseControle = new BaseControleContext();
+
+        var listaUtilizadoresIds = dbBaseControle.UtilizadorEmpresas
+            .Where(i => i.EmpresaId == who.Empresa.Id)
+            .Select(i => i.UtilizadorId)
+            .ToList();
+
+        listaUtilizadores = dbBaseControle.CrmUtilizadors
+            .Where(u => listaUtilizadoresIds.Contains(u.Id)
+                        && u.IsSuperAdmin != true
+                        && u.IsDeleted != true
+                        && u.Isactive == true)
+            .ToList();
+
+        GetAgendamentos();
+        GetObras();
+
+        if (_activeTabIndex == 0)
+        {
+            await FiltrarEventos();
+            calendarioJaInicializado = true;
+        }
+    }
+
+    private async Task OnTabChanged(int newIndex)
+    {
+        _activeTabIndex = newIndex;
+
+        if (_activeTabIndex == 0)
+        {
+           
+            await JSRuntime.InvokeVoidAsync("destroyCalendarioObras");
+           
+            await FiltrarEventos();
+            calendarioJaInicializado = true;
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("destroyCalendarioObras");
+            calendarioJaInicializado = false;
+        }
+
+        StateHasChanged();
+    }
+
+    private void GetObras()
+    {
+        empreendimentos = db.Set<OsusrN2pObra>()
+            .Where(o => o.Deleted != true)
+            .ToList();
+    }
+
+    private void GetAgendamentos()
+    {
+        agendamentos = db.Set<FuncionarioObraAgendamento>() 
+            .Where(a => a.DataInicio.Month == mesEscolhido)
+            .ToList();
+
+
+        FiltrarAgendamentos();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !calendarioJaInicializado && db != null && listaUtilizadores != null)
+        {
+            calendarioJaInicializado = true;
+            await FiltrarEventos();
+        }
+    }
+
+    private Task<IEnumerable<CrmUtilizador>> BuscaColaborador(string value, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(listaUtilizadores.AsEnumerable());
+
+        return Task.FromResult(listaUtilizadores
+            .Where(i => i.Name != null && i.Name.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .AsEnumerable());
+    }
+
+    private void FiltrarAgendamentos()
+    {
+        agendamentosFiltrados.Clear();
+
+        agendamentosFiltrados = agendamentos.ToList();
+
+        if (funcionarioSelecionado?.Id > 0)
+        {
+            agendamentosFiltrados = agendamentosFiltrados.Where(i => i.IdFuncionario == funcionarioSelecionado.Id).ToList();
+        }
+
+        if ( ObraSelecionada?.Id > 0)
+        {
+            agendamentosFiltrados = agendamentosFiltrados.Where(i => i.IdObra == ObraSelecionada.Id).ToList();
+        }
+    }
+
+    private Task<IEnumerable<OsusrN2pObra>> BuscaObra(string value, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult(empreendimentos.AsEnumerable());
+
+        return Task.FromResult(empreendimentos
+            .Where(o => o.Nome.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .AsEnumerable());
+    }
+
+    private void OnSelecaoColaborador(CrmUtilizador? colaborador)
+    {
+        if (colaborador is null)
+        {
+            funcionarioSelecionado = null;
+        }
+        else
+        {   
+            funcionarioSelecionado = colaborador;
+            FiltrarAgendamentos();
+            FiltrarEventos();
+        }
+    }
+
+    private void OnSelecaoObra(OsusrN2pObra? obra)
+    {
+            ObraSelecionada = obra;
+            FiltrarAgendamentos();
+            FiltrarEventos();
+    }
+
+    private Task<IEnumerable<string>> PesquisarMes(string value, CancellationToken token)
+    {
+        var result = string.IsNullOrWhiteSpace(value)
+            ? mesesDisponiveis
+            : mesesDisponiveis
+                .Where(m => m.Contains(value, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+        return Task.FromResult(result.AsEnumerable());
+    }
+
+
+    private async Task OnMesAutocompleteSelecionado(string mes)
+    {
+        mesSelecionadoNome = mes;
+        mesEscolhido = mesesDisponiveis.IndexOf(mes) + 1;
+
+        if (mesEscolhido > 0)
+        {
+            GetAgendamentos();
+            await FiltrarEventos();
+        }
+    }
+
+    public void Dispose()
+    {
+        JS.InvokeVoidAsync("fullCalendarObras.destroy");
+    }
+}

@@ -1,0 +1,269 @@
+﻿@page "/AgendamentosObra"
+
+@using System.Timers
+@using ErudisIberpor2008
+@using ErudisIberpor2008.Data
+@using ErudisIberpor2008.Models
+@using ErudisIberpor2008.Shared
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.JSInterop
+@using Newtonsoft.Json
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService dbContextFactoryService
+@inject IDialogService Dialog
+@inject IConfiguration _configuration
+
+<PageTitle>Agendamentos de Obra</PageTitle>
+
+<h3 class="text-white">Agendamentos de Obra</h3>
+
+<MudPaper Class="p-4">
+    <MudGrid>
+        <MudItem xs="12" sm="6">
+            <MudAutocomplete T="CrmUtilizador"
+                             Label="Colaborador"
+                             SearchFunc="BuscaColaborador"
+                             ToStringFunc="@(i => i?.Name)"
+                             ValueChanged="OnSelecaoColaborador"
+                             Clearable="true"
+                             ResetValueOnEmptyText
+                             Dense="true"
+                             Variant="Variant.Outlined"
+                             Margin="Margin.Dense"
+                             Placeholder="Selecione Colaborador"
+                             Style="padding: 0; min-height: 37px;" />
+
+        </MudItem>
+
+        <MudItem xs="12" sm="6">
+            <MudAutocomplete T="OsusrN2pObra"
+            SearchFunc="BuscaObra"
+            ToStringFunc="@(i => i?.Nome)"
+            ValueChanged="OnSelecaoObra"
+            Value="ObraSelecionada"
+            Clearable="true"
+            ResetValueOnEmptyText
+            Dense="true"
+            Variant="Variant.Outlined"
+            Margin="Margin.Dense"
+            Placeholder="Selecione Obra"
+            Class="form-control"
+            Style="padding: 0; min-height: 37px;" />
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@* <MudTable Items="@agendamentosFiltrados" Dense="true" Striped="true" Hover="true" Class="mt-4">
+    <HeaderContent>
+        <MudTh>Colaborador</MudTh>
+        <MudTh>Obra</MudTh>
+        <MudTh>Início</MudTh>
+        <MudTh>Fim</MudTh>
+        <MudTh>Entrada</MudTh>
+        <MudTh>Saída</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd>@context.NomeFuncionario</MudTd>
+        <MudTd>@context.NomeObra</MudTd>
+        <MudTd>@context.DataInicio.ToShortDateString()</MudTd>
+        <MudTd>@context.DataFim.ToShortDateString()</MudTd>
+        <MudTd>@context.HoraEntrada</MudTd>
+        <MudTd>@context.HoraSaida</MudTd>
+    </RowTemplate>
+</MudTable> *@
+
+<div class="card shadow mt-4">
+    <div class="card-header vitro-cor-secundaria d-flex justify-content-between align-items-center">
+        <span>
+            <span class="fa-solid fa-calendar-days me-2"></span>
+            <span style="min-width: 200px !important; display: inline-block;">Agendamentos de Obra</span>
+        </span>
+    </div>
+
+    <div class="card-body pb-0">
+        <MudTable Items="agendamentosFiltrados"
+                  Striped="true"
+                  Bordered="true"
+                  Hover="true"
+                  Dense="true">
+            <HeaderContent>
+                <MudTh>Colaborador</MudTh>
+                <MudTh>Obra</MudTh>
+                <MudTh>Início</MudTh>
+                <MudTh>Fim</MudTh>
+                <MudTh>Entrada</MudTh>
+                <MudTh>Saída</MudTh>
+            </HeaderContent>
+
+            <RowTemplate>
+                <MudTd>@context.NomeFuncionario</MudTd>
+                <MudTd>@context.NomeObra</MudTd>
+                <MudTd>@context.DataInicio.ToString("dd/MM/yyyy")</MudTd>
+                <MudTd>@context.DataFim.ToString("dd/MM/yyyy")</MudTd>
+                <MudTd>@context.HoraEntrada.ToString(@"hh\:mm")</MudTd>
+                <MudTd>@context.HoraSaida.ToString(@"hh\:mm")</MudTd>
+            </RowTemplate>
+
+            <NoRecordsContent>
+                Não existem agendamentos a exibir.
+            </NoRecordsContent>
+
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    </div>
+</div>
+
+
+@code {
+    private EmpresaUserSession who;
+    private DbContext db;
+
+    private List<CrmUtilizador> colaboradores = new();
+    private List<OsusrN2pObra> obras = new();
+    private List<FuncionarioObraAgendamento> agendamentos = new();
+    private List<FuncionarioObraAgendamento> agendamentosFiltrados = new();
+    private List<CrmUtilizador> utilizadores = new();
+    private CrmUtilizador? ColaboradorSelecionado;
+    private OsusrN2pObra? ObraSelecionada;
+    private List<(string NomeObra, DateTime DataInicio, DateTime DataFim, double TotalHoras)> resultadosColaborador = new();
+    private List<(string NomeColaborador, DateTime DataInicio, DateTime DataFim, double TotalHoras)> resultadosObra = new();
+
+    protected override void OnInitialized()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        db = dbContextFactoryService.GetDbContext(who.Empresa.BaseNome);
+
+        utilizadores = new BaseControleContext().CrmUtilizadors
+            .Where(c => c.IsSuperAdmin != true && c.IsDeleted != true)
+            .ToList();
+
+        obras = db.Set<OsusrN2pObra>().Where(o => o.Deleted != true).ToList();
+        var idsObrasValidas = db.Set<OsusrN2pObra>()
+            .Where(o => o.Deleted != true)
+            .Select(o => o.Id)
+            .ToList();
+
+        agendamentos = db.Set<FuncionarioObraAgendamento>()
+            .Where(a => idsObrasValidas.Contains(a.IdObra))
+            .ToList();
+
+
+        // Garantir que todas as obras dos agendamentos estão na lista de obras
+        var idsObrasAgendamento = agendamentos.Select(a => a.IdObra).Distinct().ToList();
+        var idsObrasDisponiveis = obras.Select(o => o.Id).ToList();
+
+        var obrasFaltantes = idsObrasAgendamento
+        .Where(id => !idsObrasDisponiveis.Contains(id))
+        .Select(id => db.Set<OsusrN2pObra>()
+            .FirstOrDefault(o => o.Id == id && o.Deleted != true)) //
+        .Where(o => o != null)
+        .ToList();
+
+        obras.AddRange(obrasFaltantes!);
+
+
+        agendamentosFiltrados = new(agendamentos);
+    }
+
+
+    private void FiltrarAgendamentos()
+    {
+        agendamentosFiltrados = agendamentos
+            .Where(a =>
+                (ColaboradorSelecionado == null || a.IdFuncionario == ColaboradorSelecionado.Id) &&
+                (ObraSelecionada == null || a.IdObra == ObraSelecionada.Id)
+            )
+            .ToList();
+    }
+
+    private Task<IEnumerable<CrmUtilizador>> BuscaColaborador(string value, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(utilizadores.AsEnumerable());
+
+        return Task.FromResult(utilizadores
+            .Where(i => i.Name != null && i.Name.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .AsEnumerable());
+    }
+
+
+    private Task<IEnumerable<OsusrN2pObra>> BuscaObra(string value, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult(obras.AsEnumerable());
+
+        return Task.FromResult(obras
+            .Where(o => o.Nome.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .AsEnumerable());
+    }
+
+
+    // private void OnSelecaoColaborador(CrmUtilizador c)
+    // {
+    //     ColaboradorSelecionado = c;
+    //     FiltrarAgendamentos();
+    // }
+
+    private void OnSelecaoColaborador(CrmUtilizador c)
+    {
+        ColaboradorSelecionado = c;
+        ObraSelecionada = null;
+
+        if (c == null)
+        {
+            resultadosColaborador.Clear();
+            agendamentosFiltrados = new(agendamentos); // 👈 Recarrega tudo
+            return;
+        }
+
+        resultadosColaborador = agendamentos
+            .Where(a => a.IdFuncionario == c.Id)
+            .Select(a => (
+                NomeObra: obras.FirstOrDefault(o => o.Id == a.IdObra)?.Nome ?? "",
+                DataInicio: a.DataInicio,
+                DataFim: a.DataFim,
+                TotalHoras: (a.DataFim - a.DataInicio).Days * (a.HoraSaida - a.HoraEntrada).TotalHours
+            )).ToList();
+
+        FiltrarAgendamentos();
+    }
+
+
+
+    // private void OnSelecaoObra(OsusrN2pObra o)
+    // {
+    //     ObraSelecionada = o;
+    //     FiltrarAgendamentos();
+    // }
+
+    private void OnSelecaoObra(OsusrN2pObra o)
+    {
+        ObraSelecionada = o;
+        ColaboradorSelecionado = null;
+
+        if (o == null)
+        {
+            resultadosObra.Clear();
+            agendamentosFiltrados = new(agendamentos); // 👈 Recarrega tudo
+            return;
+        }
+
+        resultadosObra = agendamentos
+            .Where(a => a.IdObra == o.Id)
+            .Select(a => (
+                NomeColaborador: utilizadores.FirstOrDefault(u => u.Id == a.IdFuncionario)?.Name ?? "",
+                DataInicio: a.DataInicio,
+                DataFim: a.DataFim,
+                TotalHoras: (a.DataFim - a.DataInicio).Days * (a.HoraSaida - a.HoraEntrada).TotalHours
+            )).ToList();
+
+        FiltrarAgendamentos();
+    }
+
+
+}

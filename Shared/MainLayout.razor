@@ -1,0 +1,795 @@
+﻿@inherits LayoutComponentBase
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.EntityFrameworkCore
+@using Newtonsoft.Json
+@inject NavigationManager NavigationManager
+@inject Utils utils
+@inject IJSRuntime JSRuntime
+@inject IWebHostEnvironment Env
+@inject LayoutUpdateService LayoutUpdateService
+@inject IDbContextFactoryService dbContextFactoryService
+
+<PageTitle>Construlink</PageTitle>
+
+@if (who != null && who.User != null && who.Empresa != null)
+{
+    <nav class="sb-topnav navbar navbar-expand navbar-light bg-dark shadow"
+    style="background-image: linear-gradient(120deg, @who.Empresa.Cor1 0%, @who.Empresa.Cor1 70%); border-bottom:2px solid #585454;">
+        <!-- Navbar Brand-->
+        <a class="navbar-brand ps-3" href="">
+            <img src="images/uploads/construlinkLogo.png" alt="logo" style="width:130px; height:auto;">
+            @* <img alt="@who.Empresa.Empresa" class="text-light" src="@Utils.GetImgUrlFromName(who.Empresa.LogoNavBar)"
+            style="width:130px; height:auto;"> *@
+        </a>
+        <!-- Sidebar Toggle-->
+        <button id="sidebarToggle" class="btn btn-link btn-sm order-1 order-lg-0 me-2 me-lg-0 text-light" onclick="ToggleSidebar()">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        @* 👇 Nome do user ao lado do botão *@
+        @if (who?.User is not null)
+        {
+            <span class="navbar-text text-light fw-semibold ms-2 d-none d-md-inline">
+                @who.User.Name
+            </span>
+        }
+
+        <!-- Navbar Search-->
+        <div class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0">
+        </div>
+        <!-- Navbar-->
+        <ul class="navbar-nav ms-auto ms-md-0 me-3 me-lg-4">
+
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle text-light" id="navbarDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-user fa-fw"></i>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                    @if (who != null)
+                    {
+                        <li><small class="dropdown-item">@who.User.Name</small></li>
+                    }
+                    <li><hr class="dropdown-divider" /></li>
+                    <li><a class="dropdown-item" href="@path/Myinfo">Perfil</a></li>
+                    @if (who.User.IsSuperAdmin == true)
+                    {
+                        <li><a class="dropdown-item" href="@path/Auditoria">Registo de Atividades</a></li>
+                    }
+                    <li><a class="dropdown-item" href="#!" @onclick="@(()=> { TrocarEmpresa(); })">Selecionar Empresa</a></li>
+                    @if (who.User.IsSuperAdmin == true)
+                    {
+                        <li><a class="dropdown-item" href="@path/Controlo">Área de Controlo</a></li>
+                    }
+                    <li><hr class="dropdown-divider" /></li>
+                    <li><a class="dropdown-item" href="#!" @onclick="@(()=> { logout(); })">Logout</a></li>
+                </ul>
+            </li>
+        </ul>
+        <div class="sb-sidenav-footer px-0 pt-1">
+
+        </div>
+    </nav>
+    <div id="layoutSidenav">
+        <div id="layoutSidenav_nav">
+            <nav class="sb-sidenav accordion sb-sidenav-light" id="sidenavAccordion">
+                <div class="sb-sidenav-menu">
+                    <div class="nav">
+
+                        <!-- Sempre visível -->
+                        <a class="nav-link agmenu" href="@path/Dashboard" style="display:flex;align-items:center;">
+                            <div class="sb-nav-link-icon" style="display:flex;align-items:center;">
+                                <MudIcon Icon="@Utils.GetSvgPathData("web","light","gauge-max")"
+                                         Color="Color.Primary" Style="font-size:1.1rem;" />
+                            </div>
+                            <span>Dashboard</span>
+                        </a>
+
+
+
+                        @if (who.User.Isadmin == true)
+                        {
+                            <a class="nav-link agmenu" href="Picagens" style="display: flex; align-items: center;">
+                                <div class="sb-nav-link-icon" style="display: flex; align-items: center;">
+                                    <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "clock")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                                </div>
+                                <span>Picagens</span>
+                            </a>
+
+                            <a class="nav-link agmenu" href="@path/Consultas" style="display: flex; align-items: center;">
+                                <div class="sb-nav-link-icon" style="display: flex; align-items: center;">
+                                    <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "user-clock")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                                </div>
+                                <span>Validação de presenças</span>
+                            </a>
+
+                            <a class="nav-link agmenu" href="@path/Ausencias" style="display: flex; align-items: center;">
+                                <div class="sb-nav-link-icon" style="display: flex; align-items: center;">
+                                    <MudIcon Icon="@Icons.Material.Outlined.GroupOff" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                                </div>
+                                <span>Ausências</span>
+                            </a>
+
+
+
+                        }
+
+                        @if (who.User.Isadmin == true)
+                        {
+
+                            <a class="nav-link agmenu" href="@path/Colaboradores" style="display: flex; align-items: center;">
+                                <div class="sb-nav-link-icon" style="display: flex; align-items: center;">
+                                    <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "users")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                                </div>
+                                <span>Colaboradores</span>
+                            </a>
+                        }
+
+                        @if (who.User.Isadmin == true)
+                        {
+                            <!-- CLIENTES -->
+                            <a class="nav-link agmenu" onclick="reloadPage('@path/Entidades/Clientes')" style="display:flex;align-items:center;" href="javascript:void(0)">
+                                <div class="sb-nav-link-icon" style="display:flex;align-items:center;">
+                                    <MudIcon Icon="@Utils.GetSvgPathData("web","light","building")" Color="Color.Primary" Style="font-size:1.1rem;" />
+                                </div>
+                                <span>Clientes</span>
+                            </a>
+                        }
+
+                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#ObrasPages" aria-expanded="false" aria-controls="ObrasPages" style="display: flex; align-items: center;">
+                            <div class="sb-nav-link-icon" style="display: flex; align-items: center;">
+                                <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "industry-windows")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                            </div>
+                            <span>Obras</span>
+                            <div class="sb-sidenav-collapse-arrow" style="margin-left: auto;">
+                                <i class="fas fa-angle-down"></i>
+                            </div>
+                        </a>
+                        <div class="collapse" id="ObrasPages" aria-labelledby="headingTwo" data-bs-parent="#sidenavAccordion">
+                            <nav class="sb-sidenav-menu-nested nav accordion" id="sidenavAccordionPages">
+                                <a class="nav-link agmenu" onclick="reloadPage('@path/Empreendimento')" style="display:flex;align-items:center;" href="javascript:void(0)">
+                                    Lista de Obras
+                                    </a>
+                                @* <a class="nav-link agmenu" href="@path/Empreendimento">Lista de Obras</a> *@
+                                <a class="nav-link agmenu" href="@path/calendario-obras">Cronograma Obras </a>
+
+                            </nav>
+                        </div>
+
+                        @if(who.User.Isadmin == true || who.User.IsSuperAdmin == true)
+                        {
+                            <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapsePages" aria-expanded="false" aria-controls="collapsePages" style="display: flex; align-items: center;">
+                                <div class="sb-nav-link-icon" style="display: flex; align-items: center;">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Settings" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                                </div>
+                                <span>Administração</span>
+                                <div class="sb-sidenav-collapse-arrow" style="margin-left: auto;">
+                                    <i class="fas fa-angle-down"></i>
+                                </div>
+                            </a>
+
+                            <div class="collapse" id="collapsePages" aria-labelledby="headingTwo" data-bs-parent="#sidenavAccordion">
+                                <nav class="sb-sidenav-menu-nested nav accordion" id="sidenavAccordionPages">
+                                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#pagesCollapseAuth" aria-expanded="false" aria-controls="pagesCollapseAuth">
+                                        Organização
+                                        <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                                    </a>
+                                    <div class="collapse" id="pagesCollapseAuth" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordionPages">
+                                        <nav class="sb-sidenav-menu-nested nav">
+                                            <a class="nav-link agmenu" href="@path/Utilizadores">Utilizadores</a>
+                                            <a class="nav-link agmenu" href="@path/Feriados">Feriados</a>
+                                            <a class="nav-link agmenu" href="@path/TurnosHorarios">Horários</a>
+                                        </nav>
+                                    </div>
+
+                                    @if (who.User.IsSuperAdmin == true)
+                                    {
+                                        <a class="nav-link agmenu" href="@path/Auditoria">Registo de Atividades</a>
+                                    }
+
+                                    @if (who.User.IsSuperAdmin == true)
+                                    {
+                                        <a class="nav-link agmenu" href="@path/Controlo">Área de Controlo</a>
+                                    }
+
+                                </nav>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+            </nav>
+        </div>
+        <div id="layoutSidenav_content">
+            <main>
+                <div class="container-fluid @(NavigationManager.Uri.EndsWith("/Index") ? "px-0" : "px-4")">
+                    @Body
+                </div>
+            </main>
+            <footer class="py-4  mt-auto">
+                <div class="container-fluid px-4">
+                    <div class="d-flex align-items-center justify-content-between small">
+                        <div class="text-muted">©AxClock, @DateTime.Now.Year Todos os direitos reservados. </div>
+                         <div class="mt-2 mb-2 ms-5" style="display: flex; justify-content: center; gap: 5px; align-items: center;">
+                            <div class="d-flex align-items-center gap-2 ms-5 my-2">
+                                <MudText Typo="Typo.body2" Class="footer-label">Implementado por:</MudText>
+                                <a href="" target="_blank">
+                                    <img src="images\uploads\construlinkLogo.png" style="height:35px;width:auto;" />
+                                </a>
+
+                                <MudText Typo="Typo.body2" Class="footer-label ms-4">Desenvolvido por:</MudText>
+                                <a href="" target="_blank">
+                                    <img src="images\uploads\construlinkLogo.png" style="height:35px;width:auto;" />
+                                </a>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+
+    //TOAST
+    <div class="toast align-items-center text-white border-0 position-fixed bottom-0 end-0 p-2 m-2" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body">
+                Hello, world! This is a toast message.
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+
+    <!-- spinner loading -->
+    <div id="loading" class="spinner-border text-success d-none" role="status" style="position: absolute; top: 50vh; left: 50vw;z-index:99;">
+        <span class="sr-only">Loading...</span>
+    </div>
+
+    <script>
+        //desliga a webcam
+        stop_faciallogin();
+
+        function OpenUrlOnNewTab(url) {
+        window.open(url, '_blank')
+        }
+
+        //TOAST
+        function showToast(texto, cor) {
+        var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+        var toastList = toastElList.map(function (toastEl) {
+        return new bootstrap.Toast(toastEl)
+        })
+        toastList.forEach(toast => toast.show());
+
+        jQuery(".toast").removeClass(function (index, className) {
+        var currentClasses = className.split(" ");
+        var classesToRemove = currentClasses.filter(function (c) {
+        return c.startsWith("bg-");
+        });
+        return classesToRemove.join(" ");
+        });
+        jQuery(".toast").addClass(cor);
+        jQuery(".toast-body").html(texto);
+        }
+
+        //loading spinner
+        function loading() {
+        jQuery("#loading").toggleClass("d-none");
+        }
+
+        //SIDEBAR
+        var toggled = false;
+        function ToggleSidebar() {
+        toggled = !toggled;
+        if (toggled) {
+        jQuery("body").addClass('sb-sidenav-toggled');
+        } else {
+        jQuery("body").removeClass('sb-sidenav-toggled');
+        }
+        }
+
+        jQuery(document).ready(function () {
+        //scripts mobile
+        if (jQuery(window).width() < 992) {
+        jQuery(".agmenu").on("click", function () {
+        if (toggled == true) {
+        ToggleSidebar();
+        }
+        });
+
+        jQuery("#layoutSidenav_content").on("click", function () {
+        if (toggled == true) {
+        ToggleSidebar();
+        }
+        });
+
+        //SWIPE
+        let touchArea = document.getElementById("layoutSidenav");
+
+        //Initial mouse X and Y positions are 0
+        let mouseX,
+        initialX = 0;
+        let mouseY,
+        initialY = 0;
+        let isSwiped;
+
+        //Events for touch and mouse
+        let events = {
+        mouse: {
+        down: "mousedown",
+        move: "mousemove",
+        up: "mouseup",
+        },
+        touch: {
+        down: "touchstart",
+        move: "touchmove",
+        up: "touchend",
+        },
+        };
+
+        let deviceType = "";
+
+        //Detect touch device
+        const isTouchDevice = () => {
+        try {
+        //We try to create TouchEvent (it would fail for desktops and throw error)
+        document.createEvent("TouchEvent");
+        deviceType = "touch";
+        return true;
+        } catch (e) {
+        deviceType = "mouse";
+        return false;
+        }
+        };
+
+        //Get left and top of touchArea
+        let rectLeft = touchArea.getBoundingClientRect().left;
+        let rectTop = touchArea.getBoundingClientRect().top;
+
+        //Get Exact X and Y position of mouse/touch
+        const getXY = (e) => {
+        mouseX = (!isTouchDevice() ? e.pageX : e.touches[0].pageX) - rectLeft;
+        mouseY = (!isTouchDevice() ? e.pageY : e.touches[0].pageY) - rectTop;
+        };
+
+        isTouchDevice();
+
+        //Start Swipe
+        touchArea.addEventListener(events[deviceType].down, (event) => {
+        isSwiped = true;
+        //Get X and Y Position
+        getXY(event);
+        initialX = mouseX;
+        initialY = mouseY;
+        });
+
+        //Mousemove / touchmove
+        touchArea.addEventListener(events[deviceType].move, (event) => {
+        if (!isTouchDevice()) {
+        event.preventDefault();
+        }
+        if (isSwiped) {
+        getXY(event);
+        let diffX = mouseX - initialX;
+        let diffY = mouseY - initialY;
+        if (Math.abs(diffY) > Math.abs(diffX)) {
+        // output.innerText = diffY > 0 ? "Down" : "Up";
+        } else {
+        // output.innerText = diffX > 0 ? "Right" : "Left";
+        if (diffX > 50) {
+        if (toggled == false) {
+        ToggleSidebar();
+        isSwiped = false;
+        }
+        }
+        if (diffX < -50) {
+        if (toggled == true) {
+        ToggleSidebar();
+        isSwiped = false;
+        }
+        }
+        }
+        }
+        });
+
+        //Stop Drawing
+        touchArea.addEventListener(events[deviceType].up, () => {
+        isSwiped = false;
+        });
+        touchArea.addEventListener("mouseleave", () => {
+        isSwiped = false;
+        });
+        window.onload = () => {
+        isSwiped = false;
+        };
+        }
+        });
+
+
+        //PAGINAÇÃO DAS DATATABLES
+        jQuery.fn.DataTable.ext.pager.numbers_length = 4; // Global máximo
+        jQuery.fn.DataTable.ext.pager.simple_numbers_no_ellipses = function (page, pages) {
+        var numbers = [];
+        var buttons = 4;
+        var half = Math.floor(buttons / 2);
+
+        var _range = function (start, end) {
+        var out = [];
+        for (var i = start; i < end; i++) { out.push(i); }
+        return out;
+        };
+
+        if (pages <= buttons) {
+        numbers = _range(0, pages);
+        } else {
+        if (page <= half) {
+        // start
+        numbers = _range(0, buttons);
+        } else if (page >= pages - half) {
+        // end
+        numbers = _range(pages - buttons, pages);
+        } else {
+        // perto do final ou do inicio
+        var start = Math.max(page - half, 0);
+        var end = start + buttons;
+        if (end > pages) {
+        end = pages;
+        start = end - buttons;
+        }
+        numbers = _range(start, end);
+        }
+        }
+
+        numbers.DT_el = 'span';
+        return ['previous', numbers, 'next'];
+        };
+
+        //DOWNLOAD DE FICHEIRO
+        window.downloadFileFromStream = async (fileName, contentStreamReference) => {
+        const arrayBuffer = await contentStreamReference.arrayBuffer();
+        const blob = new Blob([arrayBuffer]);
+        const url = URL.createObjectURL(blob);
+        const anchorElement = document.createElement('a');
+        anchorElement.href = url;
+        anchorElement.download = fileName ?? '';
+        anchorElement.click();
+        anchorElement.remove();
+        URL.revokeObjectURL(url);
+        }
+
+        //VERIFICAÇÃO DO MODAL
+        jQuery(window).on('popstate', function () {
+        jQuery('.modal').modal('hide');
+        jQuery(".modal-backdrop").remove();
+        jQuery(".in").remove();
+        });
+
+        //MOSTRA MODAL
+        function showModal(modalId, comportamento) {
+        jQuery(modalId).modal(comportamento);
+        }
+
+        //RELOAD DE PÁGINA FORÇADO
+        function reloadPage(url) {
+        if (window.location.href === url) {
+        window.location.reload();
+        } else {
+        window.location.href = url;
+        }
+        }
+    </script>
+}
+
+<section>
+    <script>
+
+        // GESTÃO DE COOKIES
+
+        function setCookie(name, value, days) {
+        var expires = "";
+        if (days) {
+        var date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+        }
+
+        function getCookie(name) {
+        var nameEQ = name + "=";
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+        }
+
+        function deleteCookie(name) {
+        document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        }
+
+        function logout() {
+        document.cookie = "user=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+        window.location.href = "/Login";
+        }
+
+    </script>
+
+    <script>
+        function clickSidebarButton() {
+        setTimeout(() => {
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        if (sidebarToggle) {
+        sidebarToggle.click();
+        }
+        }, 100);
+        }
+
+        function ChangeColorsInCSS(colorOne, useDarkerColor) {
+        if (colorOne == null || colorOne == '') {
+        return;
+        }
+
+        const root = document.documentElement
+        root.style.setProperty('--ag-theme-bg', colorOne)
+
+        const darkerColor = shadeColor(colorOne, -15)
+        const lighterColor = shadeColor(colorOne, 25)
+        if (useDarkerColor === false) {
+        root.style.setProperty('--ag-theme-bg-hover', lighterColor)
+        }
+        else {
+        root.style.setProperty('--ag-theme-bg-hover', darkerColor)
+        }
+        }
+
+        function shadeColor(color, percent) {
+        if (color.length != 7) {
+        return color
+        }
+
+        var R = parseInt(color.substring(1,3),16)
+        var G = parseInt(color.substring(3,5),16)
+        var B = parseInt(color.substring(5,7),16)
+
+        R = parseInt(R * (100 + percent) / 100)
+        G = parseInt(G * (100 + percent) / 100)
+        B = parseInt(B * (100 + percent) / 100)
+
+        R = (R<255)?R:255
+        G = (G<255)?G:255
+        B = (B<255)?B:255
+
+        R = Math.round(R)
+        G = Math.round(G)
+        B = Math.round(B)
+
+        var RR = ((R.toString(16).length==1)?"0"+R.toString(16):R.toString(16))
+        var GG = ((G.toString(16).length==1)?"0"+G.toString(16):G.toString(16))
+        var BB = ((B.toString(16).length==1)?"0"+B.toString(16):B.toString(16))
+
+        return "#"+RR+GG+BB
+        }
+
+        function GoBackInHistory() {
+        history.back()
+        }
+
+        function LocationReload() {
+        location.reload()
+        }
+
+        //abrir nova aba
+        window.openFileInNewTab = (base64Data, fileName, mimeType) => {
+        try {
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: mimeType });
+
+        const fileURL = URL.createObjectURL(blob);
+        window.open(fileURL, '_blank'); // Abre o arquivo na nova aba
+        } catch (error) {
+        console.error("Error decoding base64 data:", error);
+        }
+        };
+    </script>
+
+</section>
+
+@* Required *@
+<MudThemeProvider Theme="@customTheme" />
+<MudPopoverProvider />
+@* Needed for dialogs *@
+<MudDialogProvider />
+@* Needed for snackbars *@
+<MudSnackbarProvider />
+
+@code {
+
+    CrmEmpresa empresa = null;
+    EmpresaUserSession who = null;
+    private List<CrmConfig> configs = new List<CrmConfig>();
+    private bool geolocation = false;
+    private string path = "";
+    bool flagRender = false;
+
+    private DbContext dbContext { get; set; }
+    public EmpresaUserSession Who { get; private set; }
+
+    private MudTheme customTheme = new MudTheme
+        {
+            PaletteLight = new PaletteLight
+            {
+                Primary = "#000000",
+                Secondary = "#000000"
+            }
+        };
+
+    protected override void OnInitialized()
+    {
+        LayoutUpdateService.OnLayoutUpdateRequested += HandleLayoutUpdateRequest;
+
+        //verifica se está a abrir na app ou no browser
+        var uri = new Uri(NavigationManager.Uri);
+        var runningInWebView = uri.Query.Contains("runningInWebView=true");
+        if (runningInWebView)
+        {
+            utils.AgSession.Add("app", true);
+        }
+
+        StateHasChanged();
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        BaseControleContext dbContextControl = new BaseControleContext();
+
+        if (utils.AgSession.ContainsKey("user") != true)
+        {
+            //verifica cookie
+            var cookieuser = await JSRuntime.InvokeAsync<string>("getCookie", "user");
+
+            if (cookieuser != null)
+            {
+                cookieuser = Encrypter.Decrypt(cookieuser);
+                EmpresaUserSession olduser = JsonConvert.DeserializeObject<EmpresaUserSession>(cookieuser);
+                if (olduser.User.Isactive == true)
+                {
+                    utils.AgSession.Add("user", olduser);
+                    who = (EmpresaUserSession)utils.AgSession["user"];
+                    dbContext = dbContextFactoryService.GetDbContext(who.Empresa.BaseNome);
+
+                    customTheme = new MudTheme
+                        {
+                            PaletteLight = new PaletteLight
+                            {
+                                Primary = who.Empresa?.Cor1 ?? "#000000",
+                                Secondary = who.Empresa?.Cor2 ?? "#000000"
+                            }
+                        };
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("deleteCookie", "user"); //elimina a cookie
+                    NavigationManager.NavigateTo("login");
+                }
+
+                HandleLayoutUpdateRequest();
+            }
+            else
+            {
+                NavigationManager.NavigateTo("Login");
+            }
+        }
+        else
+        {
+            if (firstRender)
+            {
+                //utilizador
+                who = (EmpresaUserSession)utils.AgSession["user"];
+                dbContext = dbContextFactoryService.GetDbContext(who.Empresa.BaseNome);
+
+                //envia para as cookies
+                string sessionuser = JsonConvert.SerializeObject(who);
+                await JSRuntime.InvokeAsync<string>("setCookie", "user", Encrypter.Encrypt(sessionuser), 7);
+
+                //configurações
+                configs = dbContext.Set<CrmConfig>().ToList();
+                foreach (CrmConfig config in configs)
+                {
+                    if (config.Option.Trim().ToLower() == "geolocation")
+                    {
+                        geolocation = bool.Parse(config.Value.ToString());
+                    }
+                }
+
+                flagRender = true;
+
+                //we are putting the colors of the company on the blazor components
+                customTheme = new MudTheme
+                    {
+                        PaletteLight = new PaletteLight
+                        {
+                            Primary = who.Empresa?.Cor1 ?? "#000000",
+                            Secondary = who.Empresa?.Cor2 ?? "#000000"
+                        }
+                    };
+
+                StateHasChanged();
+            }
+        }
+
+        await JSRuntime.InvokeAsync<string>("ChangeColorsInCSS", who.Empresa.Cor1, IsDark(who.Empresa.Cor1));
+
+        dbContextControl.Dispose();
+        base.OnAfterRenderAsync(firstRender);
+    }
+
+
+    private async Task ReloadPage(string url)
+    {
+        NavigationManager.NavigateTo(url, forceLoad: true);
+    }
+
+    private bool IsDark(string hexString)
+    {
+        hexString = hexString.Replace("#", "");
+        var intColor = Convert.ToInt32(hexString, 16);
+        var luminance = CalcLuminance(intColor);
+        return (luminance > 0.5);
+    }
+
+    private float CalcLuminance(int rgb)
+    {
+        int r = (rgb & 0xff0000) >> 16;
+        int g = (rgb & 0xff00) >> 8;
+        int b = (rgb & 0xff);
+
+        return (r * 0.299f + g * 0.587f + b * 0.114f) / 256;
+    }
+
+    private void HandleLayoutUpdateRequest()
+    {
+        InvokeAsync(() =>
+        {
+
+            configs = dbContext.Set<CrmConfig>().ToList();
+            foreach (CrmConfig config in configs)
+            {
+                if (config.Option.Trim().ToLower() == "geolocation")
+                {
+                    geolocation = bool.Parse(config.Value.ToString());
+                }
+            }
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        LayoutUpdateService.OnLayoutUpdateRequested -= HandleLayoutUpdateRequest;
+    }
+
+    public async Task TrocarEmpresa()
+    {
+        utils.AgSession.Remove("Empresa");
+        NavigationManager.NavigateTo("/");
+    }
+
+    private async Task logout()
+    {
+        await JSRuntime.InvokeVoidAsync("logout");
+    }
+}

@@ -1,0 +1,59 @@
+﻿@page "/Manutencao"
+@layout NoLayout
+
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+
+@inject NavigationManager NavigationManager
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService DbContextFactory
+
+<PageTitle>Manutenção</PageTitle>
+
+<div id="loader" class="app-loader">
+    <span class="spinner"></span>
+</div>
+
+<div style="display: flex; height: 100vh">
+    <div style="width: 100%; background: url('/images/Manutencao.png') no-repeat center center; background-size: cover;">
+        <main id="main" style="display: flex; flex-direction: column; align-items: center; justify-content: flex-start; height: 100vh; padding-right: 56vw; padding-top: 11rem;">
+            <h1 style="color: #ff6f00; font-size: 3rem; margin-bottom: 0.5rem;">@(manutencao?.Titulo ??  "Sem Manutenção")</h1>
+            <div style="max-width: 556px; text-align: center;">
+                <p style="color: black; font-size: 1.2rem; padding-top: 4rem;">@(manutencao?.Mensagem ?? "Sem Manutenção")</p>
+                <h1 style="color: black; font-size: 3rem; padding-top: 4rem;">@(manutencao?.HoraRetorno.HasValue == true ? manutencao?.HoraRetorno.Value.ToString(@"hh\:mm") : "--:--")</h1>
+            </div>
+        </main>
+    </div>
+</div>
+
+@code {
+    Manutencoes manutencao = new();
+
+    EmpresaUserSession who = new();
+    BaseControleContext dbContext = new BaseControleContext();
+    List<Manutencoes> listManutencoes = new List<Manutencoes>() { };
+
+
+
+    protected override void OnInitialized()
+    {
+        GetManutencoes();
+        base.OnInitialized();
+    }
+
+
+    private void GetManutencoes()
+    {
+        listManutencoes = dbContext.Set<Manutencoes>().Where(i => i.IsDeleted != true && i.IsAtivo == true).ToList();
+
+        manutencao = listManutencoes.FirstOrDefault();
+    }
+
+}

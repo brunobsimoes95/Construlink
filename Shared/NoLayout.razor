@@ -1,0 +1,22 @@
+﻿@inherits LayoutComponentBase
+
+@Body
+
+@* Required *@
+<MudThemeProvider Theme="@customTheme" />
+<MudPopoverProvider />
+@* Needed for dialogs *@
+<MudDialogProvider />
+@* Needed for snackbars *@
+<MudSnackbarProvider />
+
+@code {
+    private MudTheme customTheme = new MudTheme
+        {
+            PaletteLight = new PaletteLight
+            {
+                Primary = "#000000",
+                Secondary = "#000000"
+            }
+        };
+}

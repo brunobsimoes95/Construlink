@@ -1,0 +1,188 @@
+﻿@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IDbContextFactoryService dbFactory
+@inject ISnackbar Snackbar
+
+@if (contrato is null)
+{
+    <p class="text-muted">Contrato não encontrado.</p>
+}
+else
+{
+    <EditForm Model="contrato" OnValidSubmit="SaveAsync" class="mb-5">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="mb-3">
+                    <MudNumericField T="int?" Label="Número Mecanográfico" @bind-Value="contrato.NumMecanografico"
+                    For="@(() => contrato.NumMecanografico)" HideSpinButtons="true" />
+                </div>
+                <div class="mb-3">
+                    <MudSelect T="string" Label="Tipo de Contrato" @bind-Value="contrato.TipoContrato" For="@(() => contrato.TipoContrato)">
+                        <MudSelectItem Value="@("Sem termo")" />
+                        <MudSelectItem Value="@("Termo certo")" />
+                        <MudSelectItem Value="@("Termo incerto")" />
+                        <MudSelectItem Value="@("Estágio")" />
+                    </MudSelect>
+                </div>
+                @* <div class="mb-3">
+                    <MudNumericField T="decimal?" Label="Hora Extra Subsequente" @bind-Value="contrato.HoraExtraSubsequent"
+                                     For="@(() => contrato.HoraExtraSubsequent)"  />
+                </div> *@
+                <div class="mb-3">
+                    <MudDatePicker Label="Data Início" @bind-Date="contrato.DataInicio" For="@(() => contrato.DataInicio)" />
+                </div>
+                <div class="mb-3">
+                    <MudNumericField T="int?" Label="Dia de Vencimento" @bind-Value="contrato.DiaVencimento"
+                    For="@(() => contrato.DiaVencimento)" HideSpinButtons="true" />
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="mb-3">
+                    <MudTextField T="string" Label="Cargo" @bind-Value="contrato.Cargo" For="@(() => contrato.Cargo)" />
+                </div>
+                <div class="mb-3">
+                    <MudNumericField T="decimal?" Label="Hora Extra" @bind-Value="contrato.PrimeiraHoraExtra"
+                    For="@(() => contrato.PrimeiraHoraExtra)" />
+                </div>
+                <div class="mb-3">
+                    <MudNumericField T="decimal?" Label="Ordenado Hora" @bind-Value="contrato.OrdenadoHora"
+                    For="@(() => contrato.OrdenadoHora)"  />
+                </div>
+                <div class="mb-3">
+                    <MudNumericField T="decimal?" Label="Ordenado Base" @bind-Value="contrato.OrdenadoBase"
+                    For="@(() => contrato.OrdenadoBase)"/>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4 mt-2">
+            <div class="col-lg-4 d-flex align-items-center">
+                <div class="col-lg-6 form-check form-switch">
+                    <InputCheckbox class="form-check-input" @bind-Value="PeriodoExperienciaChecked" />
+                    <label class="form-check-label">Período de Experiência?</label>
+                </div>
+            </div>
+            <div class="col-lg-4 d-flex align-items-center">
+                <div class="col-lg-4 form-check form-switch">
+                    <InputCheckbox class="form-check-input" @bind-Value="ContratoAtivoChecked" />
+                    <label class="form-check-label">Contrato Ativo?</label>
+                </div>
+            </div>
+            @*  <div class="col-lg-4 d-flex align-items-center">
+                <div class="col-lg-4 form-check form-switch">
+                <InputCheckbox class="form-check-input" @bind-Value="Pica4Checked" />
+                <label class="form-check-label">Efetua 4 Picagens?</label>
+            </div>
+            </div> *@
+        </div>
+
+
+        @*  <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Error" OnClick="DemitirAsync" Class="me-2">
+            Demitir
+        </MudButton>
+        <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Dark" OnClick="PromoverAsync" Class="me-2">
+            Promover
+        </MudButton> *@
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary">
+            <MudIcon Icon="@Icons.Material.Filled.Save" Class="me-1" /> Guardar
+        </MudButton>
+    </EditForm>
+}
+
+@code 
+{
+    [Parameter] 
+    public int Id { get; set; }
+
+    DbContext dbContext = null;
+    private EmpresaUserSession who;
+    private Contrato? contrato;
+
+    private bool PeriodoExperienciaChecked
+    {
+        get => contrato?.PeriodoExperiencia ?? false;
+        set { if (contrato != null) contrato.PeriodoExperiencia = value; }
+    }
+
+    private bool ContratoAtivoChecked
+    {
+        get => contrato?.ContratoAtivo ?? false;
+        set { if (contrato != null) contrato.ContratoAtivo = value; }
+    }
+
+    private bool Pica4Checked
+    {
+        get => contrato?.Pica4 ?? false;
+        set { if (contrato != null) contrato.Pica4 = value; }
+    }
+
+
+    protected override void OnInitialized()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        dbContext = dbFactory.GetDbContext(who.Empresa.BaseNome);
+
+        contrato = dbContext.Set<Contrato>().FirstOrDefault(c => c.IdFuncionario == Id);
+
+        if (contrato is null)
+        {
+            contrato = new Contrato { IdFuncionario = Id };
+        }
+
+        base.OnInitialized();
+    }
+
+    private async Task SaveAsync()
+    {
+        if (contrato is null) return;
+
+        contrato.DataAlteracao = DateTime.Now;
+
+        try
+        {
+            if (contrato.Id == 0)
+            {
+                dbContext.Add(contrato);
+            }
+            else
+            {
+                dbContext.Update(contrato);
+            }
+
+            await dbContext.SaveChangesAsync();
+
+            Snackbar.Add("Contrato guardado com sucesso!", Severity.Success, config => { config.VisibleStateDuration = 3000; });
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao guardar contrato: {ex.Message}", Severity.Error, config => { config.VisibleStateDuration = 3000; });
+        }
+    }
+
+    /* --- ações extra (place‑holders) --- */
+    private Task DemitirAsync()
+    {
+        Snackbar.Add("Funcionalidade 'Demitir' a ser implementada.", Severity.Info, config => { config.VisibleStateDuration = 3000; });
+        return Task.CompletedTask;
+    }
+
+    private Task PromoverAsync()
+    {
+        Snackbar.Add("Funcionalidade 'Promover' a ser implementada.", Severity.Info, config => { config.VisibleStateDuration = 3000; });
+        return Task.CompletedTask;
+    }
+}

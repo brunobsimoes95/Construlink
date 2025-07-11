@@ -1,0 +1,1007 @@
+﻿@page "/Utilizadores"
+@using System.Globalization
+@using System.Text
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@inject IConfiguration Configuration
+@using Construlink.Shared
+@using Microsoft.EntityFrameworkCore
+@using Newtonsoft.Json.Linq
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IJSRuntime JSRuntime
+@inject IDbContextFactoryService DbContextFactory
+@inject IDialogService DialogService
+
+<div class="row mt-2 mb-2">
+    <div class="col-md-6 col-sm-12 col-12 mt-3">
+        <div class="mb-2" style="display: flex; align-items: center;">
+            <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+            <h4 class="ms-2 mt-2 hide-on-mobile">
+                @if (selecteduser == null)
+                {
+                    <text>Utilizadores</text>
+
+                }
+                else if (selecteduser.Id == 0)
+                {
+                    <text>Novo Utilizador</text>
+                }
+                else
+                {
+                    <text>Editar '@selecteduser.Name'</text>
+                }
+            </h4>
+
+        </div>
+    </div>
+
+    <div class="col-md-6 col-sm-12 col-12 mt-2 hide-on-mobile">
+        <ol class="breadcrumb" style="float:right;">
+            <li class="breadcrumb-item"><a href="@path/Dashboard">Home</a></li>
+            <li class="breadcrumb-item">Administração</li>
+            <li class="breadcrumb-item">Organização</li>
+            <li class="breadcrumb-item active">Utilizadores</li>
+        </ol>
+    </div>
+
+    <div class="col-md-5 col-sm-12 col-12 show-on-mobile">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@path/Dashboard">Home</a></li>
+            <li class="breadcrumb-item">Administração</li>
+            <li class="breadcrumb-item">Organização</li>
+            <li class="breadcrumb-item active">Utilizadores</li>
+        </ol>
+    </div>
+
+</div>
+
+@if (selecteduser == null)
+{
+
+    <MudCard Class=" mb-3" Elevation="4">
+        <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+            <CardHeaderContent>
+                <MudText Typo="Typo.button"><MudIcon Icon="fa-solid fa-filter" Class="me-2" Style="font-size: 1.0rem !important;" />Filtros</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <hr style="margin: 0; border: 0; border-top: 1px solid #000 !important;" />
+        <MudCardContent Class="pt-2">
+            <MudGrid>
+                <MudItem md="12" Class="d-flex align-items-center">
+                    <MudItem md="3" Class="me-2">
+                        <div class="theme-bordered-select">
+                            <select name="utilizadores" id="utilizadores" class="form-select d-block no-spinner" style="height:37px;" @onchange="change_tipo">
+                                <option value="1">Ativos</option>
+                                <option value="-">Todos</option>
+                                <option value="0">Inativos</option>
+                                <option value="2">Administradores</option>
+                                <option value="3">Não Administradores</option>
+                                <option value="4">Fazem Picagens</option>
+                                <option value="5">Não fazem Picagens</option>
+                                <option value="14">Ativaram Login</option>
+                                <option value="15">Não ativaram Login</option>
+                            </select>
+                        </div>
+                    </MudItem>
+                    <MudItem md="10">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="float-end" OnClick="@(()=> { selecteduser = new CrmUtilizador() {Isactive=true, Isadmin=false, BancoHorasTurno=8}; Erro=""; Mensagem=""; newpassword="";})">
+                            <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "file-circle-plus")" Class="me-2" />
+                            Adicionar Utilizador
+                        </MudButton>
+                    </MudItem>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    <MudTable ServerData="ServerReload" Dense="true" Hover="true" @ref="table" Elevation="4">
+        <ToolBarContent>
+            <MudSpacer />
+            <MudTextField T="string" ValueChanged="@(s=>OnSearch(s))" Placeholder="Search" Adornment="Adornment.Start"
+            Immediate="true"
+            AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh><MudTableSortLabel SortLabel="details" T="TableUser">Editar</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortLabel="utilizador" T="TableUser">Utilizador</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortLabel="nome" T="TableUser">Nome</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortLabel="email" T="TableUser">Email</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortLabel="admin" T="TableUser">Admin</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortLabel="picagens" T="TableUser">Picagens</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortLabel="firstlogin" T="TableUser">1º Login</MudTableSortLabel></MudTh>
+            <MudTh><MudTableSortLabel SortLabel="ativo" T="TableUser">Ativo</MudTableSortLabel></MudTh>
+            <MudTh>Remover</MudTh>
+
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="details">
+                <MudContainer Class="d-flex p-0 m-0">
+                    <MudButton Class="btn-default"
+                    Style="border:none !important; background-color:transparent !important;"
+                    OnClick="@(()=>{ CloneItemById(context.Id); })">
+
+                        <MudIcon Icon="fas fa-folder-open" Style="font-size: 0.875rem !important;"></MudIcon>
+                    </MudButton>
+                </MudContainer>
+            </MudTd>
+            <MudTd DataLabel="utilizador">@context.Utilizador</MudTd>
+            <MudTd DataLabel="nome">@context.Nome</MudTd>
+            <MudTd DataLabel="email">@context.Email</MudTd>
+            <MudTd DataLabel="admin"><MudIcon Icon="@GetIcon(context.Admin)" Color="@GetColor(context.Admin)" /></MudTd>
+            <MudTd DataLabel="picagens"><MudIcon Icon="@GetIcon(context.Picagens)" Color="@GetColor(context.Picagens)" /></MudTd>
+            <MudTd DataLabel="firstlogin"><MudIcon Icon="@GetIcon(context.FirstLogin)" Color="@GetColor(context.FirstLogin)" /></MudTd>
+            <MudTd DataLabel="ativo"><MudIcon Icon="@GetIcon(context.Ativo)" Color="@GetColor(context.Ativo)" /></MudTd>
+            <MudTd>
+                <MudButton Class="btn-default"
+                Style="border:none !important; background-color:transparent !important; color:red;"
+                OnClick="@(()=>{ ConfirmDeleteAsync(context.Id); })">
+
+                    <MudIcon Icon="far fa-trash-can" Style="font-size: 0.875rem !important;"></MudIcon>
+                </MudButton>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText>Nenhum utilizador encontrado.</MudText>
+        </NoRecordsContent>
+        <LoadingContent>
+            <MudText>Carregando...</MudText>
+        </LoadingContent>
+        <PagerContent>
+            <MudTablePager />
+        </PagerContent>
+    </MudTable>
+}
+else
+{
+    <div class="row">
+
+        <MudGrid>
+            <MudItem xs="12" md="6" Class="pb-3" Style="padding-top: 0px;">
+                <MudCard Class="mb-4 me-2 pb-5">
+                    <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.button" HtmlTag="h3"><MudIcon Icon="@Icons.Material.Filled.FactCheck" Class="me-2" />Dados</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <hr style="margin: 0; border: 0; border-top: 1px solid #000; !important;" />
+
+                    <MudCardContent Class="pb-0">
+                        <MudGrid>
+                            <MudItem xs="12" Class="mb-1">
+                                <MudTextField Label="Utilizador" @bind-Value="@selecteduser.Username" Variant="Variant.Text" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="12" Class="mb-1 py-0">
+                                <MudTextField Label="Nome" @bind-Value="@selecteduser.Name" Variant="Variant.Text" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="12" Class="mb-1 py-0">
+                                <MudTextField Label="Email" @bind-Value="@selecteduser.Email" Variant="Variant.Text" Margin="Margin.Dense" />
+                            </MudItem>
+                            <MudItem xs="12" Class="mb-2 py-0">
+                                <MudTextField Label="Password" @bind-Value="@newpassword" Variant="Variant.Text" Margin="Margin.Dense" />
+
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <!-- Cards da direita -->
+            <MudItem xs="12" md="6" Class="pb-3" Style="padding-top: 0px;">
+
+                @if (who.User.IsSuperAdmin == true)
+                {
+                    <!-- Associar Empresa -->
+                    <MudCard Class="mb-4 pb-2">
+                        <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.button" HtmlTag="h3"><MudIcon Icon="@Icons.Material.Filled.ContactPage" Class="me-2" />Associar Empresas</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <hr style="margin: 0; border: 0; border-top: 1px solid #000; !important;" />
+
+                        <MudCardContent Class="pb-0 mb-1">
+                            <div class="row">
+                                @foreach (CrmEmpresa empresa in empresasWho)
+                                {
+                                    <div class="ms-0 mt-3 mb-3 form-check col-md-4 pe-0">
+                                        <label id="picagens" class='cnk-switch'><input type='checkbox' @bind="listaEmpresasCheckBox[empresa.Id]" /><span class='cnk-switch-slider round'></span></label>
+                                        <label for="picagens" class="form-label">@empresa.Empresa</label>
+
+                                    </div>
+                                }
+                            </div>
+                        </MudCardContent>
+                    </MudCard>
+                }
+
+                <MudCard Class="mb-4">
+                    <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.button" HtmlTag="h3"><MudIcon Icon="@Icons.Material.Filled.PermContactCalendar" Class="me-2" />Controles</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <hr style="margin: 0; border: 0; border-top: 1px solid #000; !important;" />
+
+                    <MudCardContent Class="pb-0 mb-0 py-0">
+                        <div class="row">
+                            <div class="ms-0 mt-3 mb-3 form-check col-md-6">
+                                <label class='cnk-switch'><input type='checkbox' @bind="selecteduser.IsFuncionario" /><span class='cnk-switch-slider round'></span></label>
+                                <label class="form-label">É Colaborador?</label>
+                            </div>
+                            <div class="ms-0 mt-3 mb-3 form-check col-md-6">
+                                <label class='cnk-switch'><input type='checkbox' @bind="selecteduser.FazPicagens" disabled="@((selecteduser.IsApenasPicagens ?? true))" /><span class='cnk-switch-slider round'></span></label>
+                                <label class="form-label">Faz Picagens?</label>
+                            </div>
+
+                            <div class="col-md-6 ms-0 mt-3 mb-3 form-check">
+                                <label class='cnk-switch'><input type='checkbox' checked="@selecteduser.IsApenasPicagens" @onchange="MudouTipoPicagems" disabled="@((selecteduser.Isadmin ?? false) || (selecteduser.IsSuperAdmin ?? false))" />
+                                    <span class='cnk-switch-slider round'></span>
+                                </label><label class="form-label">Só faz Picagens?</label>
+                                
+                            </div>
+
+                        </div>
+                        <div class="form-check col-md-6">
+                            <label class="form-label mb-0">Turno</label>
+                            <select class="d-block w-100 mb-2" style="height:37px; font-size: 17px;"
+                            @onchange="@(e => TurnoMudou(e))">
+                                <option value="0" selected disabled></option>
+                                @foreach (TipoTurno turno in listaTipos)
+                                {
+                                    <option value="@turno.Id" selected="@(selecteduser.IdTurno == turno.Id ? "selected" : null)">
+                                        @turno.Nome
+                                    </option>
+                                }
+                            </select>
+                        </div>
+
+                    </MudCardContent>
+                </MudCard>
+
+                <!-- Permissões -->
+                <MudCard Class="mb-2 me-2 pb-0 mt-3">
+                    <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.button" HtmlTag="h3"><MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Class="me-2" />Permissões</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <hr style="margin: 0; border: 0; border-top: 1px solid #000; !important;" />
+
+                    <MudCardContent Class="pb-0 mb-4">
+                        <div class="ms-0 mt-3 mb-3 form-check">
+                            <label id="ativo" class='cnk-switch'><input type='checkbox' @bind="selecteduser.Isactive" /><span class='cnk-switch-slider round'></span></label>
+                            <label for="ativo" class="form-label">Ativo</label>
+                        </div>
+                        <div class="ms-0 mt-3 mb-4 form-check">
+                            <label id="administrador" class='cnk-switch'><input type='checkbox' @bind="selecteduser.Isadmin" /><span class='cnk-switch-slider round'></span></label>
+                            <label for="administrador" class="form-label">Administrador</label>
+                        </div>
+
+                        @if (who.User.IsSuperAdmin == true)
+                        {
+                            <div class="ms-0 mt-3 mb-4 form-check">
+                                <label id="administrador" class='cnk-switch'><input type='checkbox' @bind="selecteduser.IsSuperAdmin" /><span class='cnk-switch-slider round'></span></label>
+                                <label for="administrador" class="form-label">Super Administrador (exclusivo Construlink)</label>
+                            </div>
+                        }
+
+                    </MudCardContent>
+                </MudCard>
+
+            </MudItem>
+
+            <!-- Butões guardar voltar -->
+            <MudItem xs="12" Class="mb-4">
+                <MudButton Variant="Variant.Outlined" Class="me-2" Color="Color.Default" OnClick="@(()=> { selecteduser=null; Erro=""; Mensagem=""; newpassword=""; GetUsers(selectedTipo); })">
+                    <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Class="me-2" />
+                    Voltar
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(()=> { SaveUser(); })" Class="me-2">
+                    <MudIcon Icon="@Icons.Material.Filled.Save" Class="me-2" />
+                    Guardar
+                </MudButton>
+            </MudItem>
+
+        </MudGrid>
+    </div>
+}
+
+<section>
+    <script>
+
+        function cleanTables_utilizadores() {
+        if (document.getElementById("tab_users_wrapper")) {
+        document.getElementById("tab_users_wrapper").remove();
+        }
+        }
+
+        function showModal(modalId, comportamento) {
+        jQuery(modalId).modal(comportamento);
+        }
+
+        function initializeDotNetReference(dotNetRef) {
+        dotNetReference = dotNetRef;
+        }
+
+    </script>
+</section>
+
+@code {
+
+    private DotNetObjectReference<Utilizadores> objRef_localizacao;
+    private DotNetObjectReference<Utilizadores> objRef_mapa;
+
+    EmpresaUserSession who = null;
+    private string path = "";
+    CrmUtilizador selecteduser = null;
+    private List<CrmUtilizador> users = new List<CrmUtilizador>() { };
+    List<CrmEmpresa> empresasWho = new List<CrmEmpresa>();
+    private Dictionary<int, bool> listaEmpresasCheckBox = new Dictionary<int, bool>();
+    List<int> IdEmpresasUserSelecionado = new List<int>();
+    private List<CrmConfig> configs = new List<CrmConfig>() { };
+
+    private string selectedTipo = "1";
+    private string Erro = "";
+    private string Mensagem = "";
+    private string newpassword = "";
+    private int idUtilizadorAssociar = 0;
+
+    private List<CrmUtilizador> associarLista = new List<CrmUtilizador>() { };
+    private string geomessage = "";
+    private string morada = "";
+    private int areasize = 0;
+    private bool clickable = true;
+    private string UserGeo = "";
+    private Geolocation homegeolocation = new Geolocation() { };
+    private Geolocation geolocation = new Geolocation() { };
+    private bool isHttps = false;
+    private bool mapupdated = false;
+    private readonly object updateLock = new object();
+    BaseControleContext dbContext = new BaseControleContext();
+    private DbContext dbContext2;
+    private DbContext dbContext3;
+    public List<TipoTurno>? listaTipos = new List<TipoTurno>() { };
+
+    protected override void OnInitialized()
+    {
+        objRef_localizacao = DotNetObjectReference.Create(this);
+        objRef_mapa = DotNetObjectReference.Create(this);
+
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        empresasWho = Utils.GetEmpresasFromUser(who.User.Id);
+
+        dbContext3 = DbContextFactory.GetDbContext(who.Empresa.BaseNome); //  
+        dbContext2 = DbContextFactory.GetDbContext(who.Empresa.BaseNome); //   
+
+        foreach (var empresa in empresasWho)
+        {
+            listaEmpresasCheckBox[empresa.Id] = who.User.IsSuperAdmin != true;
+        }
+
+        if (!who.User.Isadmin.GetValueOrDefault())
+        {
+            NavigationManager.NavigateTo("/");
+        }
+
+        base.OnInitialized();
+    }
+
+    protected override async void OnAfterRender(bool firstRender)
+    {
+        if (firstRender == true)
+        {
+            await JSRuntime.InvokeVoidAsync("initializeDotNetReference", objRef_mapa);
+
+            GetUsers(selectedTipo);
+            GetAll();
+            GetListaTipos();
+        }
+
+        base.OnAfterRender(firstRender);
+    }
+
+    private void GetListaTipos()
+    {
+        listaTipos = dbContext3.Set<TipoTurno>().ToList();
+    }
+
+    //filtro
+    private async Task change_tipo(ChangeEventArgs e)
+    {
+        string selectedValue = e.Value?.ToString();
+        selectedTipo = selectedValue;
+        GetUsers(selectedTipo);
+    }
+
+    //carrega utilizadores
+    private async void GetUsers(string tipo)
+    {
+        var listaEmpresasId = dbContext.UtilizadorEmpresas
+                          .Where(ue => ue.UtilizadorId == who.User.Id)
+                          .Select(ue => ue.EmpresaId)
+                          .ToList();
+
+        var listaIdsUtilizadoresMesmaEmpresa = dbContext.UtilizadorEmpresas
+                                    .Where(ue => listaEmpresasId.Contains(ue.EmpresaId))
+                                    .Select(ue => ue.UtilizadorId)
+                                    .Distinct()
+                                    .ToList();
+
+        var listaUtilizadores = dbContext.CrmUtilizadors
+                      .Where(u => (listaIdsUtilizadoresMesmaEmpresa.Contains(u.Id) && !(u.IsDeleted ?? false) && u.IsSuperAdmin != true))
+                      .ToList();
+
+        if (who.User.IsSuperAdmin == true)
+        {
+            listaUtilizadores = dbContext.CrmUtilizadors.ToList();
+        }
+
+        lock (updateLock)
+        {
+            try
+            {
+                //tipo
+                if (tipo != "-")
+                {
+                    switch (tipo)
+                    {
+                        case "0":
+                            users = listaUtilizadores.Where(u => u.Isactive == false || u.Isactive == null).OrderBy(u => u.Name).ToList();
+                            break;
+                        case "1":
+                            users = listaUtilizadores.Where(u => u.Isactive == true).OrderBy(u => u.Name).ToList();
+                            break;
+                        case "2":
+                            users = listaUtilizadores.Where(u => u.Isadmin == true).OrderBy(u => u.Name).ToList();
+                            break;
+                        case "3":
+                            users = listaUtilizadores.Where(u => u.Isadmin == false || u.Isadmin == null).OrderBy(u => u.Name).ToList();
+                            break;
+                        case "4":
+                            users = listaUtilizadores.Where(u => u.FazPicagens == true).OrderBy(u => u.Name).ToList();
+                            break;
+                        case "5":
+                            users = listaUtilizadores.Where(u => u.FazPicagens == false || u.FazPicagens == null).OrderBy(u => u.Name).ToList();
+                            break;
+                        case "14":
+                            users = listaUtilizadores.Where(u => u.Changepassword == false || u.Changepassword == null).OrderBy(u => u.Name).ToList();
+                            break;
+                        case "15":
+                            users = listaUtilizadores.Where(u => u.Changepassword == true).OrderBy(u => u.Name).ToList();
+                            break;
+                        default:
+                            users = listaUtilizadores.OrderBy(u => u.Name).ToList();
+                            break;
+                    }
+                }
+
+                else
+                {
+                    users = listaUtilizadores.OrderBy(u => u.Name).ToList();
+                }
+
+                allTblObjects = users.Select(u => new TableUser
+                    {
+                        Id = u.Id,
+                        Utilizador = u.Username,
+                        Nome = u.Name,
+                        Email = u.Email,
+                        Admin = (u.Isadmin ?? false),
+                        Picagens = (u.FazPicagens ?? false),
+                        Funcionário = (u.IsFuncionario ?? false),
+                        FirstLogin = (u.Changepassword ?? false),
+                        Ativo = (u.Isactive ?? false)
+                    }).ToList();
+                tblObjects = allTblObjects;
+
+                //in the first time we run this the variable table is null
+                if (table != null)
+                {
+                    table.ReloadServerData();
+                }
+            }
+            catch (Exception)
+            {
+            }
+            finally
+            {
+                StateHasChanged();
+            }
+        }
+    }
+
+    //carrega todo o resto
+    private async void GetAll()
+    {
+        configs = dbContext.Set<CrmConfig>().ToList();
+        StateHasChanged();
+    }
+
+    //Reset pass
+    private async Task ResetPass()
+    {
+        newpassword = Utils.GeneratePassword(8);
+    }
+
+    //Guarda o utilizador
+    private async Task SaveUser()
+    {
+        Erro = "";
+        Mensagem = "";
+        string comportamento = "";
+
+        /* 1. VALIDAÇÕES ↓ */
+        if (!string.IsNullOrWhiteSpace(selecteduser.Email) &&
+            !utils.IsValidEmail(selecteduser.Email))
+        {
+            await JSRuntime.InvokeVoidAsync("showToast",
+                "O endereço de email submetido não é válido.", "bg-danger");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(selecteduser.Name))
+        {
+            await JSRuntime.InvokeVoidAsync("showToast",
+                "O utilizador deve ter um nome definido.", "bg-danger");
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(newpassword))
+        {
+            selecteduser.Agpassword = Utils.Hash(newpassword.Trim(), Configuration);
+            selecteduser.Changepassword = true;
+
+            if (selecteduser.Id != 0 && !string.IsNullOrWhiteSpace(selecteduser.Email))
+                await utils.SendEmailAsync(
+                    selecteduser.Email, "AxClock - Reset de Password",
+                    $"Olá {selecteduser.Name}, nova pass: <strong>{newpassword.Trim()}</strong>");
+        }
+
+        if (string.IsNullOrWhiteSpace(selecteduser.Username) ||
+           (string.IsNullOrWhiteSpace(selecteduser.Agpassword) && selecteduser.Id == 0))
+        {
+            await JSRuntime.InvokeVoidAsync("showToast",
+                "Deve preencher username e password.", "bg-danger");
+            return;
+        }
+
+        bool duplicado = dbContext.CrmUtilizadors.Any(f =>
+            f.Id != selecteduser.Id &&
+            (f.Username == selecteduser.Username ||
+            (!string.IsNullOrWhiteSpace(f.Email) && f.Email == selecteduser.Email)));
+
+        if (duplicado)
+        {
+            await JSRuntime.InvokeVoidAsync("showToast",
+                "Nome de utilizador ou email já registados.", "bg-danger");
+            return;
+        }
+
+        /* 2. INSERT ou UPDATE ↓ */
+        if (selecteduser.Id == 0)
+        {
+            // novo
+            selecteduser.Ismanager        = false;
+            selecteduser.Macaddress       = "";
+            selecteduser.Pin              = "";
+            selecteduser.UserCf ??= "";
+            selecteduser.InicioTimesheets = DateTime.Parse("1900-01-01");
+            selecteduser.Lastlogon        = DateTime.Parse("1900-01-01");
+
+            await dbContext.CrmUtilizadors.AddAsync(selecteduser);
+            await dbContext.SaveChangesAsync();
+
+            comportamento = $"Criou utilizador {selecteduser.Id}";
+        }
+        else
+        {
+            var userDb = await dbContext.CrmUtilizadors
+                         .FirstOrDefaultAsync(u => u.Id == selecteduser.Id);
+
+            if (userDb != null)
+                dbContext.Entry(userDb).CurrentValues.SetValues(selecteduser);
+
+            comportamento = $"Alterou utilizador {selecteduser.Id}";
+        }
+
+        await utils.UserLogAsync(who.User.Id, comportamento);
+
+        /* 3. SYNC COM FUNCIONARIO ↓ */
+        var funcDb = await dbContext2.Set<Funcionario>()
+            .FirstOrDefaultAsync(f => f.IdUtilizador == selecteduser.Id);
+
+        // um colaborador é quem tem IsFuncionario == true, ponto final
+        bool querFuncionario = selecteduser.IsFuncionario.GetValueOrDefault();
+
+        if (querFuncionario)
+        {
+            // cria ou actualiza
+            if (funcDb == null)
+            {
+                funcDb = new Funcionario
+        {
+            IdUtilizador  = selecteduser.Id,
+            Nome          = selecteduser.Name,
+            Username      = selecteduser.Username,
+            Email         = selecteduser.Email,
+            Agpassword    = selecteduser.Agpassword,
+            Isactive      = selecteduser.Isactive ?? true,
+            Isadmin       = selecteduser.Isadmin ?? false,  // mantém coerência
+            FazPicagens   = selecteduser.FazPicagens ?? false,
+            IsFuncionario = true
+        };
+                await dbContext2.AddAsync(funcDb);
+            }
+            else
+            {
+                funcDb.Nome          = selecteduser.Name;
+                funcDb.Username      = selecteduser.Username;
+                funcDb.Email         = selecteduser.Email;
+                funcDb.Agpassword    = selecteduser.Agpassword;
+                funcDb.Isactive      = selecteduser.Isactive ?? true;
+                funcDb.FazPicagens   = selecteduser.FazPicagens ?? false;
+                funcDb.IsFuncionario = true;
+                funcDb.Isadmin       = selecteduser.Isadmin ?? false; // mantém coerência
+                dbContext2.Update(funcDb);
+            }
+        }
+        else
+        {
+            // remover se existir
+            if (funcDb != null)
+            {
+                dbContext2.Remove(funcDb);
+            }
+        }
+
+        await dbContext2.SaveChangesAsync();
+
+
+        /* 4. EMPRESAS ↓ (mantive a tua lógica) */
+        var marcados    = listaEmpresasCheckBox.Where(k => k.Value).Select(k => k.Key).ToList();
+        var desmarcados = listaEmpresasCheckBox.Where(k => !k.Value).Select(k => k.Key).ToList();
+
+        dbContext.UtilizadorEmpresas.RemoveRange(
+            dbContext.UtilizadorEmpresas.Where(ue =>
+                ue.UtilizadorId == selecteduser.Id && desmarcados.Contains(ue.EmpresaId)));
+
+        foreach (int empId in marcados)
+            if (!dbContext.UtilizadorEmpresas.Any(ue =>
+                ue.UtilizadorId == selecteduser.Id && ue.EmpresaId == empId))
+                dbContext.UtilizadorEmpresas.Add(new UtilizadorEmpresa
+            {
+                UtilizadorId = selecteduser.Id,
+                EmpresaId    = empId
+            });
+
+        await dbContext.SaveChangesAsync();
+
+        /* 5. FEEDBACK */
+        await JSRuntime.InvokeVoidAsync("showToast",
+            "Dados guardados com sucesso!", "bg-theme");
+
+        selecteduser = null;
+        newpassword  = "";
+        GetUsers(selectedTipo);
+        StateHasChanged();
+    }
+
+    private async Task DeleteUtilizadorById(int userId)
+    {
+        var user = users.Where(u => u.Id == userId).FirstOrDefault();
+
+        if (user != null && user.IsSuperAdmin != true)
+        {
+            await DeleteUtilizador(user);
+        }
+        else
+        {
+            if (user != null && user.IsSuperAdmin == true && who.User.IsSuperAdmin == true)
+            {
+                await DeleteUtilizador(user);
+            }
+            else
+            {
+                await JSRuntime.InvokeAsync<object>("showToast", "Não tem permições para apagar administradores do sistema.", "bg-danger");  
+            }
+        }
+    }
+
+    private async Task DeleteUtilizador(CrmUtilizador item)
+    {
+        try
+        {
+            CrmUtilizador utilizadorApagar = await dbContext.CrmUtilizadors.FirstOrDefaultAsync(i => i.Id == item.Id);
+
+            if (utilizadorApagar != null)
+            {
+                utilizadorApagar.Isactive = false;
+                utilizadorApagar.IsFuncionario = false;
+                utilizadorApagar.FazPicagens = false;
+                utilizadorApagar.IsApenasPicagens = false;
+                await dbContext.SaveChangesAsync();
+                await utils.UserLogAsync(who.User.Id, $"Desativou o Utilizador: " + item.Name + " Id: " + item.Id + ".");
+                Mensagem = "Utilizador desativado com sucesso.";
+            }
+        }
+        catch (Exception)
+        {
+            Erro = "Algo correu mal, utilizador não removido.";
+        }
+        finally
+        {
+            if (!string.IsNullOrEmpty(Erro))
+            {
+                await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+            }
+            else
+            {
+                await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+            }
+
+            allTblObjects = users.Select(u => new TableUser
+                {
+                    Id = u.Id,
+                    Utilizador = u.Username,
+                    Nome = u.Name,
+                    Email = u.Email,
+                    Admin = (u.Isadmin ?? false),
+                    Picagens = (u.FazPicagens ?? false),
+                    FirstLogin = (u.Changepassword ?? false),
+                    Funcionário = (u.IsFuncionario ?? false),
+                    Ativo = (u.Isactive ?? false)
+                }).ToList();
+            tblObjects = allTblObjects;
+            table.ReloadServerData();
+
+            StateHasChanged();
+        }
+    }
+
+    public async Task<bool> PodeApagarFuncionario(int funcionarioId)
+    {
+        DbContext dbContextFunc2 = DbContextFactory.GetDbContext(who.Empresa.BaseNome);
+
+        bool isInCrmAusencias = await dbContextFunc2.Set<CrmAusencia>()
+            .AnyAsync(ca => ca.IdColaborador == funcionarioId);
+
+        if (isInCrmAusencias)
+        {
+            return false;
+        }
+
+        bool isInFuncionarioObraAgendamento = await dbContextFunc2.Set<FuncionarioObraAgendamento>()
+            .AnyAsync(foa => foa.IdFuncionario == funcionarioId);
+
+        if (isInFuncionarioObraAgendamento)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private async Task ConfirmDeleteAsync(int id)
+    {
+        DbContext dbContextFunc = DbContextFactory.GetDbContext(who.Empresa.BaseNome); //
+
+        Funcionario funcionario = await dbContextFunc.Set<Funcionario>()
+            .FirstOrDefaultAsync(f => f.IdUtilizador == id);
+
+        bool proseguir = false;
+
+        if (funcionario is not null && funcionario.Id > 0)
+        {
+            proseguir = await PodeApagarFuncionario(funcionario.Id);
+        }
+        else
+        {
+            proseguir = true;
+        }
+
+        if (proseguir)
+        {
+            bool? ok = await DialogService.ShowMessageBox(
+            title: "Confirmação",
+            markupMessage: (MarkupString)"A remoção de dados é permanente. Tem a certeza que pretende remover este utilizador?",
+            cancelText: "Não",
+            yesText: "Sim");
+
+            if (ok == true)
+            {
+                await DeleteUtilizadorById(id);
+                dbContextFunc.Remove(funcionario);
+                dbContextFunc.SaveChanges();
+            }
+        }
+        else
+        {
+            await JSRuntime.InvokeAsync<object>("showToast", "Não pode apagar utilizadores com registos no sistema.", "bg-danger");
+        }
+    }
+
+    public void CloneItemById(int userId)
+    {
+        var user = users.Where(u => u.Id == userId).FirstOrDefault();
+        if (user != null)
+        {
+            CloneItem(user);
+        }
+    }
+
+    //Clonar os dados
+    public void CloneItem(object item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        selecteduser = System.Text.Json.JsonSerializer.Deserialize
+        <CrmUtilizador>
+            (json);
+
+        IdEmpresasUserSelecionado = dbContext.UtilizadorEmpresas
+                                       .Where(i => i.UtilizadorId == selecteduser.Id)
+                                       .Select(i => i.EmpresaId)
+                                       .ToList();
+
+        foreach (var key in listaEmpresasCheckBox.Keys.ToList())
+        {
+            listaEmpresasCheckBox[key] = false;
+        }
+
+        foreach (int empresaId in IdEmpresasUserSelecionado)
+        {
+            if (listaEmpresasCheckBox.ContainsKey(empresaId))
+            {
+                listaEmpresasCheckBox[empresaId] = true;
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    //temporizador para eliminar as mensagems
+    private void TimerElapsed(object sender, ElapsedEventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            Erro = "";
+            Mensagem = "";
+            StateHasChanged();
+        });
+    }
+
+    public class TableUser
+    {
+        public int Id { get; set; }
+        public string Utilizador { get; set; }
+        public string Nome { get; set; }
+        public string Email { get; set; }
+        public bool Admin { get; set; }
+        public bool Picagens { get; set; }
+        public bool FirstLogin { get; set; }
+        public bool Ativo { get; set; }
+        public bool Funcionário { get; set; }
+    }
+
+    //MudBlazor part
+    private IEnumerable<TableUser> pagedData;
+    private MudTable<TableUser> table;
+    private List<TableUser> allTblObjects = new List<TableUser>();      //dados preenchidos uma vez e usados depois
+    private List<TableUser> tblObjects = new List<TableUser>();         //dados filtrados
+
+    private int totalItems;
+    private string searchString = "";
+
+    private async Task<TableData<TableUser>> ServerReload(TableState state, CancellationToken token)
+    {
+        IEnumerable<TableUser> data = tblObjects;
+        data = data.Where(element =>
+        {
+            if (string.IsNullOrEmpty(searchString.Trim()))
+            {
+                return true;
+            }
+
+            return ValidTableObject(element);
+        }).ToArray();
+
+        totalItems = data.Count();
+        switch (state.SortLabel)
+        {
+            case "utilizador":
+                data = data.OrderByDirection(state.SortDirection, o => o.Utilizador);
+                break;
+            case "nome":
+                data = data.OrderByDirection(state.SortDirection, o => o.Nome);
+                break;
+            case "email":
+                data = data.OrderByDirection(state.SortDirection, o => o.Email);
+                break;
+            case "admin":
+                data = data.OrderByDirection(state.SortDirection, o => o.Admin);
+                break;
+            case "picagens":
+                data = data.OrderByDirection(state.SortDirection, o => o.Picagens);
+                break;
+            case "firstlogin":
+                data = data.OrderByDirection(state.SortDirection, o => o.FirstLogin);
+                break;
+            case "ativo":
+                data = data.OrderByDirection(state.SortDirection, o => o.Ativo);
+                break;
+        }
+
+        pagedData = data.Skip(state.Page * state.PageSize).Take(state.PageSize).ToArray();
+        return new TableData<TableUser>() { TotalItems = totalItems, Items = pagedData };
+    }
+
+    public bool ValidTableObject(TableUser element)
+    {
+        return MatchesSearchString(element.Utilizador, searchString)
+            || MatchesSearchString(element.Nome, searchString)
+            || MatchesSearchString(element.Email, searchString);
+    }
+
+    public bool MatchesSearchString(string? elementValue, string searchString)
+    {
+        // Normalize both strings to remove diacritics and make the comparison case-insensitive
+        string normalizedElement = RemoveDiacritics(elementValue ?? "").ToLowerInvariant();
+        string normalizedSearch = RemoveDiacritics(searchString.Trim()).ToLowerInvariant();
+
+        return normalizedElement.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Basically turns something like "canção" into "cancao"
+    public string RemoveDiacritics(string text)
+    {
+        return string.Concat(
+            text.Normalize(NormalizationForm.FormD)
+                .Where(c => CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
+        ).Normalize(NormalizationForm.FormC);
+    }
+
+    private void OnSearch(string text)
+    {
+        searchString = text;
+        table.ReloadServerData();
+    }
+
+    private string GetIcon(bool condition) => condition ? Icons.Material.Filled.Check : Icons.Material.Filled.Close;
+    private Color GetColor(bool condition) => condition ? Color.Success : Color.Error;
+
+    private async Task TurnoMudou(ChangeEventArgs e)
+    {
+        TipoTurno? tipo = new TipoTurno() { };
+
+        string idSelecionadoString = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(idSelecionadoString) && int.TryParse(idSelecionadoString, out int idSelecionado))
+        {
+            if (idSelecionado > 0)
+            {
+                tipo = listaTipos.FirstOrDefault(i => i.Id == idSelecionado);
+            }
+
+            if (tipo is not null && tipo.Id > 0)
+            {
+                selecteduser.IdTurno = tipo.Id;
+                selecteduser.NomeTurno = tipo.Nome;
+            }
+        }
+    }
+
+    private void MudouTipoPicagems(ChangeEventArgs e)
+    {
+        selecteduser.IsApenasPicagens = !selecteduser.IsApenasPicagens;
+
+        if (selecteduser.IsApenasPicagens == true)
+        {
+            selecteduser.FazPicagens = true;
+        }
+
+        StateHasChanged();
+    }
+}

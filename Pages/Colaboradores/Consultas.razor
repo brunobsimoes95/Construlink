@@ -1,0 +1,923 @@
+﻿@page "/Consultas"
+@using System.Globalization
+@using System.IO
+@using System.Text
+@using System.Text.Json
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Microsoft.EntityFrameworkCore
+@using OfficeOpenXml;
+@using iText.Kernel.Pdf;
+@using iText.Layout;
+@using iText.Layout.Element;
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService dbContextFactoryService
+@inject IDialogService DialogService
+@inject IConfiguration _configuration
+
+<div class="row mt-2 mb-2">
+
+    <div class="col-md-6 mt-3">
+        <div class="row">
+            <div class="col-md-5" style="display: flex; align-items: center;">
+
+                <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                <MudText Typo="Typo.h5" Class="ms-1">Validação de presenças</MudText>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mt-3 hide-on-mobile">
+        <ol class="breadcrumb" style="float:right;">
+
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item active">Consulta de Obras</li>
+
+        </ol>
+    </div>
+
+</div>
+
+<MudPaper Class="p-4">
+    <MudGrid GutterSize="3">
+        <MudItem xs="12" md="4">
+            <MudAutocomplete T="Funcionario"
+            Label="Selecionar colaborador"
+            SearchFunc="BuscaColaborador"
+            ToStringFunc="@(i => i?.Nome)"
+            Value="colaboradorSelecionado"
+            ValueChanged="OnSelecaoColaborador"
+            Placeholder="Pesquisar colaborador"
+            Dense="true"
+            Clearable="true"
+            ResetValueOnEmptyText
+            Variant="Variant.Outlined"
+            Margin="Margin.Dense" />
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudAutocomplete T="OsusrN2pObra"
+            Label="Obra"
+            SearchFunc="BuscaObra"
+            ToStringFunc="@(i => i?.Nome)"
+            ValueChanged="@(obra => OnSelecionaObra(obra))"
+            Clearable="true"
+            ResetValueOnEmptyText
+            Dense="true"
+            Variant="Variant.Outlined"
+            Margin="Margin.Dense"
+            Placeholder="Selecionar Obra"
+            Style="min-height: 37px;" />
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudAutocomplete T="string"
+            Label="Mês"
+            SearchFunc="BuscaMes"
+            ValueChanged="OnSelecionaMes"
+            ToStringFunc="(x => x)"
+            Clearable="true"
+            ResetValueOnEmptyText
+            Dense="true"
+            Variant="Variant.Outlined"
+            Margin="Margin.Dense"
+            Placeholder="Selecionar Mês"
+            Style="min-height: 37px;" />
+        </MudItem>
+    </MudGrid>
+
+    <div class="mt-2"
+
+        <MudButton Class="me-2" StartIcon="@Icons.Material.Filled.Calculate" Variant="Variant.Filled" Color="Color.Secondary" OnClick="@(() => ValidarTudo())">
+            Validar Grupo
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+        Style="background-color: #343a40; color: white;"
+        onmouseover="this.style.backgroundColor='#23272b';"
+        onmouseout="this.style.backgroundColor='#343a40';"
+        OnClick="ExportarParaPdf"
+        Class="me-2">
+            <MudIcon Icon="@Icons.Material.Filled.PictureAsPdf" /> PDF
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+        Style="background-color: #343a40; color: white;"
+        onmouseover="this.style.backgroundColor='#23272b';"
+        onmouseout="this.style.backgroundColor='#343a40';"
+        OnClick="ExportarParaExcel">
+            <MudIcon Icon="@Icons.Material.Filled.TableView" /> Excel
+        </MudButton>
+    </div>
+
+    <MudDivider Class="my-4" />
+
+    @if (resultadosFinais.Any())
+    {
+        <MudText Typo="Typo.h6">
+            @if (colaboradorSelecionado != null && obraSelecionada == null)
+            {
+                <text>Horas de @colaboradorSelecionado.Nome</text>
+            }
+            else if (obraSelecionada != null && colaboradorSelecionado == null) 
+            {
+                <text>Horas na obra @obraSelecionada.Nome</text>
+            }
+            else if (colaboradorSelecionado != null && obraSelecionada != null)
+            {
+                <text>Horas de @colaboradorSelecionado.Nome na obra @obraSelecionada.Nome</text>
+            }
+            else
+            {
+                <text>Horas agendadas nos últimos 30 dias</text>
+            }
+        </MudText>
+
+        <MudTable Items="resultadosFinais"
+        MultiSelection @bind-SelectedItems="_resultados"
+        Striped="true"
+        Bordered="true"
+        Hover="true"
+        Dense="true"
+        RowsPerPage="10"
+        Breakpoint="Breakpoint.Sm">
+            <HeaderContent>
+                <MudTh>Colaborador</MudTh>
+                <MudTh>Obra</MudTh>
+                <MudTh>Data</MudTh>
+                <MudTh>Horas Agendadas</MudTh>
+                <MudTh>Horas Extra</MudTh>
+                <MudTh>Presença</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <MudLink Href="@GetPicagensUrl(context)" Target="_blank" Style="text-decoration:none">
+                        @context.NomeFuncionario
+                    </MudLink>
+                </MudTd>
+
+                <MudTd>@context.NomeObra</MudTd>
+                <MudTd>@context.DataInicio.ToString("dd/MM/yyyy")</MudTd>
+                <MudTd> @(context.HorasNormais.HasValue? context.HorasNormais.Value.ToString("N1", CultureInfo.GetCultureInfo("pt-PT")): "")</MudTd>
+                <MudTd>@(context.HorasExtras.HasValue?context.HorasExtras.Value.ToString("N1", CultureInfo.GetCultureInfo("pt-PT")): "")
+                </MudTd>
+
+
+                <MudTd DataLabel="Presente?" Align="Align.Center">
+                    <MudSwitch T="bool?"
+                    Value="context.Trabalhou"
+                               ValueChanged="(newValue) => ChamarGuardar(context, newValue)"
+                    Color="Color.Success"
+                    UncheckedColor="Color.Error" />
+
+                </MudTd>  
+            </RowTemplate>
+
+            <NoRecordsContent>
+                <MudText Class="m-2">Nenhum resultado encontrado.</MudText>
+            </NoRecordsContent>
+
+            <PagerContent>
+                <MudTablePager PageSizeOptions="new int[] {5, 10, 20, 50}" />
+            </PagerContent>
+        </MudTable>
+
+
+        <MudText Class="mt-2 fw-bold">
+            Total: @(resultadosFinais.Sum(r => r.HorasNormais ?? 0).ToString("N1", CultureInfo.GetCultureInfo("pt-PT"))) horas +
+            @(resultadosFinais.Sum(r => r.HorasExtras ?? 0).ToString("N1", CultureInfo.GetCultureInfo("pt-PT"))) horas extra
+        </MudText>
+
+
+    }
+    else
+    {
+        <MudText>Nenhuma seleção ou resultados encontrados.</MudText>
+    }
+
+</MudPaper>
+
+@code {
+    private EmpresaUserSession who;
+    private DbContext db;
+
+    private Funcionario colaboradorSelecionado;
+    private OsusrN2pObra obraSelecionada;
+
+    private HashSet<FuncionarioObraAgendamento> _resultados = new HashSet<FuncionarioObraAgendamento>();
+
+    public List<CrmUtilizador> listaUsers = new List<CrmUtilizador>() { };
+    private List<Funcionario> funcionarios = new();
+    private List<OsusrN2pObra> obras = new();
+    private List<FuncionarioObraAgendamento> agendamentos = new();
+    private List<Turnos> turnos = new();
+
+    BaseControleContext baseControle = new BaseControleContext();
+    // private List<(string NomeObra, DateTime DataInicio, DateTime DataFim, double TotalHoras)> resultadosColaborador = new();
+    // private List<(string NomeColaborador, DateTime DataInicio, DateTime DataFim, double TotalHoras)> resultadosObra = new();
+    private List<FuncionarioObraAgendamento> resultadosFinais = new();
+
+    public bool presente { get; set; } = false;
+    public bool ausente { get; set; } = false;
+
+    private string path = "";
+    private string? MesSelecionado;
+
+    private readonly List<string> Meses = new()
+{
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+};
+
+
+    public string SelectedOption { get; set; }
+
+    void OnPresencaChanged(bool novoValor, FuncionarioObraAgendamento func)
+    {
+        func.Trabalhou = novoValor;
+        AtualizarResultados();
+    }
+
+    protected override void OnInitialized()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        db = dbContextFactoryService.GetDbContext(who.Empresa.BaseNome);
+        ExcelPackage.License.SetNonCommercialPersonal("Construlink");
+
+        funcionarios = db.Set<Funcionario>()
+            .Where(u => u.Isactive == true)
+            .ToList();
+
+        listaUsers = baseControle.CrmUtilizadors
+            .Where(u => u.Isactive == true)
+            .ToList();
+
+        obras = db.Set<OsusrN2pObra>().Where(o => o.Deleted != true).ToList();
+        agendamentos = db.Set<FuncionarioObraAgendamento>().ToList();
+        turnos = db.Set<Turnos>().ToList();
+
+        AtualizarResultados(); //SEMPRE mostra os últimos 30 dias, mesmo no início
+    }
+
+    private Task<IEnumerable<Funcionario>> BuscaColaborador(string value, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(funcionarios.AsEnumerable());
+
+        return Task.FromResult(funcionarios
+            .Where(i => i.Nome.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .AsEnumerable());
+    }
+
+    private Task<IEnumerable<OsusrN2pObra>> BuscaObra(string val, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(val))
+            return Task.FromResult(obras.AsEnumerable());
+
+        return Task.FromResult(obras
+            .Where(o => o.Nome.Contains(val, StringComparison.OrdinalIgnoreCase))
+            .AsEnumerable());
+    }
+
+    private Task<IEnumerable<string>> BuscaMes(string val, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(val))
+            return Task.FromResult(Meses.AsEnumerable());
+
+        return Task.FromResult(Meses
+            .Where(m => m.Contains(val, StringComparison.OrdinalIgnoreCase))
+            .AsEnumerable());
+    }
+
+    private void OnSelecaoColaborador(Funcionario func)
+    {
+        colaboradorSelecionado = func;
+        AtualizarResultados();
+    }
+
+    private void OnSelecionaObra(OsusrN2pObra o)
+    {
+        obraSelecionada = o;
+        AtualizarResultados();
+    }
+
+    private void OnSelecionaMes(string mes)
+    {
+        MesSelecionado = mes;
+        AtualizarResultados();
+    }
+
+    private void CarregarUltimos30Dias()
+    {
+        colaboradorSelecionado = null;
+        obraSelecionada = null;
+        MesSelecionado = null;
+
+        var hoje = DateTime.Now.Date;
+        var trintaDiasAtras = hoje.AddDays(-30);
+
+        resultadosFinais = agendamentos
+            .Where(a => a.DataFim >= trintaDiasAtras && a.DataInicio <= hoje)
+            .SelectMany(a =>
+            {
+                List<FuncionarioObraAgendamento> lista = new ();
+
+                if (!a.HoraEntrada.HasValue || !a.HoraSaida.HasValue)
+                    return lista;
+
+                var entrada = a.HoraEntrada.Value;
+                var saida = a.HoraSaida.Value;
+
+                var duracaoTotal = saida > entrada ? (saida - entrada).TotalHours : 0;
+                var duracaoPausa = (a.HoraPausa.HasValue && a.HoraRetorno.HasValue)
+                    ? (a.HoraRetorno.Value - a.HoraPausa.Value).TotalHours
+                    : 0;
+
+                var horasDia = Math.Max(0, duracaoTotal - duracaoPausa);
+
+                var horasNormais = a.Trabalhou == true ? Math.Min(horasDia, 8) : 0;
+                var horasExtras = a.Trabalhou == true ? Math.Max(0, horasDia - 8) : 0;
+
+
+                Funcionario colaborador = funcionarios.FirstOrDefault(u => u.Id == a.IdFuncionario);
+                var nomeObra = obras.FirstOrDefault(o => o.Id == a.IdObra)?.Nome ?? "";
+
+                for (var dia = a.DataInicio.Date; dia <= a.DataFim.Date; dia = dia.AddDays(1))
+                {
+                    FuncionarioObraAgendamento agendamento = new()
+                        {
+                            Id = a.Id,                    
+                            IdFuncionario = colaborador.Id,
+                            NomeFuncionario = colaborador.Nome,
+                            NomeObra = nomeObra,
+                            DataInicio = dia,
+                            DataFim = dia,
+                            HorasNormais = horasNormais,
+                            HorasExtras = horasExtras,
+                            Trabalhou = a.Trabalhou            
+                        };
+
+
+                    lista.Add(agendamento);
+                }
+
+                return lista;
+            })
+            .OrderBy(r => r.DataInicio)
+            .ThenBy(r => r.NomeFuncionario)
+            .ToList();
+
+        StateHasChanged();
+    }
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// //////////////////////////////
+
+    private CrmAusencia? GetAusenciaTemporaria(int idColab, DateTime dia)
+    {
+
+
+        var diaIni = dia.Date;
+        var diaFim = diaIni.AddDays(1);
+
+        return db.Set<CrmAusencia>()
+                 .AsNoTracking()
+                 .Where(a =>
+                        a.IdColaborador == idColab &&
+                        (a.TipoAusencia == "Temporária" || a.TipoAusencia == "Temporaria") &&
+                        a.IsDeleted != true &&
+                        a.DataInicio < diaFim &&
+                        (a.DataFim ?? a.DataInicio) >= diaIni)
+                 .FirstOrDefault();        
+    }
+
+    private async Task ChamarGuardar(FuncionarioObraAgendamento row, bool? valor)
+    {
+		GuardarPresenca(row, valor);
+        AtualizarResultados();
+        StateHasChanged();
+    }
+
+    private async Task GuardarPresenca(FuncionarioObraAgendamento row, bool? valor)
+    {
+        var ag = db.Set<FuncionarioObraAgendamento>().Find(row.Id);
+        if (ag is null) return;
+
+        var obra = db.Set<OsusrN2pObra>().Find(ag.IdObra);
+        string? moradaObra = obra is null
+            ? null
+            : $"{obra.Morada}, {obra.CodigoPostal} {obra.Localidade}";
+
+        Funcionario funcAtual = db.Set<Funcionario>().Find(ag.IdFuncionario);
+
+        CrmUtilizador colab = listaUsers.FirstOrDefault(u => u.Id == funcAtual.IdUtilizador);
+
+        if (colab is null) return;
+
+        var turno = turnos.FirstOrDefault(t => t.Id == colab.IdTurno);
+
+        ag.Trabalhou = valor;
+
+        if (valor == true)
+        {
+            // ------------- 1) base -------------
+            if (!ag.HoraEntrada.HasValue || !ag.HoraSaida.HasValue)
+            {
+                ag.HorasNormais = 0;
+                ag.HorasExtras = 0;
+            }
+            else
+            {
+                double pausaHoras =
+                    ag.HoraPausa.HasValue && ag.HoraRetorno.HasValue
+                        ? (ag.HoraRetorno.Value - ag.HoraPausa.Value).TotalHours
+                        : (turno?.Pausa.HasValue == true && turno?.Retorno.HasValue == true
+                            ? (turno.Retorno.Value - turno.Pausa.Value).TotalHours
+                            : 0);
+
+                var totalHoras = (ag.HoraSaida.Value - ag.HoraEntrada.Value).TotalHours;
+                var horasDia = Math.Max(0, totalHoras - pausaHoras);
+
+                // ------------- 2) desconto Falta Parcial -------------
+                var ausencia = GetAusenciaTemporaria(ag.IdFuncionario, ag.DataInicio);
+                if (ausencia != null)
+                {
+                    await JSRuntime.InvokeVoidAsync("console.log",
+                    $"[PRESENÇA] Falta parcial DETECTADA para {funcAtual.Nome} em {ag.DataInicio:yyyy-MM-dd}  " +
+                    $"({ausencia.HoraInicio:hh\\:mm}-{ausencia.HoraFim:hh\\:mm})");
+
+                    // Calcular período de pausa (agendamento ou turno)
+                    TimeSpan? pausaInicio = ag.HoraPausa ?? turno?.Pausa;
+                    TimeSpan? pausaFim = ag.HoraRetorno ?? turno?.Retorno;
+
+                    // Calcular horas de ausência excluindo sobreposição com pausa
+                    var horasAusencia = CalcularHorasAusenciaComPausa(
+                        ausencia.HoraInicio.Value,
+                        ausencia.HoraFim.Value,
+                        pausaInicio,
+                        pausaFim);
+
+                    await JSRuntime.InvokeVoidAsync("showToast",
+                        $"Falta parcial detectada – descontadas {horasAusencia:N1} h",
+                        "bg-info");
+
+                    horasDia = Math.Max(0, horasDia - horasAusencia);
+                    UpsertPicagemParcial(ag, ausencia, turno);   // ajusta picagem
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("console.log",
+                    $"[PRESENÇA] Sem falta parcial para {funcAtual.Nome} em {ag.DataInicio:yyyy-MM-dd}");
+
+                    UpsertPicagem(colab.Id, ag.DataInicio.Date, ag, turno, moradaObra);
+                }
+
+                ag.HorasNormais = Math.Min(horasDia, 8);
+                ag.HorasExtras = Math.Max(0, horasDia - 8);
+            }
+        }
+        else
+        {
+            ag.HorasNormais = 0;
+            ag.HorasExtras = 0;
+
+            var ctxPic = db.Set<CrmPicagem>();
+            var pic = ctxPic.FirstOrDefault(p =>
+                        p.Utilizadorid == colab.Id &&
+                        p.Data.HasValue &&
+                        p.Data.Value.Date == ag.DataInicio.Date);
+            if (pic != null) ctxPic.Remove(pic);
+        }
+
+        await db.SaveChangesAsync();
+
+        // reflecte na lista
+        foreach (var r in resultadosFinais.Where(r => r.Id == row.Id))
+        {
+            r.Trabalhou = ag.Trabalhou;
+            r.HorasNormais = ag.HorasNormais;
+            r.HorasExtras = ag.HorasExtras;
+        }
+    }
+
+    private double CalcularHorasAusenciaComPausa(TimeSpan ausenciaInicio, TimeSpan ausenciaFim,
+    TimeSpan? pausaInicio, TimeSpan? pausaFim)
+    {
+        // Se não há pausa definida, retorna o período total da ausência
+        if (!pausaInicio.HasValue || !pausaFim.HasValue)
+        {
+            return (ausenciaFim - ausenciaInicio).TotalHours;
+        }
+
+        var pausaIni = pausaInicio.Value;
+        var pausaFinal = pausaFim.Value;
+
+        // Verificar se há sobreposição entre ausência e pausa
+        var inicioSobreposicao = ausenciaInicio > pausaIni ? ausenciaInicio : pausaIni;
+        var fimSobreposicao = ausenciaFim < pausaFinal ? ausenciaFim : pausaFinal;
+
+        // Se há sobreposição válida
+        if (inicioSobreposicao < fimSobreposicao)
+        {
+            var horasSobreposicao = (fimSobreposicao - inicioSobreposicao).TotalHours;
+            var horasTotalAusencia = (ausenciaFim - ausenciaInicio).TotalHours;
+
+            // Retorna apenas as horas de ausência que não coincidem com a pausa
+            return Math.Max(0, horasTotalAusencia - horasSobreposicao);
+        }
+
+        // Sem sobreposição, retorna o período total da ausência
+        return (ausenciaFim - ausenciaInicio).TotalHours;
+    }
+
+    private void UpsertPicagemParcial(FuncionarioObraAgendamento ag, CrmAusencia ausencia,Turnos? turno)
+    {
+
+        Funcionario funcionario = db.Set<Funcionario>().FirstOrDefault(i => i.Id == ag.IdFuncionario);
+        CrmUtilizador user = baseControle.CrmUtilizadors.FirstOrDefault(i => i.Id == funcionario.IdUtilizador);
+
+
+        // se não houver horas no agendamento não vale a pena seguir
+        if (!ag.HoraEntrada.HasValue || !ag.HoraSaida.HasValue)
+            return;
+
+        var dia = ag.DataInicio.Date;
+
+        // --- morada da obra (igual à lógica no GuardarPresenca) ---
+        var obra = db.Set<OsusrN2pObra>().Find(ag.IdObra);
+        string? moradaObra = obra is null
+            ? null
+            : $"{obra.Morada}, {obra.CodigoPostal} {obra.Localidade}";
+
+        // --- timestamps originais ---
+        DateTime entradaOrig = dia.Add(ag.HoraEntrada.Value);
+        DateTime saidaOrig = dia.Add(ag.HoraSaida.Value);
+
+        DateTime ausIni = dia.Add(ausencia.HoraInicio!.Value);
+        DateTime ausFim = dia.Add(ausencia.HoraFim!.Value);
+
+        // --- novos valores por defeito (sem ajuste) ---
+        DateTime entrada = entradaOrig;
+        DateTime saida = saidaOrig;
+        DateTime? inicioAlm = null;
+        DateTime? fimAlm = null;
+
+        // se ausência começa logo no início ⇒ empurra entrada
+        if (ausIni <= entradaOrig.AddMinutes(1))
+            entrada = ausFim;
+        // se ausência termina no fim ⇒ antecipa saída
+        else if (ausFim >= saidaOrig.AddMinutes(-1))
+            saida = ausIni;
+        // se está no meio ⇒ tratamos como pausa extra
+        else
+        {
+            inicioAlm = ausIni;
+            fimAlm = ausFim;
+        }
+
+        // pausa “normal” que já exista (agendamento ou turno)
+        DateTime? pausa1Ini = ag.HoraPausa.HasValue ? dia.Add(ag.HoraPausa.Value)
+                         : turno?.Pausa.HasValue == true ? dia.Add(turno.Pausa.Value) : null;
+        DateTime? pausa1Fim = ag.HoraRetorno.HasValue ? dia.Add(ag.HoraRetorno.Value)
+                         : turno?.Retorno.HasValue == true ? dia.Add(turno.Retorno.Value) : null;
+
+        // --- upsert na tabela de picagens ---
+        var ctx = db.Set<CrmPicagem>();
+        var pic = ctx.FirstOrDefault(p =>
+                     p.Utilizadorid == user.Id &&
+                     p.Data.HasValue && p.Data.Value.Date == dia);
+
+        if (pic == null)
+        {
+            pic = new CrmPicagem 
+            { 
+                Utilizadorid = user.Id, Data = dia 
+            };
+
+            ctx.Add(pic);
+        }
+
+        pic.Entrada = entrada;
+        pic.Saida = saida;
+        pic.InicioAlmoco = pausa1Ini ?? inicioAlm;
+        pic.FimAlmoco = pausa1Fim ?? fimAlm;
+        pic.Area = moradaObra;
+        TimeSpan? pausaInicio = ag.HoraPausa ?? turno?.Pausa;
+        TimeSpan? pausaFim = ag.HoraRetorno ?? turno?.Retorno;
+
+        var horasFaltaParcialCorrigidas = CalcularHorasAusenciaComPausa(
+            ausencia.HoraInicio.Value,
+            ausencia.HoraFim.Value,
+            pausaInicio,
+            pausaFim);
+
+        pic.HorasFaltaParcial = horasFaltaParcialCorrigidas;
+    }
+
+    private void UpsertPicagem(int utilizadorId, DateTime dia, FuncionarioObraAgendamento ag,Turnos? turno, string? moradaObra)
+    {
+        // Sem horas → não gravamos
+        if (!ag.HoraEntrada.HasValue || !ag.HoraSaida.HasValue) return;
+
+        // ---------- calcular timestamps ----------
+        var tEntrada = ag.HoraEntrada.Value;
+        var tSaida = ag.HoraSaida.Value;
+
+        // pausa do agendamento OU do turno, senão 0
+        var tPausa = ag.HoraPausa ?? turno?.Pausa ?? TimeSpan.Zero;
+        var tRetorno = ag.HoraRetorno ?? turno?.Retorno ?? tPausa;
+
+        DateTime entrada = dia.Add(tEntrada);
+        DateTime inicioAlmoco = dia.Add(tPausa);
+        DateTime fimAlmoco = dia.Add(tRetorno);
+        DateTime saida = dia.Add(tSaida);
+        // -----------------------------------------
+
+        var ctx = db.Set<CrmPicagem>();
+        var pic = ctx.FirstOrDefault(p =>
+                     p.Utilizadorid == utilizadorId &&
+                     p.Data.HasValue &&
+                     p.Data.Value.Date == dia);
+
+        if (pic == null)
+        {
+            ctx.Add(new CrmPicagem
+                {
+                    Utilizadorid = utilizadorId,
+                    Data = dia,
+                    Entrada = entrada,
+                    InicioAlmoco = inicioAlmoco,
+                    FimAlmoco = fimAlmoco,
+                    Saida = saida,
+                    SaidaForcada = false,
+                    Area = moradaObra      
+                });
+        }
+        else
+        {
+            pic.Entrada = entrada;
+            pic.InicioAlmoco = inicioAlmoco;
+            pic.FimAlmoco = fimAlmoco;
+            pic.Saida = saida;
+            pic.Area = moradaObra;
+        }
+    }
+
+    private void AtualizarResultados()
+    {
+        IEnumerable<FuncionarioObraAgendamento> query = agendamentos;
+
+        var hoje = DateTime.Today;
+        var trintaDiasAtras = hoje.AddDays(-30);
+
+        // 1) ignora agendamentos futuros logo aqui
+        query = query.Where(a => a.DataInicio.Date <= hoje);
+
+        // ---------- filtros existentes ----------
+        if (string.IsNullOrWhiteSpace(MesSelecionado))
+        {
+            query = query.Where(a => a.DataFim >= trintaDiasAtras &&
+                                     a.DataInicio <= hoje);
+        }
+        else
+        {
+            var mesIndex = Meses.IndexOf(MesSelecionado) + 1;
+            query = query.Where(a => a.DataInicio.Month == mesIndex ||
+                                     a.DataFim.Month == mesIndex);
+        }
+
+        if (colaboradorSelecionado != null)
+            query = query.Where(a => a.IdFuncionario == colaboradorSelecionado.Id);
+
+        if (obraSelecionada != null)
+            query = query.Where(a => a.IdObra == obraSelecionada.Id);
+        // ----------------------------------------
+
+        resultadosFinais.Clear();
+
+        foreach (var ag in query)
+        {
+            // ignora agendamentos sem horas
+            if (!ag.HoraEntrada.HasValue || !ag.HoraSaida.HasValue) continue;
+
+            // --------- 1) dados base do registo ----------
+            var colaborador = funcionarios.FirstOrDefault(u => u.Id == ag.IdFuncionario);
+            if (colaborador == null) continue;             // segurança
+
+            var nomeObra = obras.FirstOrDefault(o => o.Id == ag.IdObra)?.Nome ?? "";
+
+            // pausa: agendamento → turno → 0
+            CrmUtilizador user = listaUsers.FirstOrDefault(u => u.Id == colaborador.IdUtilizador);
+
+            var turno = turnos.FirstOrDefault(t => t.Id == user.IdTurno);
+            double duracaoPausa = 0;
+            if (turno?.Pausa.HasValue == true && turno?.Retorno.HasValue == true && turno.Retorno > turno.Pausa)
+                duracaoPausa = (turno.Retorno.Value - turno.Pausa.Value).TotalHours;
+
+            // horas normais / extra
+            var totalHoras = (ag.HoraSaida.Value - ag.HoraEntrada.Value).TotalHours;
+            var horasDia = Math.Max(0, totalHoras - duracaoPausa);
+            double horasNormais = ag.Trabalhou == true ? Math.Min(horasDia, 8) : 0;
+            double horasExtras = ag.Trabalhou == true ? Math.Max(0, horasDia - 8) : 0;
+            // ---------------------------------------------
+
+            // --------- 2) intervalo diário ----------
+            var inicioLoop = ag.DataInicio.Date;
+            var fimLoop = ag.DataFim.Date > hoje ? hoje : ag.DataFim.Date;
+
+            if (string.IsNullOrWhiteSpace(MesSelecionado) && inicioLoop < trintaDiasAtras)
+                inicioLoop = trintaDiasAtras;
+            // ----------------------------------------
+
+            for (var dia = inicioLoop; dia <= fimLoop; dia = dia.AddDays(1))
+            {
+                if (!string.IsNullOrWhiteSpace(MesSelecionado) &&
+                    dia.Month != (Meses.IndexOf(MesSelecionado) + 1))
+                    continue;
+
+                resultadosFinais.Add(new FuncionarioObraAgendamento
+                    {
+                        Id = ag.Id,
+                        IdFuncionario = colaborador.Id,
+                        NomeFuncionario = colaborador.Nome,
+                        NomeObra = nomeObra,
+                        DataInicio = dia,
+                        DataFim = dia,
+                        HorasNormais = horasNormais,
+                        HorasExtras = horasExtras,
+                        Trabalhou = ag.Trabalhou
+                    });
+            }
+        }
+
+        resultadosFinais = resultadosFinais
+            .OrderBy(r => r.DataInicio)
+            .ThenBy(r => r.NomeFuncionario)
+            .ToList();
+
+        StateHasChanged();
+    }
+
+    private string GetPicagensUrl(FuncionarioObraAgendamento r)
+    {
+        // ano e mês do próprio registo
+        var ano = r.DataInicio.Year;
+        var mes = r.DataInicio.Month;
+        // navega para /Picagens?ano=2025&mes=6&user=123
+        return $"/Picagens?ano={ano}&mes={mes}&user={r.IdFuncionario}";
+    }
+
+    private async void ValidarTudo()
+    {
+        foreach (FuncionarioObraAgendamento func in _resultados)
+        {
+            GuardarPresenca(func, true);
+        }
+
+        AtualizarResultados();
+        StateHasChanged();
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    private void ExportarParaPdf()
+    {
+
+        if (colaboradorSelecionado != null)
+        {
+            ExportarPdfColaborador();
+        }
+        else if (obraSelecionada != null)
+        {
+            ExportarPdfObra();
+        }
+        else
+        {
+            DialogService.ShowMessageBox("Seleção Inválida", "Por favor, selecione um colaborador ou uma obra.");
+        }
+
+    }
+
+    private void ExportarPdfColaborador()
+    {
+        if (resultadosFinais.Count == 0)
+        {
+            DialogService.ShowMessageBox("Nenhum Resultado", "Não há resultados para o colaborador selecionado.");
+            return;
+        }
+
+        var pastaPdf = Path.Combine(Env.WebRootPath, "pdfs");
+        if (!Directory.Exists(pastaPdf))
+            Directory.CreateDirectory(pastaPdf);
+
+        var nomeSeguro = colaboradorSelecionado.Nome.Replace(" ", "_");
+        var pdfFileName = $"{nomeSeguro}_Horas.pdf";
+        var pdfPath = Path.Combine(pastaPdf, pdfFileName);
+
+        using (var writer = new PdfWriter(pdfPath))
+        using (var pdf = new PdfDocument(writer))
+        using (var document = new Document(pdf))
+        {
+            document.Add(new Paragraph($"Horas de {colaboradorSelecionado.Nome}").SetBold().SetFontSize(14));
+            document.Add(new Paragraph(" "));
+
+            foreach (var resultado in resultadosFinais)
+            {
+                var linha = $"{resultado.NomeObra}: {resultado.DataInicio:dd/MM/yyyy} - Normais: {resultado.HorasNormais:F1}h | Extras: {resultado.HorasExtras:F1}h";
+                document.Add(new Paragraph(linha).SetFontSize(11));
+            }
+        }
+
+        Navigation.NavigateTo($"/pdfs/{pdfFileName}", true);
+    }
+
+    private void ExportarPdfObra()
+    {
+        if (resultadosFinais.Count == 0)
+        {
+            DialogService.ShowMessageBox("Nenhum Resultado", "Não há resultados para a obra selecionada.");
+            return;
+        }
+
+        var pastaPdf = Path.Combine(Env.WebRootPath, "pdfs");
+        if (!Directory.Exists(pastaPdf))
+            Directory.CreateDirectory(pastaPdf);
+
+        var nomeSeguro = obraSelecionada.Nome.Replace(" ", "_").Replace("/", "_");
+        var pdfFileName = $"{nomeSeguro}_Horas.pdf";
+        var pdfPath = Path.Combine(pastaPdf, pdfFileName);
+
+        using (var writer = new PdfWriter(pdfPath))
+        using (var pdf = new PdfDocument(writer))
+        using (var document = new Document(pdf))
+        {
+            document.Add(new Paragraph($"Horas na obra {obraSelecionada.Nome}").SetBold().SetFontSize(14));
+            document.Add(new Paragraph(" "));
+
+            foreach (FuncionarioObraAgendamento resultado in resultadosFinais)
+            {
+                var linha = $"{resultado.NomeFuncionario}: {resultado.DataInicio:dd/MM/yyyy} - Normais: {resultado.HorasNormais:F1}h | Extras: {resultado.HorasExtras:F1}h";
+                document.Add(new Paragraph(linha).SetFontSize(11));
+            }
+        }
+
+        Navigation.NavigateTo($"/pdfs/{pdfFileName}", true);
+    }
+
+
+
+    private void ExportarParaExcel()
+    {
+        if (resultadosFinais.Count == 0)
+        {
+            DialogService.ShowMessageBox("Nenhum Resultado", "Não há dados para exportar.");
+            return;
+        }
+
+        string nomeArquivo;
+
+        if (colaboradorSelecionado != null && obraSelecionada == null)
+            nomeArquivo = $"{colaboradorSelecionado.Nome}_Horas.xlsx";
+        else if (obraSelecionada != null && colaboradorSelecionado == null)
+            nomeArquivo = $"{obraSelecionada.Nome}_Horas.xlsx";
+        else if (colaboradorSelecionado != null && obraSelecionada != null)
+            nomeArquivo = $"{colaboradorSelecionado.Nome}_na_{obraSelecionada.Nome}_Horas.xlsx";
+        else
+            nomeArquivo = $"Horas_Ultimos30Dias.xlsx";
+
+        var folderPath = Path.Combine(Env.WebRootPath, "excel");
+        if (!Directory.Exists(folderPath))
+            Directory.CreateDirectory(folderPath);
+
+        var excelPath = Path.Combine(folderPath, nomeArquivo);
+
+        using (var package = new ExcelPackage())
+        {
+            var worksheet = package.Workbook.Worksheets.Add("Horas");
+
+            worksheet.Cells[1, 1].Value = "Colaborador";
+            worksheet.Cells[1, 2].Value = "Obra";
+            worksheet.Cells[1, 3].Value = "Data";
+            worksheet.Cells[1, 4].Value = "Horas Normais";
+            worksheet.Cells[1, 5].Value = "Horas Extras";
+
+            for (int i = 0; i < resultadosFinais.Count; i++)
+            {
+                var r = resultadosFinais[i];
+                worksheet.Cells[i + 2, 1].Value = r.NomeFuncionario;
+                worksheet.Cells[i + 2, 2].Value = r.NomeObra;
+                worksheet.Cells[i + 2, 3].Value = r.DataInicio.ToString("dd/MM/yyyy");
+                worksheet.Cells[i + 2, 4].Value = r.HorasNormais;
+                worksheet.Cells[i + 2, 5].Value = r.HorasExtras;
+            }
+
+            package.SaveAs(new FileInfo(excelPath));
+        }
+
+        Navigation.NavigateTo($"/excel/{nomeArquivo}", true);
+    }
+}

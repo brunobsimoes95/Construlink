@@ -1,0 +1,9 @@
+vti_encoding:SR|utf8-nl
+vti_author:SR|DOMINGOS\\domingos-pc
+vti_modifiedby:SR|DOMINGOS\\domingos-pc
+vti_timelastmodified:TR|01 Oct 2015 17:40:46 -0000
+vti_timecreated:TR|01 Oct 2015 17:40:46 -0000
+vti_cacheddtm:TX|01 Oct 2015 17:40:46 -0000
+vti_filesize:IR|84578
+vti_extenderversion:SR|12.0.0.0
+vti_backlinkinfo:VX|plugins/datatables/extensions/TableTools/examples/defaults.html plugins/datatables/extensions/TableTools/examples/select_column.html plugins/datatables/extensions/TableTools/examples/button_text.html plugins/datatables/extensions/TableTools/examples/new_init.html plugins/datatables/extensions/TableTools/examples/multi_instance.html plugins/datatables/extensions/TableTools/examples/pdf_message.html plugins/datatables/extensions/TableTools/examples/select_single.html plugins/datatables/extensions/TableTools/examples/bootstrap.html plugins/datatables/extensions/TableTools/examples/simple.html plugins/datatables/extensions/TableTools/examples/select_os.html plugins/datatables/extensions/TableTools/examples/plug-in.html plugins/datatables/extensions/TableTools/examples/collection.html plugins/datatables/extensions/TableTools/examples/swf_path.html plugins/datatables/extensions/TableTools/examples/jqueryui.html plugins/datatables/extensions/TableTools/examples/ajax.html plugins/datatables/extensions/TableTools/examples/alter_buttons.html plugins/datatables/extensions/TableTools/examples/select_multi.html plugins/datatables/extensions/TableTools/examples/multiple_tables.html

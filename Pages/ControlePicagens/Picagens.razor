@@ -1,0 +1,1249 @@
+﻿@page "/Picagens"
+@using System.Globalization;
+@using System.Text.Json;
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Shared
+@using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.EntityFrameworkCore
+@using OfficeOpenXml;
+@using Construlink.Services;
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject NavigationManager Nav 
+@inject ILocalPdfService PdfService
+@inject IDbContextFactoryService DbContextFactory
+@inject IDialogService DialogService
+@inject IConfiguration _configuration
+
+
+<div class="row mt-2 mb-2">
+    <div class="col-md-6 mt-3">
+        <div class="row">
+            <div class="col-md-5" style="display: flex; align-items: center;">
+                <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                <MudText Typo="Typo.h5" Class="ms-1">Picagens</MudText>
+
+                @if (!carregarGraficos)
+                {
+                    <span style="float:right;" id="picagemExibir">
+                        <button type="button" class="btn btn-theme btn-sm ms-3 mt-1" style="margin-top: -3px;" @onclick="@(()=> {carregarGraficos = true; JSRuntime.InvokeAsync<string>("CarregarGrafico", carregarGraficos); })">
+                            <span><i class="fa-solid fa-arrow-down"></i></span>
+                        </button>
+                    </span>
+                }
+
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mt-3 hide-on-mobile">
+        <ol class="breadcrumb" style="float:right;">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item active">Picagens</li>
+        </ol>
+    </div>
+</div>
+
+@* STATS *@
+<div class="row mb-4" id="divGraficos">
+    <div class="col-md-4 d-flex">
+        <div class="card shadow h-100 pb-0">
+            <div class="card-header vitro-cor-secundaria">
+                <span class="fa-solid fa-database me-2"></span>Dados
+
+                @* Esconde/Exibe gráficos *@
+                @if (!carregarGraficos)
+                {
+                    <span style="float:right;" id="picagemExibir">
+                        Gráficos:
+                        <button type="button" class="btn btn-theme btn-sm ms-1" style="margin-top: -3px;" @onclick="@(()=> {carregarGraficos = true; JSRuntime.InvokeAsync<string>("CarregarGrafico", carregarGraficos); })">
+                            <span><i class="fa-solid fa-arrow-down"></i></span>
+                        </button>
+                    </span>
+                }
+                else
+                {
+                    <span style="float:right;" id="picagemNaoExibir">
+                        Gráficos:
+                        <button type="button" class="btn btn-theme btn-sm ms-1" style="margin-top: -3px;" @onclick="@(()=> {carregarGraficos = false; JSRuntime.InvokeAsync<string>("CarregarGrafico", carregarGraficos); })">
+                            <span><i class="fa-solid fa-arrow-up"></i></span>
+                        </button>
+                    </span>
+                }
+
+
+            </div>
+            <div class="card-body">
+                <div class="row align-middle" id="help_stats">
+                    <div class="col-12 mt-2">
+                        <div class="card text-white mb-3" style="background-color:#000">
+                            <div class="card-body"><strong><i class="fas fa-users"></i> @NumColaboradores</strong></div>
+                            <div class="card-footer d-flex align-items-center justify-content-between">
+                                <p class="mb-0">Colaboradores</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card text-white mb-3 " style="background-color:#8e939c">
+                            <div class="card-body"><strong><i class="fas fa-clock"></i> @HorasTotaisTrabalho.ToString("N1", CultureInfo.GetCultureInfo("pt-PT"))</strong></div>
+                            <div class="card-footer d-flex align-items-center justify-content-between">
+                                <p class="mb-0">Horas de Trabalho</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="card bg-light text-dark mb-3">
+                            <div class="card-body"><strong><i class="fas fa-circle-exclamation" @onclick="TesteGrafico"></i> @HorasTotaisForceExit</strong></div>
+                            <div class="card-footer d-flex align-items-center justify-content-between">
+                                <p class="mb-0">Saídas Forçadas</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8 d-none d-sm-block">
+        <div class="card shadow h-100 pb-0">
+            <div class="card-header vitro-cor-secundaria">
+                <span class="fa-solid fa-stopwatch me-2"></span>Evolução das Horas de Trabalho
+
+                @* Esconde/Exibe gráficos *@
+                @if (!carregarGraficos)
+                {
+                    <span style="float:right;" id="picagemExibir">
+                        Gráficos:
+                        <button type="button" class="btn btn-theme btn-sm ms-1" style="margin-top: -3px;" @onclick="@(()=> {carregarGraficos = true; JSRuntime.InvokeAsync<string>("CarregarGrafico", carregarGraficos); })">
+                            <span><i class="fa-solid fa-arrow-down"></i></span>
+                        </button>
+                    </span>
+                }
+                else
+                {
+                    <span style="float:right;" id="picagemNaoExibir">
+                        Gráficos:
+                        <button type="button" class="btn btn-theme btn-sm ms-1" style="margin-top: -3px;" @onclick="@(()=> {carregarGraficos = false; JSRuntime.InvokeAsync<string>("CarregarGrafico", carregarGraficos); })">
+                            <span><i class="fa-solid fa-arrow-up"></i></span>
+                        </button>
+                    </span>
+                }
+
+            </div>
+            <div class="card-body">
+                <div class="row mt-3 mb-3" id="help_chart">
+                    <canvas id="areaChart" width="535" height="189"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@* FILTROS *@
+<div class="card shadow mb-3">
+    <div class="card-header vitro-cor-secundaria" style="padding-bottom: 4px;">
+        <span class="fa-solid fa-filter me-2"></span>Filtros
+        <button class="btn btn-success shadow ms-3" style="float:right;" @onclick="GerarExcel"><i class="fa-solid fa-file-excel"></i> Gerar Excel</button>
+
+
+        <button class="btn btn-secondary shadow ms-3" style="float:right;" @onclick="GerarRelatorio"><i class="fa-solid fa-ruler-combined"></i> Gerar Relatório</button>
+
+    </div>
+    <div class="card-body pt-1 pb-0">
+        <div class="row" id="help_filtros">
+            <div class="col-md-4 mb-3">
+                <label for="ano">Ano</label>
+                <select name="ano" id="ano" class="d-block w-100" style="height: 40px;" @onchange="change_ano">
+                    <option value="0">-</option>
+                    @foreach (var item in PicagensAno)
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label for="mes">Mês</label>
+                <select name="mes" id="mes" class="d-block w-100" style="height: 40px;" @onchange="change_mes">
+                    <option value="0">-</option>
+                    <option value="1">Janeiro</option>
+                    <option value="2">Fevereiro</option>
+                    <option value="3">Março</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Maio</option>
+                    <option value="6">Junho</option>
+                    <option value="7">Julho</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
+            </div>
+            @if (who.User.Isadmin == true || who.User.ValidaPicagens == true)
+            {
+                <div class="col-md-4 mb-3">
+                    <label for="user">Colaboradores</label>
+                    <select name="user" id="user" class="d-block w-100" style="height: 40px;" @onchange="change_user">
+                        <option value="0">-</option>
+                        @foreach (var item in PicagensUsers)
+                        {
+                            <option value="@item.Id">@item.Nome</option>
+                        }
+                    </select>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+
+
+
+
+@* TABELA *@
+<div class="row" id="help_tabela">
+    <div class="col-md-12 mb-3">
+        @if (PicagensRows.Any())
+        {
+            <div class="card shadow">
+                <div class="card-header vitro-cor-secundaria"><span class="fa-solid fa-table me-2"></span>Tabela de Picagens</div>
+                <div class="card-body">
+
+                    <MudTable Items="PicagensRows" Striped="true" Bordered="true" Hover="true" Filter="new Func <PicagemTratada, bool> (FuncaoFiltrar)">
+                        <ToolBarContent>
+                            <MudTextField @bind-Value="filtroNomeDescricao" Immediate="true" Placeholder="Filtrar" Adornment="Adornment.Start" AdornmentColor="Color.Warning" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                        </ToolBarContent>
+                        <HeaderContent>
+                            <MudTh Style="width: 5%;">Detalhes</MudTh>
+                            <MudTh Style="width: 10%;">
+                                <MudTableSortLabel InitialDirection="SortDirection.Ascending"
+                                SortBy="new Func<PicagemTratada, object>(i => i.Data)">
+                                    Data
+                                </MudTableSortLabel>
+                            </MudTh>
+
+                            <MudTh Style="width: 15%;">Colaborador</MudTh>
+                            <MudTh Style="width: 10%;">Entrada</MudTh>
+                            <MudTh Style="width: 10%;">Início Almoço</MudTh>
+                            <MudTh Style="width: 10%;">Fim Almoço</MudTh>
+                            <MudTh Style="width: 10%;">Saída</MudTh>
+                            <MudTh Style="width: 5%;">Horas Trabalhadas</MudTh>
+                            <MudTh Style="width: 5%;">Parcial?</MudTh>
+                            <MudTh Style="width: 15%;">Localização</MudTh>
+                            <MudTh Style="width: 5%;">Picagem Forçada</MudTh>
+                            <MudTh Style="width: 5%;"></MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd Align="Align.Center"><MudTooltip Text="Editar picagem"><MudIconButton Icon="@Icons.Material.Filled.Edit"Color="Color.Primary"OnClick="() => ConfirmarPicagem(context)" /></MudTooltip></MudTd>
+                            <MudTd DataLabel="Data" Align="Align.Center">@context.Data?.ToString("dd-MM-yyyy")</MudTd>
+                            <MudTd DataLabel="Colaborador" Align="Align.Left" Style="word-wrap: break-word; white-space: normal;">@context.Utilizadorid</MudTd>
+                            <MudTd DataLabel="Entrada" Align="Align.Left">@(context?.Entrada?.ToString("HH:mm:ss"))</MudTd>
+                            <MudTd DataLabel="Início Almoço" Align="Align.Left">@(context?.InicioAlmoco?.ToString("HH:mm:ss"))</MudTd>
+                            <MudTd DataLabel="Fim Almoço" Align="Align.Left">@(context?.FimAlmoco?.ToString("HH:mm:ss"))</MudTd>
+                            <MudTd DataLabel="Saída" Align="Align.Left">@(context?.Saida?.ToString("HH:mm:ss"))</MudTd>
+                            <MudTd DataLabel="Horas Trabalhadas" Align="Align.Left">@GetHoras(context).ToString("N1", CultureInfo.GetCultureInfo("pt-PT"))</MudTd>
+                            <MudTd DataLabel="Parcial" Align="Align.Center">
+                                @if (context.HorasFaltaParcial.HasValue && context.HorasFaltaParcial.Value > 0)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+                                }
+                                else
+                                {
+                                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" />
+                                }
+                            </MudTd>
+
+                            <MudTd DataLabel="Localização" Align="Align.Left">
+                                @if ((context.Latitude.HasValue && context.Longitude.HasValue) || !string.IsNullOrWhiteSpace(context.Area))
+                                {
+                                    <a href="@GetMapsUrl(context)" target="_blank" style="text-decoration:none">
+                                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Color="Color.Primary" />
+                                        @if (!string.IsNullOrWhiteSpace(context.Area))
+                                        {
+                                            <span class="ms-1">@context.Area</span>
+                                        }
+                                    </a>
+                                }
+                                else
+                                {
+                                    <em>Sem localização</em>
+                                }
+                            </MudTd>
+
+
+                            <MudTd DataLabel="Picagem Forçada" Align="Align.Center">
+                                <MudSwitch T="bool?"
+                                Value="context.ForcedExit"
+                                ValueChanged="(newValue) => ForcarSaida(context, newValue)"
+                                Color="Color.Success"
+                                UncheckedColor="Color.Error" />
+                            </MudTd>
+                            <MudTd Align="Align.Center">
+                                <MudTooltip Text="Excluir">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" @onclick="(() => ApagarPicagem(context))" />
+                                </MudTooltip>
+                            </MudTd>
+                        </RowTemplate>
+                        <PagerContent>
+                            <MudTablePager />
+                        </PagerContent>
+                    </MudTable>
+
+                </div>
+            </div>           
+        }
+        else
+        {
+            <p>Não exitem dados para exibir..</p>
+        }
+    </div>
+</div>
+
+
+<script>
+
+    @* Botão que esconde os gráficos *@
+    function CarregarGrafico(comportamento) {
+
+    const btnUp = $('#picagemExibir');
+    const btnDown = $('#picagemNaoExibir');
+    const divGraficos = $('#divGraficos');
+
+    if (comportamento) {
+    btnUp.hide();
+    btnDown.show();
+    divGraficos.show();
+    }
+    else {
+    btnUp.show();
+    btnDown.hide();
+    divGraficos.hide();
+    }
+    }
+
+    //limpar elementos criados pela tabela
+    function cleanTables_picagens() {
+    if (document.getElementById("tab_picagens_wrapper")) {
+    document.getElementById("tab_picagens_wrapper").remove();
+    }
+    }
+
+    // GRÁFICO
+    var myChart = null;
+    function renderChart(chartDataJson) {
+    var chartData = JSON.parse(chartDataJson);
+
+    jQuery(function () {
+    var areaChartData = {
+    labels: chartData.Labels,
+    datasets: chartData.DataSets.map(ds => ({
+    label: ds.Label,
+    backgroundColor: ds.BackgroundColor,
+    borderColor: ds.BackgroundColor,
+    pointBackgroundColor: ds.BackgroundColor,
+    pointBorderColor: ds.BackgroundColor,
+    pointHighlightFill: "#fff",
+    pointHighlightStroke: ds.BackgroundColor,
+    type: "line",
+    data: ds.Data
+    }))
+    };
+
+    const config = {
+    type: 'line',
+    data: areaChartData,
+    showScale: false,
+    scaleShowGridLines: true,
+    scaleGridLineColor: "rgba(0,0,0,.05)",
+    scaleGridLineWidth: 1,
+    scaleShowHorizontalLines: true,
+    scaleShowVerticalLines: true,
+    bezierCurve: true,
+    bezierCurveTension: 0.3,
+    pointDot: true,
+    pointDotRadius: 4,
+    pointDotStrokeWidth: 1,
+    pointHitDetectionRadius: 20,
+    datasetStroke: true,
+    datasetStrokeWidth: 2,
+    datasetFill: false, // Set to true to fill the area under the line
+    legendTemplate: "<ul class=\"<%=name.toLowerCase()%>-legend\"><% for (var i=0; i<datasets.length; i++){%><li><span style=\"background-color:<%=datasets[i].lineColor%>\"></span><%if(datasets[i].label){%><%=datasets[i].label%><%}%></li><%}%></ul>",
+    maintainAspectRatio: false,
+    };
+
+    if (myChart) {
+    myChart.data.labels = areaChartData.labels;
+    myChart.data.datasets = areaChartData.datasets;
+    myChart.update();
+    } else {
+    myChart = new Chart(document.getElementById('areaChart'), config);
+    }
+
+    });
+    }
+
+</script>
+
+@* HELP *@
+<script>
+    jQuery('#help').off('click');
+    jQuery('#help').click(function () {
+    var steps = [
+    {
+    element: "#help_stats",
+    popover: {
+    title: "Estatísticas",
+    description: "Aqui pode visualizar rapidamente dados estatísticos relativos às picagens",
+    showButtons: true,
+    closeBtnText: 'Fechar',
+    nextBtnText: 'Próximo',
+    prevBtnText: 'Anterior',
+    side: "top",
+    align: 'start'
+    },
+    },
+    {
+    element: "#help_chart",
+    popover: {
+    title: "Estatísticas",
+    description: "Aqui tem acesso a um gráfico da evolução das horas de trabalho",
+    showButtons: true,
+    closeBtnText: 'Fechar',
+    nextBtnText: 'Próximo',
+    prevBtnText: 'Anterior',
+    side: "top",
+    align: 'start'
+    },
+    },
+    {
+    element: "#help_filtros",
+    popover: {
+    title: "Filtros",
+    description: "Aqui pode filtrar os dados de picagem",
+    showButtons: true,
+    closeBtnText: 'Fechar',
+    nextBtnText: 'Próximo',
+    prevBtnText: 'Anterior',
+    side: "top",
+    align: 'start'
+    },
+    },
+    {
+    element: "#help_tabela",
+    popover: {
+    title: "Dados de Picagem",
+    description: "Aqui tem acesso a uma tabela com os dados de picagem, permitindo-lhe pesquisar, ordenar e exportar os dados",
+    showButtons: true,
+    closeBtnText: 'Fechar',
+    nextBtnText: 'Próximo',
+    prevBtnText: 'Anterior',
+    doneBtnText: 'OK',
+    side: "top",
+    align: 'start'
+    },
+    },
+    ];
+    var driver = new Driver({ allowClose: false, });
+    driver.defineSteps(steps);
+    driver.start();
+    });
+</script>
+
+@code {
+
+    EmpresaUserSession who = null;
+    private string path = "";
+    public List<PicagemTratada> PicagensRows = new List<PicagemTratada>() { };
+    public List<int> PicagensAno = new List<int>() { };
+    public List<UserTratado> PicagensUsers = new List<UserTratado>() { };
+    public List<CrmPicagem> listaPicagens = new List<CrmPicagem>() { };
+    public List<Turnos> listaTurnos = new List<Turnos>() { };
+    public List<CrmUtilizador> listaUsers = new List<CrmUtilizador>() { };
+    public DbSet<CrmPicagem> Picagem { get; set; }
+    private DbContext db;
+    public string selectedAno = DateTime.Now.Year.ToString();
+    public string selectedMes = DateTime.Now.Month.ToString();
+    public string selectedUser = "0";
+    private int NumColaboradores = 0;
+    private double HorasTotaisTrabalho = 0;
+    private int HorasTotaisForceExit = 0;
+    private readonly object updateLock = new object();
+    private bool carregarGraficos = true;
+    private DbContext dbContext;
+    private bool isLoading = false;
+    private string folder = string.Empty;
+    private int turnoManha = 0;
+    private int turnoTarde = 0;
+    private int turnoIntegral = 0;
+    private TimeSpan saidaManha = default;
+    private TimeSpan saidaTarde = default;
+    private TimeSpan saidaIntegral = default;
+    private string procura = string.Empty;
+    private string Erro = string.Empty;
+    private string mensagem = string.Empty;
+    private string filtro = string.Empty;
+    private string filtroNomeDescricao = string.Empty;
+
+
+    protected override void OnInitialized()
+    {
+        
+        ExcelPackage.License.SetNonCommercialPersonal("Construlink Dev");
+
+        // breadcrumb “Home”
+        path = Nav.BaseUri.TrimEnd('/');
+
+        // resto do código
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        var q   = QueryHelpers.ParseQuery(uri.Query);
+
+        if (q.TryGetValue("ano",  out var a))  selectedAno  = a;
+        if (q.TryGetValue("mes",  out var m))  selectedMes  = m;
+        if (q.TryGetValue("user", out var u))  selectedUser = u;
+
+        who       = (EmpresaUserSession)utils.AgSession["user"];
+        folder    = who.Empresa.Empresa;
+        dbContext = DbContextFactory.GetDbContext(who.Empresa.BaseNome);
+
+        GetHorasTurnos();
+        base.OnInitialized();
+    }
+
+
+
+
+    private static string GetMapsUrl(PicagemTratada p)
+    {
+        if (p.Latitude.HasValue && p.Longitude.HasValue)
+        {
+            return $"https://www.google.com/maps?q={p.Latitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)},{p.Longitude.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(p.Area))
+        {
+            return $"https://www.google.com/maps/search/?api=1&query={Uri.EscapeDataString(p.Area)}";
+        }
+
+        return "#";
+    }
+
+
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender == true)
+        {
+            GetAll();
+            GetPicagens(selectedAno, selectedMes, selectedUser);
+        }
+        else
+        {
+            if (carregarGraficos)
+            {
+                carregarGraficos = false;
+            }
+        }
+        base.OnAfterRender(firstRender);
+    }
+
+    //Obtem turnos
+    private void GetHorasTurnos()
+    {
+        listaTurnos = dbContext.Set<Turnos>().ToList();
+
+        foreach (Turnos turno in listaTurnos)
+        {
+            TimeSpan diferença1 = ((turno.Pausa ?? default) - (turno.Entrada ?? default)).Duration();
+            TimeSpan diferença2 = ((turno.Retorno ?? default) - (turno.Saida ?? default)).Duration();
+
+            TimeSpan total = diferença1 + diferença2;
+
+            if (turno.NomeTipo == "Manhã")
+            {
+                turnoManha = (int)total.TotalHours;
+                saidaManha = saidaManha + turno.Saida.Value;
+            }
+
+            if (turno.NomeTipo == "Tarde")
+            {
+                turnoTarde = (int)total.TotalHours;
+                saidaTarde = saidaTarde + turno.Saida.Value;
+            }
+
+            if (turno.NomeTipo == "Integral")
+            {
+                turnoIntegral = (int)total.TotalHours;
+                saidaIntegral = saidaIntegral + turno.Saida.Value;
+            }
+        }
+    }
+
+
+    //Controlar picagens 
+    // no teu componente/serviço
+    public async Task RegistarPicagemAsync(int utilizadorId)
+    {
+        var hoje = DateTime.Today;
+
+        // conta picagens de hoje
+        var countHoje = await dbContext.Set<CrmPicagem>()
+            .CountAsync(p => p.Utilizadorid == utilizadorId &&
+                             p.Data.Value.Date == hoje);
+
+        if (countHoje >= 4)
+            throw new InvalidOperationException("Limite de 4 picagens atingido.");
+
+        // cria a nova
+        var novaPicagem = new CrmPicagem
+    {
+        Utilizadorid = utilizadorId,
+        Data         = hoje,
+            // se tiveres essa coluna
+        Entrada      = DateTime.Now     // ou a coluna correspondente
+    };
+
+        dbContext.Add(novaPicagem);
+        await dbContext.SaveChangesAsync();
+    }
+
+    //Pega no nome para o relatório
+    private string GetReportName()
+    {
+        var baseName = "RelatorioPicagens";
+
+        if (selectedUser != "0")                       // filtrado por colaborador?
+        {
+            var userName = PicagensUsers
+                           .FirstOrDefault(u => u.Id.ToString() == selectedUser)?
+                           .Nome?
+                           .Replace(" ", "");          // tira espaços
+            if (!string.IsNullOrWhiteSpace(userName))
+                baseName += "-" + userName;
+        }
+
+        return $"{baseName}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+    }
+
+
+    // ----------------------
+    // Nome dinâmico do ficheiro
+    // ----------------------
+    private string GetExcelFileName()
+    {
+        var partes = new List<string> { "Picagens" };
+
+        // mês (se foi escolhido)
+        if (!string.IsNullOrWhiteSpace(selectedMes) && selectedMes != "0" && selectedMes != "-")
+        {
+            var nomeMes = CultureInfo                    // “Janeiro”, “Fevereiro”… em PT-PT
+                .GetCultureInfo("pt-PT")
+                .DateTimeFormat
+                .GetMonthName(int.Parse(selectedMes));
+            partes.Add(nomeMes);
+        }
+
+        // utilizador (se foi escolhido)
+        if (!string.IsNullOrWhiteSpace(selectedUser) && selectedUser != "0" && selectedUser != "-")
+        {
+            var nomeUser = PicagensUsers
+                .FirstOrDefault(u => u.Id.ToString() == selectedUser)?
+                .Nome?
+                .Replace(" ", "");                       // sem espaços
+            if (!string.IsNullOrWhiteSpace(nomeUser))
+                partes.Add(nomeUser);
+        }
+
+        // ex.: Picagens_Maio_JoaoSilva_20250611_1425.xlsx
+        return $"{string.Join('_', partes)}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+    }
+
+
+    // ----------------------
+    // Geração do Excel
+    // ----------------------
+    // ---------------------------
+    // Geração de Excel à moda das Consultas
+    // ---------------------------
+    private void GerarExcel()
+    {
+        if (PicagensRows.Count == 0)
+        {
+            DialogService.ShowMessageBox("Nenhum Resultado", "Não há dados de picagens para exportar.");
+            return;
+        }
+
+        // nome: Picagens_Maio.xlsx | Picagens_JoaoSilva.xlsx | Picagens_Maio_JoaoSilva.xlsx
+        var fileName = GetExcelFileName();
+
+        // wwwroot/excel
+        var folderPath = Path.Combine(Env.WebRootPath, "excel");
+        if (!Directory.Exists(folderPath))
+            Directory.CreateDirectory(folderPath);
+
+        var excelPath = Path.Combine(folderPath, fileName);
+
+        using var package   = new ExcelPackage();
+        var ws = package.Workbook.Worksheets.Add("Picagens");
+
+        // cabeçalhos
+        string[] headers = { "Data", "Colaborador", "Entrada", "Início Almoço",
+                         "Fim Almoço", "Saída", "Nº Horas" };
+        for (int c = 0; c < headers.Length; c++)
+            ws.Cells[1, c + 1].Value = headers[c];
+
+        // linhas
+        int row = 2;
+        foreach (var p in PicagensRows)
+        {
+            ws.Cells[row, 1].Value = p.Data?.ToString("dd-MM-yyyy");
+            ws.Cells[row, 2].Value = p.Utilizadorid;
+            ws.Cells[row, 3].Value = p.Entrada?.ToString("HH:mm:ss");
+            ws.Cells[row, 4].Value = p.InicioAlmoco?.ToString("HH:mm:ss");
+            ws.Cells[row, 5].Value = p.FimAlmoco?.ToString("HH:mm:ss");
+            ws.Cells[row, 6].Value = p.Saida?.ToString("HH:mm:ss");
+            ws.Cells[row, 7].Value = GetHoras(p);
+            row++;
+        }
+
+        ws.Cells[ws.Dimension.Address].AutoFitColumns();
+
+        // grava no disco do servidor
+        package.SaveAs(new FileInfo(excelPath));
+
+        // abre no browser
+        Navigation.NavigateTo($"/excel/{fileName}", true);
+    }
+
+    //Obtem picagens
+    private async Task GetPicagens(string ano, string mes, string user)
+    {
+        if (PicagensRows.Count > 0)
+            PicagensRows.Clear();
+
+        lock (updateLock)
+        {
+            try
+            {
+                BaseControleContext dbBaseControle = new BaseControleContext();
+                listaPicagens = dbContext.Set<CrmPicagem>().ToList();
+
+                var listaUtilizadoresIds = dbBaseControle.UtilizadorEmpresas
+                    .Where(i => i.EmpresaId == who.Empresa.Id)
+                    .Select(i => i.UtilizadorId)
+                    .ToList();
+
+                var listaUtilizadores = dbBaseControle.CrmUtilizadors
+                    .Where(u => listaUtilizadoresIds.Contains(u.Id) && u.IsSuperAdmin != true)
+                    .ToList();
+
+                // DEBUG LOG (opcional)
+                Console.WriteLine($"Total Picagens: {listaPicagens.Count}");
+                Console.WriteLine($"Utilizadores válidos (BaseControle): {listaUtilizadores.Count}");
+
+                // JOIN só com utilizadores válidos
+                var query = listaPicagens
+                    .Where(p => listaUtilizadores.Any(u => u.Id == p.Utilizadorid))
+                    .Join(
+                        listaUtilizadores,
+                        s => s.Utilizadorid,
+                        r => r.Id,
+                        (s, r) => new { s, r }
+                    );
+
+                // Aplicar filtros
+                if (ano != "0")
+                    query = query.Where(s => s.s.Data.Value.Year.ToString() == ano);
+
+                if (mes != "0")
+                    query = query.Where(s => s.s.Data.Value.Month.ToString() == mes);
+
+                if (user != "0")
+                    query = query.Where(s => s.s.Utilizadorid.ToString() == user);
+
+                // Montar os dados tratados
+                PicagensRows = query.OrderBy(o => o.s.Data).Select(s => new PicagemTratada
+            {
+                Id = s.s.Id,
+                Entrada = s.s.Entrada,
+                Saida = s.s.Saida,
+                InicioAlmoco = s.s.InicioAlmoco,
+                FimAlmoco = s.s.FimAlmoco,
+                Utilizadorid = s.r.Name,
+                IdUtilizador = s.r.Id,
+                Data = s.s.Data,
+                ForcedExit = s.s.SaidaForcada,
+                Area = s.s.Area,
+                Latitude = s.s.Latitude,
+                Longitude = s.s.Longitude,
+                HorasFaltaParcial= s.s.HorasFaltaParcial
+            }).ToList();
+
+                if (PicagensRows.Any())
+                {
+                    NumColaboradores = PicagensRows.Select(s => s.Utilizadorid).Distinct().Count();
+                    HorasTotaisTrabalho = 0;
+                    HorasTotaisForceExit = 0;
+
+                    foreach (var item in PicagensRows)
+                    {
+                        if (item.ForcedExit == true)
+                            HorasTotaisForceExit++;
+
+                        HorasTotaisTrabalho += GetHoras(item);
+                    }
+
+                    ShowChart();
+                }
+
+                dbBaseControle.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erro ao obter picagens: " + ex.Message);
+            }
+            finally
+            {
+                StateHasChanged();
+            }
+        }
+    }
+
+
+    //calcula as horas
+    private double GetHoras(PicagemTratada item)
+    {
+        if (!item.Entrada.HasValue)
+            return 0;
+
+        DateTime entrada = item.Entrada.Value;
+        DateTime saida;
+
+        // Determinar horário de saída
+        if (item.Entrada.Value.Date == DateTime.Today.Date)
+        {
+            // Se é hoje
+            if (item.Saida.HasValue && item.Saida.Value != item.Entrada.Value)
+            {
+                saida = item.Saida.Value;
+            }
+            else
+            {
+                saida = DateTime.Now;
+            }
+        }
+        else
+        {
+            // Dias anteriores - deve ter saída definida
+            if (!item.Saida.HasValue)
+                return 0;
+
+            saida = item.Saida.Value;
+        }
+
+        // Calcular horas brutas trabalhadas (agora com precisão decimal)
+        double horasTotais = (saida - entrada).TotalHours;
+
+        // Verificar se há sobreposição com horário de almoço
+        if (item.InicioAlmoco.HasValue && item.FimAlmoco.HasValue)
+        {
+            DateTime inicioAlmoco = item.InicioAlmoco.Value;
+            DateTime fimAlmoco = item.FimAlmoco.Value;
+
+            // Calcular sobreposição entre período trabalhado e período de almoço
+            DateTime inicioSobreposicao = entrada > inicioAlmoco ? entrada : inicioAlmoco;
+            DateTime fimSobreposicao = saida < fimAlmoco ? saida : fimAlmoco;
+
+            // Se há sobreposição válida, descontar essas horas
+            if (inicioSobreposicao < fimSobreposicao)
+            {
+                double horasAlmocoDescontadas = (fimSobreposicao - inicioSobreposicao).TotalHours;
+                horasTotais -= horasAlmocoDescontadas;
+            }
+        }
+
+        return Math.Max(0, Math.Round(horasTotais, 2)); // arredonda para 2 casas decimais
+    }
+
+    private double GetHorasTrabalhadas(PicagemTratada item)
+    {
+        if (!item.Entrada.HasValue || !item.Saida.HasValue)
+            return 0;
+
+        double horasTurno = 0;
+        double horasAlmoco = 0;
+
+        // Calcular horas totais trabalhadas
+        if (item.Entrada.Value.Date == DateTime.Today.Date && !item.Saida.HasValue)
+        {
+            // Se é hoje e não tem saída definida, calcula até agora
+            horasTurno = (DateTime.Now - item.Entrada.Value).TotalHours;
+        }
+        else if (item.Saida.HasValue)
+        {
+            // Cálculo normal com entrada e saída
+            horasTurno = (item.Saida.Value - item.Entrada.Value).TotalHours;
+        }
+
+        // Calcular horas de almoço (se existirem)
+        if (item.InicioAlmoco.HasValue && item.FimAlmoco.HasValue)
+        {
+            horasAlmoco = (item.FimAlmoco.Value - item.InicioAlmoco.Value).TotalHours;
+        }
+
+        // Subtrair horas de falta parcial (se existirem)
+        double horasFaltaParcial = item.HorasFaltaParcial ?? 0;
+
+        // Calcular horas efetivas: total - almoço - falta parcial
+        double horasEfetivas = Math.Max(0, horasTurno - horasAlmoco - horasFaltaParcial);
+
+        return Math.Round(horasEfetivas, 2); // arredonda para 2 casas decimais
+    }
+
+    //Gráfico
+    private async Task ShowChart()
+    {
+        var groupedData = PicagensRows
+            .GroupBy(p => p.Data.Value.Date)
+            .OrderBy(g => g.Key)
+            .ToList();
+
+        var groupedUsers = PicagensRows
+            .Select(s => s.Utilizadorid)
+            .Distinct()
+            .ToList();
+
+        var chartData = new ChartData();
+
+        foreach (string user in groupedUsers)
+        {
+            var userDataset = new DataSet()
+                {
+                    Label = user,
+                    BackgroundColor = utils.GetRandomColor(),
+                    Data = new List<double>()
+                };
+            chartData.DataSets.Add(userDataset);
+        }
+
+        foreach (var group in groupedData)
+        {
+            chartData.Labels.Add(group.Key.ToString("dd/MM/yyyy"));
+
+            foreach (string user in groupedUsers)
+            {
+                var userDataset = chartData.DataSets.FirstOrDefault(d => d.Label == user);
+
+                var userrow = group.FirstOrDefault(w => w.Utilizadorid == user && w.Data.Value.Date == group.Key);
+
+                if (userrow != null)
+                {
+                    double hours = GetHoras(userrow);
+                    userDataset.Data.Add(hours);
+                }
+                else
+                {
+                    userDataset.Data.Add(0);
+                }
+            }
+        }
+
+        var jsonChartData = JsonSerializer.Serialize(chartData);
+        await JSRuntime.InvokeVoidAsync("renderChart", jsonChartData);
+    }
+
+    //Dropdowns
+    private async void GetAll()
+    {
+        PicagensAno = dbContext.Set<CrmPicagem>().Select(p => p.Data.Value.Year).Distinct().OrderByDescending(ano => ano).ToList();
+        BaseControleContext context2 = new BaseControleContext();
+
+        var listaUtilizadoresIds = context2.UtilizadorEmpresas
+                    .Where(i => i.EmpresaId == who.Empresa.Id)
+                    .Select(i => i.UtilizadorId)
+                    .ToList();
+
+        listaUsers = context2.CrmUtilizadors
+            .Where(u => listaUtilizadoresIds.Contains(u.Id) && u.Isactive == true && u.FazPicagens == true && u.IsSuperAdmin != true)
+            .ToList();
+
+        PicagensUsers = listaUsers.OrderBy(o => o.Name).Select(p => new UserTratado { Id = p.Id, Nome = p.Name }).ToList();
+
+        context2.Dispose();
+        StateHasChanged();
+    }
+
+    //Filtros
+    private async Task change_ano(ChangeEventArgs e)
+    {
+        string selectedValue = e.Value?.ToString();
+        selectedAno = selectedValue;
+        GetPicagens(selectedAno, selectedMes, selectedUser);
+    }
+    private async Task change_mes(ChangeEventArgs e)
+    {
+        string selectedValue = e.Value?.ToString();
+        selectedMes = selectedValue;
+        GetPicagens(selectedAno, selectedMes, selectedUser);
+    }
+    private async Task change_user(ChangeEventArgs e)
+    {
+        string selectedValue = e.Value?.ToString();
+        selectedUser = selectedValue;
+        GetPicagens(selectedAno, selectedMes, selectedUser);
+    }
+
+    private bool FuncaoFiltrar(PicagemTratada item) => FuncaoFiltrar1(item, filtroNomeDescricao);
+
+    private bool FuncaoFiltrar1(PicagemTratada item, string filtroNomeDescricao)
+    {
+        if (string.IsNullOrWhiteSpace(filtroNomeDescricao))
+            return true;
+
+        if (!string.IsNullOrWhiteSpace(filtroNomeDescricao))
+        {
+            if (item.Utilizadorid.Contains(filtroNomeDescricao, StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (item.Area.Contains(filtroNomeDescricao, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
+
+    //Tipos de dados
+    public partial class PicagemTratada
+    {
+        public int Id { get; set; }
+        public string? Utilizadorid { get; set; }
+        public int? IdUtilizador { get; set; }
+        public DateTime? Entrada { get; set; }
+        public DateTime? InicioAlmoco { get; set; }
+        public DateTime? FimAlmoco { get; set; }
+        public DateTime? Saida { get; set; }
+        public DateTime? Data { get; set; }
+        public bool? ForcedExit { get; set; }
+        public string? Area { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+        public double? HorasFaltaParcial { get; set; }
+    }
+
+    public partial class UserTratado
+    {
+        public int Id { get; set; }
+        public string? Nome { get; set; }
+    }
+
+    //gráfico
+    public class ChartData
+    {
+        public List<string> Labels { get; set; } = new List<string>();
+        public List<DataSet> DataSets { get; set; } = new List<DataSet>();
+    }
+
+    public class DataSet
+    {
+        public string Label { get; set; }
+        public List<double> Data { get; set; } = new List<double>();
+        public string BackgroundColor { get; set; }
+    }
+
+    //correçao
+    private async void ConfirmarPicagem(PicagemTratada picagem)
+    {
+        var Parameters = new DialogParameters<ControlarPicagens>
+        {
+            { x => x.IDPICAGEM, picagem.Id }
+        };
+
+        var options = new DialogOptions { BackdropClick = false };
+        var dialog = await DialogService.ShowAsync<ControlarPicagens>("Correção de Anomalias", Parameters, options);
+
+        var res = await dialog.Result;
+
+        if (res is not null && res.Data is CrmPicagem retorno)
+        {
+            if (retorno is not null && retorno.Id > 0)
+            {
+                CrmPicagem PicagemCorrigida = dbContext.Set<CrmPicagem>().FirstOrDefault(i => i.Id == retorno.Id);
+
+                if (PicagemCorrigida is not null && PicagemCorrigida.Id > 0)
+                {
+                    PicagemCorrigida.Entrada = retorno.Entrada;
+                    PicagemCorrigida.InicioAlmoco = retorno.InicioAlmoco;
+                    PicagemCorrigida.FimAlmoco = retorno.FimAlmoco;
+                    PicagemCorrigida.Saida = retorno.Saida;
+                    PicagemCorrigida.SaidaForcada = false;
+                }
+
+                dbContext.SaveChanges();
+                GetPicagens(selectedAno, selectedMes, selectedUser);
+                StateHasChanged();
+            }
+        }
+    }
+
+    //ajustar a saida caso esquecida
+    private async void ForcarSaida(PicagemTratada item, bool? valor)
+    {
+        var resultado = await DialogService.ShowMessageBox("Confirmação", "Tem certeza que deseja forçar a saída ?", yesText: "Confirmar", cancelText: "Cancelar");
+
+        if (resultado == true)
+        {
+            CrmPicagem saidaForcada = dbContext.Set<CrmPicagem>().SingleOrDefault(i => i.Id == item.Id);
+
+            if (saidaForcada is not null)
+            {
+                if (saidaForcada.Saida is null || saidaForcada.Saida == saidaForcada.Entrada)
+                {
+                    DateTime diaEntrada = saidaForcada.Data?.Date ?? DateTime.Today;
+                    string turno = string.Empty;
+
+                    CrmUtilizador funcionario = listaUsers.FirstOrDefault(i => i.Id == saidaForcada.Utilizadorid);
+
+                    if (funcionario is not null)
+                    {
+                        turno = funcionario.NomeTurno;
+                    }
+
+                    if (turno == "Manhã")
+                    {
+                        DateTime novaSaida = diaEntrada.Add(saidaManha);
+                        saidaForcada.Saida = novaSaida;
+                        saidaForcada.SaidaForcada = true;
+                    }
+
+                    if (turno == "Tarde")
+                    {
+                        DateTime novaSaida = diaEntrada.Add(saidaTarde);
+                        saidaForcada.Saida = novaSaida;
+                        saidaForcada.SaidaForcada = true;
+                    }
+
+                    if (turno == "Integral")
+                    {
+                        DateTime novaSaida = diaEntrada.Add(saidaIntegral);
+                        saidaForcada.Saida = novaSaida;
+                        saidaForcada.SaidaForcada = true;
+                    }
+
+                    dbContext.SaveChanges();
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("showToast", "O horário de saída já está definido.", "bg-danger");
+                }
+
+                GetPicagens(selectedAno, selectedMes, selectedUser);
+            }
+        }
+    }
+
+    //eliminar em caso de duplicação
+    private async void ApagarPicagem(PicagemTratada item)
+    {
+        var resultado = await DialogService.ShowMessageBox("Confirmação", "Tem certeza que deseja apagar o registo de picagem ?", yesText: "Confirmar", cancelText: "Cancelar");
+
+        if (resultado == true)
+        {
+            CrmPicagem apagarPicagem = dbContext.Set<CrmPicagem>().FirstOrDefault(i => i.Id == item.Id);
+
+            if (apagarPicagem is not null)
+            {
+                dbContext.Remove(apagarPicagem);
+                dbContext.SaveChanges();
+                GetPicagens(selectedAno, selectedMes, selectedUser);
+            }
+        }
+    }
+
+    // Método GerarRelatorio completamente reescrito e limpo
+    public async Task GerarRelatorio()
+    {
+        // Verificar se há dados
+        if (PicagensRows == null || PicagensRows.Count == 0)
+        {
+            await DialogService.ShowMessageBox("Aviso", "Não há dados de picagens para gerar o relatório.");
+            return;
+        }
+
+        // Ativar loading
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            // Gerar nome do arquivo
+            var nomeArquivo = $"RelatorioPicagens_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+
+            // Definir caminho completo
+            var pastaRelatorios = Path.Combine(Env.WebRootPath, "reports");
+
+            // Criar pasta se não existir
+            if (!Directory.Exists(pastaRelatorios))
+            {
+                Directory.CreateDirectory(pastaRelatorios);
+            }
+
+            var caminhoCompleto = Path.Combine(pastaRelatorios, nomeArquivo);
+
+            // Gerar PDF usando o serviço
+            var dadosPdf = await PdfService.GeraPdfAsync(PicagensRows, "Relatório de Picagens");
+
+            // Salvar arquivo
+            await File.WriteAllBytesAsync(caminhoCompleto, dadosPdf);
+
+            // Abrir em nova janela
+            var urlRelatorio = $"/reports/{nomeArquivo}";
+            Navigation.NavigateTo(urlRelatorio, true);
+        }
+        catch (Exception erro)
+        {
+            await DialogService.ShowMessageBox("Erro", $"Erro ao gerar relatório: {erro.Message}");
+        }
+        finally
+        {
+            // Desativar loading
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // Método alternativo caso o serviço PDF não funcione
+    public async Task GerarRelatorioAlternativo()
+    {
+        if (PicagensRows == null || PicagensRows.Count == 0)
+        {
+            await DialogService.ShowMessageBox("Aviso", "Não há dados para gerar relatório.");
+            return;
+        }
+
+        // Por enquanto, usar o Excel como alternativa
+        GerarExcel();
+
+        await DialogService.ShowMessageBox("Info", "Relatório gerado em formato Excel. Funcionalidade PDF em desenvolvimento.");
+    }
+
+    //exibição relatorio
+    private async Task OpenFileFromStream(string file, string name)
+    {
+        if (!File.Exists(file))
+        {
+            await JSRuntime.InvokeVoidAsync("showToast", "Arquivo não encontrado.", "bg-danger");
+            return;
+        }
+
+        var response = await utils.OpenFileFromStream(file);
+        await JSRuntime.InvokeVoidAsync("openFileInNewTab", response.base64Data, name, response.mimeType);
+    }
+
+
+    private Task TesteGrafico(MouseEventArgs args)
+    {
+        throw new NotImplementedException();
+    }
+}

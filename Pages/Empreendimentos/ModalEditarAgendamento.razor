@@ -1,0 +1,267 @@
+﻿
+@using System.Text.Json
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.Data.SqlClient
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject IDialogService Dialog
+@inject IConfiguration _configuration
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService DbContextFactory
+@inject IJSRuntime JSRuntime
+
+<MudDialog>
+	<DialogContent>
+
+		@if (!string.IsNullOrEmpty(alertaAgendamento))
+		{
+			<div class="alert alert-danger mb-2 text-start" style="font-size: 0.9rem;">
+				@alertaAgendamento
+			</div>
+		}
+
+		<div>
+			<label>Data</label>
+			<input type="date" class="form-control" value="@DataInicioAgendamentoStr" @onchange="OnDataInicioAgendamentoChanged" />
+		</div>
+
+		<div>
+			<label>Hora Entrada</label>
+			<input type="time" class="form-control"
+				   value="@HoraEntradaStr"
+				   @onchange="OnHoraEntradaChanged" />
+		</div>
+
+		<div>
+			<label>Hora Saída</label>
+			<input type="time" class="form-control"
+				   value="@HoraSaidaStr"
+				   @onchange="OnHoraSaidaChanged" />
+		</div>
+
+	</DialogContent>
+	<DialogActions>
+		<MudButton OnClick="Cancel">Cancel</MudButton>
+		<MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
+	</DialogActions>
+</MudDialog>
+
+@code
+{
+	[CascadingParameter]
+	public MudDialogInstance MudDialog { get; set; } = null!;
+
+	[Parameter]
+	public required FuncionarioObraAgendamento Agendamento { get; set; }
+
+	[Parameter]
+	public List<CrmAusencia> listaAusencias { get; set; }
+
+	[Parameter]
+	public List<CrmFeriado> listaFeriados { get; set; }
+
+	[Parameter]
+	public List<Funcionario> listaColaboradores { get; set; }
+
+	EmpresaUserSession who = null;
+
+	private string DataInicioAgendamentoStr => Agendamento.DataInicio.ToString("yyyy-MM-dd");
+
+	CrmPicagem picagem = new CrmPicagem() { };
+
+	public string alertaAgendamento = string.Empty;
+
+	private string HoraEntradaStr => Agendamento.HoraEntrada?.ToString(@"hh\:mm") ?? "";
+
+	private void OnHoraEntradaChanged(ChangeEventArgs e)
+	{
+		var val = e.Value?.ToString();
+		Agendamento.HoraEntrada = TimeSpan.TryParse(val, out var ts) ? ts : null;
+	}
+
+	private string HoraSaidaStr => Agendamento.HoraSaida?.ToString(@"hh\:mm") ?? "";
+
+	private void OnHoraSaidaChanged(ChangeEventArgs e)
+	{
+		var val = e.Value?.ToString();
+		Agendamento.HoraSaida = TimeSpan.TryParse(val, out var ts) ? ts : null;
+	}
+
+	private async Task Submit()
+	{
+		if (string.IsNullOrEmpty(alertaAgendamento))
+		{
+			MudDialog.Close(DialogResult.Ok(Agendamento));
+		}
+	}
+
+	private void Cancel() => MudDialog.Cancel();
+
+	private void OnDataInicioAgendamentoChanged(ChangeEventArgs e)
+	{
+		var val = e.Value?.ToString();
+		if (DateTime.TryParse(val, out var date))
+		{
+			Agendamento.DataInicio = date;
+			Agendamento.DataFim = date;
+			ValidarAgendamento();
+			StateHasChanged();
+		}
+	}
+
+	private void ValidarAgendamento()
+	{
+		alertaAgendamento = "";
+
+		if (Agendamento.IdFuncionario > 0)
+		{
+			// Verificar data de início
+			if (Agendamento.DataInicio != DateTime.MinValue)
+			{
+				var diaEscolhido = Agendamento.DataInicio.Date;
+
+				if (VerificarFeriado(diaEscolhido))
+				{
+					alertaAgendamento = $"⚠️ ATENÇÃO: O dia {diaEscolhido:dd/MM/yyyy} é feriado!";
+					return;
+				}
+
+				var (temAusencia, ehTemporaria, ausencia) = VerificarAusenciaDetalhada(Agendamento.IdFuncionario, diaEscolhido);
+				if (temAusencia)
+				{
+					var colaboradorNome = listaColaboradores.FirstOrDefault(f => f.Id == Agendamento.IdFuncionario)?.Nome ?? "Colaborador";
+					alertaAgendamento = GerarMensagemAusencia(ausencia, colaboradorNome, diaEscolhido);
+					return;
+				}
+			}
+
+			// Verificar data de fim (apenas se for diferente da data de início)
+			if (Agendamento.DataFim != DateTime.MinValue &&
+				Agendamento.DataFim.Date != Agendamento.DataInicio.Date)
+			{
+				var diaEscolhido = Agendamento.DataFim.Date;
+
+				if (VerificarFeriado(diaEscolhido))
+				{
+					alertaAgendamento = $"⚠️ ATENÇÃO: O dia {diaEscolhido:dd/MM/yyyy} é feriado!";
+					return;
+				}
+
+				var (temAusencia, ehTemporaria, ausencia) = VerificarAusenciaDetalhada(Agendamento.IdFuncionario, diaEscolhido);
+				if (temAusencia)
+				{
+					var colaboradorNome = listaColaboradores.FirstOrDefault(f => f.Id == Agendamento.IdFuncionario)?.Nome ?? "Colaborador";
+					alertaAgendamento = GerarMensagemAusencia(ausencia, colaboradorNome, diaEscolhido);
+					return;
+				}
+			}
+		}
+
+		alertaAgendamento = "";
+	}
+
+	private bool VerificarFeriado(DateTime data)
+	{
+		return listaFeriados.Any(f => f.Mes == data.Month && f.Dia == data.Day && f.Trabalha != true);
+	}
+
+	private bool VerificarAusencia(int colaboradorId, DateTime data)
+	{
+		return listaAusencias.Any(a =>
+			a.IdColaborador == colaboradorId &&
+			a.DataInicio.Date <= data.Date &&
+			a.IsDeleted != true &&
+			(a.DataFim == null || a.DataFim.Value.Date >= data.Date));
+	}
+
+	private (bool TemAusencia, bool EhTemporaria, CrmAusencia Ausencia) VerificarAusenciaDetalhada(int colaboradorId, DateTime data)
+	{
+		var ausenciasValidas = listaAusencias.Where(a =>
+			a.IdColaborador == colaboradorId &&
+			a.IsDeleted != true &&
+			// Verificação exata: a data deve estar DENTRO do período da ausência
+			a.DataInicio.Date <= data.Date &&
+			(a.DataFim?.Date ?? a.DataInicio.Date) >= data.Date)
+			.ToList();
+
+		if (!ausenciasValidas.Any())
+			return (false, false, null);
+
+		// Priorizar ausências por especificidade:
+		// 1º - Ausências que começam exatamente na data especificada
+		// 2º - Ausências com menor duração (mais específicas)
+		// 3º - Por ordem de criação/ID
+		var ausencia = ausenciasValidas
+			.OrderByDescending(a => a.DataInicio.Date == data.Date ? 1 : 0) // Prioriza início na data exata
+			.ThenBy(a => ((a.DataFim?.Date ?? a.DataInicio.Date) - a.DataInicio.Date).Days) // Menor duração primeiro
+			.ThenByDescending(a => a.Id)                                     // Mais recente primeiro
+			.First();
+
+		// Uma ausência é considerada temporária se tem HoraInicio e HoraFim definidas
+		bool ehTemporaria = ausencia.HoraInicio.HasValue && ausencia.HoraFim.HasValue;
+
+		return (true, ehTemporaria, ausencia);
+	}
+
+	private string GerarMensagemAusencia(CrmAusencia ausencia, string colaboradorNome, DateTime data)
+	{
+		string tipoAusencia = ausencia.TipoAusencia?.ToLower() ?? "ausência";
+
+		// Formatação das datas
+		string dataFormatada = data.ToString("dd/MM/yyyy");
+		string periodoCompleto = "";
+
+		if (ausencia.DataFim.HasValue && ausencia.DataFim.Value.Date != ausencia.DataInicio.Date)
+		{
+			periodoCompleto = $" (de {ausencia.DataInicio:dd/MM/yyyy} até {ausencia.DataFim.Value:dd/MM/yyyy})";
+		}
+
+		switch (tipoAusencia)
+		{
+			case "temporária":
+			case "temporaria":
+				if (ausencia.HoraInicio.HasValue && ausencia.HoraFim.HasValue)
+				{
+					return $"⚠️ ATENÇÃO: {colaboradorNome} tem ausência temporária no dia {dataFormatada} das {ausencia.HoraInicio:hh\\:mm} às {ausencia.HoraFim:hh\\:mm}!";
+				}
+				else
+				{
+					return $"⚠️ ERRO: {colaboradorNome} tem ausência temporária no dia {dataFormatada}{periodoCompleto}!";
+				}
+
+			case "falta":
+				if (ausencia.HoraInicio.HasValue && ausencia.HoraFim.HasValue)
+				{
+					return $"⚠️ ATENÇÃO: {colaboradorNome} tem falta parcial no dia {dataFormatada} das {ausencia.HoraInicio:hh\\:mm} às {ausencia.HoraFim:hh\\:mm}!";
+				}
+				else
+				{
+					return $"⚠️ ERRO: {colaboradorNome} tem falta no dia {dataFormatada}{periodoCompleto}!";
+				}
+
+			case "férias":
+			case "ferias":
+				return $"⚠️ ERRO: {colaboradorNome} está de férias{periodoCompleto}!";
+
+			case "folga":
+				return $"⚠️ ERRO: {colaboradorNome} está de folga no dia {dataFormatada}{periodoCompleto}!";
+
+			default:
+				if (ausencia.HoraInicio.HasValue && ausencia.HoraFim.HasValue)
+				{
+					return $"⚠️ ATENÇÃO: {colaboradorNome} tem ausência no dia {dataFormatada} das {ausencia.HoraInicio:hh\\:mm} às {ausencia.HoraFim:hh\\:mm}!";
+				}
+				else
+				{
+					return $"⚠️ ERRO: {colaboradorNome} está ausente no dia {dataFormatada}{periodoCompleto}!";
+				}
+		}
+	}
+}

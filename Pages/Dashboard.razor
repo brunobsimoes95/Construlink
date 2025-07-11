@@ -1,0 +1,1587 @@
+﻿@page "/Dashboard"
+@using System
+@using System.Text.Json
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Shared
+@using Microsoft.EntityFrameworkCore
+@using Newtonsoft.Json
+@inject IConfiguration Configuration
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject IWebHostEnvironment Env
+@inject Utils utils
+@inject HttpClient httpClient
+@inject IDbContextFactoryService DbContextFactory
+
+<PageTitle>Construlink</PageTitle>
+
+@if (acessoNegado)
+{
+    <div class="alert alert-danger mt-4" role="alert">
+        <strong>O seu perfil não tem permissões para aceder a esta página.</strong><br />
+        Por favor, contacte o administrador do sistema.
+    </div>
+}
+else
+{
+    <div class="row mt-2 mb-2">
+        <div class="col-md-6 mt-3">
+            <div class="row">
+                <div class="col-md-5" style="display: flex; align-items: center;">
+                    <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                    @if (who != null && who.User.Isadmin == true)
+                    {
+                        <MudText Typo="Typo.h5" Class="ms-1">
+                            Dashboard
+                        </MudText>
+                    }
+                    else if (who != null && who.User.FazPicagens == true)
+                    {
+                        <h1 class="ms-2">Dashboard</h1>
+                        @* <MudText Typo="Typo.h5" Class="ms-1">
+                            Dashboard
+                        </MudText> *@
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mt-3 hide-on-mobile">
+            <ol class="breadcrumb" style="float:right;">
+                <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+                <li class="breadcrumb-item active">
+                    @if (who != null && who.User.Isadmin == true)
+                    {
+                        <span>Dashboard</span>
+                    }
+                    else if (who != null && who.User.FazPicagens == true)
+                    {
+
+                        <span>Timesheet</span>
+
+                    }
+                </li>
+            </ol>
+        </div>
+    </div>
+}
+
+
+@* MENSAGENS *@
+@if (Erro != "")
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Erro!</strong> @Erro
+    </div>
+}
+@if (Mensagem != "")
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @Mensagem
+    </div>
+}
+
+@if (listaAvisos.Any())
+{
+    @if (who.User.Isadmin == true)
+    {
+        <MudCard Class="rounded-2xl mb-2">
+            <MudCardContent Class="p-0">
+                <MudCardHeader Style="@($"color: {Colors.Shades.White}; background: {Colors.Red.Lighten1}; padding: 8px;")">
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6" Class="d-flex align-items-center">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" Class="me-2" />
+                            Avisos                            
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+
+                <MudCardContent Style="@($"background: {Colors.Red.Lighten5}; padding: 8px;")">
+                    @foreach (var aviso in listaAvisos)
+                    {
+                        <MudText Typo="Typo.body2" Class="mb-2" Style="@($"color: {Colors.Shades.Black}; padding 8px;")">
+                            <ul class="m-0 ps-3">
+                                <li><strong>@($"{aviso.Tipo} - {aviso.DataFim.Value.Date.ToString("dd/MM/yyyy")}")</strong></li>
+                                <li>@aviso.Mensagem</li>
+                                <li>
+                                    <strong>Início:</strong>
+                                    @(aviso.HoraInicio.HasValue ? aviso.HoraInicio.Value.ToString(@"hh\:mm") : "--:--") -
+                                    <strong>Fim:</strong>
+                                    @(aviso.HoraFim.HasValue ? aviso.HoraFim.Value.ToString(@"hh\:mm") : "--:--")
+                                </li>
+                            </ul>
+                        </MudText>
+                    }
+                </MudCardContent>
+            </MudCardContent>
+        </MudCard>
+    }
+}
+
+<div class="card shadow mb-3">
+    @* PICAGEM *@
+    @if (who != null && who.User.FazPicagens == true || who.User.Isadmin == true)
+    {
+        <div class="card-header vitro-cor-secundaria" style="padding-bottom: 4px;">
+            <span class="fa-solid fa-user-clock me-2"></span>Bem-vindo à aplicação Construlink!
+
+            @* Esconde/Exibe gráficos *@
+            @if (who.User.Isadmin == true)
+            {
+                if (!carregarPicagem)
+                {
+                    <div style="float:right;" id="picagemExibir">
+                        <button type="button" class="btn btn-theme btn-sm" @onclick="@(()=> {carregarPicagem = true; JSRuntime.InvokeAsync<string>("CarregarPicagem", carregarPicagem); })">
+                            <span><i class="fa-solid fa-arrow-down"></i></span>
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div style="float:right;" id="picagemNaoExibir">
+                        <button type="button" class="btn btn-theme btn-sm" @onclick="@(()=> {carregarPicagem = false; JSRuntime.InvokeAsync<string>("CarregarPicagem", carregarPicagem); })">
+                            <span><i class="fa-solid fa-arrow-up"></i></span>
+                        </button>
+                    </div>
+                }
+            }
+        </div>
+        <div class="card-body">
+            @if (who.User.IsApenasPicagens == false && who.User.FazPicagens == true)
+            {
+                <div class="px-4 py-5 my-5 text-center" bis_skin_checked="1" id="divPicagens">
+                    <h1 class="display-5 fw-bold">Picagens</h1>
+                    <div class="col-lg-6 mx-auto" bis_skin_checked="1">
+                        <p class="lead mb-4">Utilize os botões abaixo para efetuar as picagens.</p>
+                        <div class="d-grid gap-2 d-sm-flex justify-content-sm-center" bis_skin_checked="1" id="help_picagens_timesheets">
+
+                            <button type="button" class="btn btn-theme btn-lg px-4 gap-3" data-bs-toggle="modal" data-bs-target="#picagemModal">
+                                <span><i class="fas fa-arrow-right-to-bracket"></i></span> Efetuar Picagem
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="px-4 py-5 my-5 text-center" bis_skin_checked="1" id="divPicagens">
+                    <h1 class="display-5 fw-bold">Picagem efetuada com sucesso.</h1>
+
+                    <p class="lead mb-4">Picou com o utilizador <strong>@who.User.Name</strong></p>
+                </div>
+
+            }
+
+            @* STATS *@
+            @if (who != null && who.User.Isadmin == true)
+            {
+                @if (updatingferias == false && updatingtimesheets == false)
+                {
+                    <div class="card">
+                        <div class="card-header vitro-cor-secundaria">
+                            <h5 class="mt-2 mb-2" id="help_stats">
+
+                                <span class="me-2">Hoje</span>
+
+                                <!-- spinner loading -->
+                                <span id="loadingstats" class="spinner-border text-success d-none" role="status"></span>
+
+                                @* <span class="loadingstatsafter" @onclick="(() => { GetData(); })" style="cursor:pointer"><i class="fas fa-arrows-rotate"></i></span> *@
+                                <span class="loadingstatsafter" @onclick="(() => { showtable = false; carregarGrafico = true; })" style="cursor:pointer"><i class="fa-solid fa-list me-2 fs-5"></i></span>
+                                <span class="loadingstatsafter" @onclick="(() => { showtable = true; carregarGrafico = true; })" style="cursor:pointer"><i class="fa-solid fa-list-ol fs-5"></i></span>
+
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            @if (showtable == false)
+                            {
+                                @* blocos de cima *@
+                                <div class="row mt-2">
+                                    <div class="col-6">
+                                        <div class="bg-white rounded-lg p-3 shadow mb-2" style="border: solid 1px #d3d3d3; border-radius: 15px;">
+                                            <div class="card-body text-success"><strong><i class="fas fa-user-check"></i> @NumColaboradoresAtivos Colaboradores Presentes</strong></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="bg-white rounded-lg p-3 shadow mb-2" style="border: solid 1px #d3d3d3; border-radius: 15px;">
+                                            <div class="card-body text-danger"><strong><i class="fas fa-user-slash"></i> @NumColaboradoresFalta Colaboradores Ausentes</strong></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+
+                            @* blocos de baixo *@
+                            <div class="row mb-3 mt-3">
+                                @if (showtable == false)
+                                {
+                                    <div class="col-sm-6 col-md-4 col-xl-3 mb-4">
+                                        <div class="card shadow p-3 mb-2">
+                                            <div class="d-flex justify-content-center align-items-center text-center">
+                                                <div class="d-flex flex-row align-items-center">
+                                                    <div class="icon"><i class="fas fa-chart-pie"></i></div>
+                                                    <div class="ms-2">
+                                                        <h6 class="mb-2 mt-2">Assiduidade</h6>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Chart -->
+                                            <div class="row mt-4 mb-2" style="width:140px;margin:auto; min-height:8em;">
+                                                <div class="roundprogress mb-4">
+                                                    <span class="roundprogress-left">
+                                                        <span class="roundprogress-bar @AssiduidadeTheme"></span>
+                                                    </span>
+                                                    <span class="roundprogress-right">
+                                                        <span class="roundprogress-bar @AssiduidadeTheme"></span>
+                                                    </span>
+                                                    <div class="roundprogress-value">@AssiduidadeToday%</div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Stats -->
+                                            <div class="row text-center mt-1 mb-1">
+                                                <div class="col-6 border-right">
+                                                    <div class="h5 font-weight-bold mb-0"><span class="fas fa-user-check text-success me-1"></span> @NumColaboradoresAtivos</div><span class="small text-gray">Ativos</span>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="h5 font-weight-bold mb-0"><span class="fas fa-user-slash text-danger me-1"></span> @NumColaboradoresFalta</div><span class="small text-gray">Faltas</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @foreach (UserFull user in UsersFull)
+                                    {
+                                        int idAtual = 0;
+                                        <div class="col-sm-6 col-md-4 col-xl-3">
+                                            <div class="card shadow p-3 mb-2">
+                                                <div class="d-flex justify-content-between">
+                                                    <div class="d-flex flex-row align-items-center">
+                                                        @if (idAtual != user.user.Id)
+                                                        {
+                                                            if (utilizadoresSemPicagem.Contains(user.user.Id))
+                                                            {
+                                                                <div class="icon"><i class="fas fa-user text-danger"></i></div>
+                                                                idAtual = user.user.Id;
+                                                            }
+                                                        }
+                                                        @if (idAtual != user.user.Id)
+                                                        {
+                                                            <div class="icon"><i class="fas fa-user text-success"></i></div>
+                                                        }
+                                                        <div class="ms-2">
+                                                            <h6 class="mb-0">@user.user.Name</h6>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-4">
+                                                    @if (!string.IsNullOrEmpty(user.picagem.Key))
+                                                    {
+                                                        <h3 class="lead mb-3">@user.picagem.Key <br /> às @user.picagem.Value horas</h3>
+                                                        @if (user.picagemrow != null)
+                                                        {
+                                                            <p class="mb-0"><small><i class="fas fa-arrow-up me-1"></i> Entrou: @(user.picagemrow.Entrada.Value.ToShortTimeString() != "00:00" ? user.picagemrow.Entrada.Value.ToShortTimeString() : "-")</small></p>
+                                                            <p class="mb-0"><small><i class="fas fa-utensils me-1"></i> Iniciou Almoço: @((user.picagemrow.InicioAlmoco != user.picagemrow.Entrada && user.picagemrow.InicioAlmoco != user.picagemrow.Saida) ? user.picagemrow.InicioAlmoco.Value.ToShortTimeString() : "-")</small></p>
+                                                            <p class="mb-0"><small><i class="fas fa-utensils me-1"></i> Terminou Almoço: @((user.picagemrow.FimAlmoco != user.picagemrow.Entrada && user.picagemrow.FimAlmoco != user.picagemrow.Saida) ? user.picagemrow.FimAlmoco.Value.ToShortTimeString() : "-")</small></p>
+                                                            <p><small><i class="fas fa-arrow-down me-1"></i> Saída: @((user.picagemrow.Saida != user.picagemrow.Entrada && user.picagemrow.Saida > user.picagemrow.FimAlmoco) ? user.picagemrow.Saida.Value.ToShortTimeString() : "-")</small></p>
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        <h3 class="lead mb-3" style="min-height:8em;">Sem registo <br /> de picagens</h3>
+                                                    }
+                                                    <div class="mt-4">
+                                                        <div class="progress">
+                                                            @if (!string.IsNullOrEmpty(user.picagem.Key))
+                                                            {
+                                                                @switch (user.picagem.Key)
+                                                                {
+                                                                    case "Entrada":
+                                                                        <div class="progress-bar bg-theme" role="progressbar" style="width: 25%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                        break;
+                                                                    case "Inicio Almoço":
+                                                                        <div class="progress-bar bg-theme" role="progressbar" style="width: 50%" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                        break;
+                                                                    case "Fim Almoço":
+                                                                        <div class="progress-bar bg-theme" role="progressbar" style="width: 75%" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                        break;
+                                                                    case "Saída":
+                                                                        <div class="progress-bar bg-theme" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                        break;
+                                                                    default:
+                                                                        <div class="progress-bar bg-danger" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                        break;
+                                                                }
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="progress-bar bg-danger" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                                            }
+                                                        </div>
+                                                        <div class="mt-3">Hoje</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                                else
+                                {
+                                    <div class="col-12">
+                                        <div class="card shadow p-3 mb-2">
+                                            <div class="d-flex justify-content-center align-items-center text-center">
+                                                <div class="d-flex flex-row align-items-center">
+                                                    <div class="icon"><i class="fas fa-chart-pie"></i></div>
+                                                    <div class="ms-2">
+                                                        <h6 class="mb-2 mt-2">Assiduidade</h6>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Chart -->
+                                            <div class="row mt-4 mb-2" style="width:140px;margin:auto; min-height:8em;">
+                                                <div class="roundprogress mb-4">
+                                                    <span class="roundprogress-left">
+                                                        <span class="roundprogress-bar @AssiduidadeTheme"></span>
+                                                    </span>
+                                                    <span class="roundprogress-right">
+                                                        <span class="roundprogress-bar @AssiduidadeTheme"></span>
+                                                    </span>
+                                                    <div class="roundprogress-value">@AssiduidadeToday%</div>
+                                                </div>
+                                            </div>
+
+                                            <!-- Stats -->
+                                            <div class="row text-center mt-1 mb-1">
+                                                <div class="col-6 border-right">
+                                                    <div class="h5 font-weight-bold mb-0"><span class="fas fa-user-check text-success me-1"></span> @NumColaboradoresAtivos</div><span class="small text-gray">Ativos</span>
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="h5 font-weight-bold mb-0"><span class="fas fa-user-slash text-danger me-1"></span> @NumColaboradoresFalta</div><span class="small text-gray">Faltas</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="card shadow p-3 mb-2">
+                                            @foreach (UserFull user in UsersFull)
+                                            {
+                                                <div class="row mb-2" style="border-bottom: solid 1px;">
+                                                    <div class="col-md-4"><p>@user.user.Name</p></div>
+                                                    <div class="col-md-4">
+                                                        @if (!string.IsNullOrEmpty(user.picagem.Key))
+                                                        {
+                                                            <p>@user.picagem.Key às @user.picagem.Value horas</p>
+                                                        }
+                                                        else
+                                                        {
+                                                            <p>Sem registo de picagens</p>
+                                                        }
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="progress mt-2">
+                                                            @if (!string.IsNullOrEmpty(user.picagem.Key))
+                                                            {
+                                                                @switch (user.picagem.Key)
+                                                                {
+                                                                    case "Entrada":
+                                                                        <div class="progress-bar bg-theme" role="progressbar" style="width: 25%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                        break;
+                                                                    case "Inicio Almoço":
+                                                                        <div class="progress-bar bg-theme" role="progressbar" style="width: 50%" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                        break;
+                                                                    case "Fim Almoço":
+                                                                        <div class="progress-bar bg-theme" role="progressbar" style="width: 50%" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                        break;
+                                                                    case "Saída":
+                                                                        <div class="progress-bar bg-theme" role="progressbar" style="width: 100%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                        break;
+                                                                    default:
+                                                                        <div class="progress-bar bg-danger" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                        break;
+                                                                }
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="progress-bar bg-danger" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+
+        </div>
+        <!-- Modal -->
+        <div class="modal fade" id="picagemModal" tabindex="-1" aria-labelledby="picagemModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="picagemModalLabel"><span><i class="fas fa-arrow-right-to-bracket"></i></span> Efetuar Picagem</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Confirma a picagem?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button"
+                        class="btn btn-theme"
+                        data-bs-dismiss="modal"
+                        @onclick="makePicagem"
+                        disabled="@_cooldown">
+                            Confirmar
+                        </button>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<script>
+
+    function IconeUtilizador(userId) {
+    $('#' + userId).addClass('text-danger');
+    }
+
+    @* Botão que esconde a area de picagens *@
+    function CarregarPicagem(comportamento) {
+
+    const btnUp = $('#picagemExibir');
+    const btnDown = $('#picagemNaoExibir');
+    const divPicagem = $('#divPicagens');
+
+    if (comportamento) {
+    btnUp.hide();
+    btnDown.show();
+    divPicagem.show();
+    }
+    else
+    {
+    btnUp.show();
+    btnDown.hide();
+    divPicagem.hide();
+    }
+    }
+
+    @* Modal *@
+    function showModal(modalId, comportamento) {
+    jQuery(modalId).modal(comportamento);
+    }
+
+    @* loading spinner *@
+    function loadingstats() {
+    jQuery("#loadingstats").toggleClass("d-none");
+    jQuery(".loadingstatsafter").toggleClass("d-none");
+    }
+
+    @* Atualiza o gráfico *@
+    function updateChartRotation(value) {
+    if (value <= 0) {
+    value = 100;
+    }
+
+    var progressElements = document.querySelectorAll('.roundprogress');
+
+    progressElements.forEach(function (progressElement) {
+    var degrees = (value / 100) * 360; // Convert percentage to degrees
+
+    // Set the rotation for both sides of the progress bar
+    var leftBar = progressElement.querySelector('.roundprogress-left .roundprogress-bar');
+    var rightBar = progressElement.querySelector('.roundprogress-right .roundprogress-bar');
+
+    if (value <= 50) {
+    // If progress is 50% or less, only rotate the right side
+    rightBar.style.transform = `rotate(` + degrees + `deg)`;
+    if (leftBar) {
+    leftBar.style.transform = 'rotate(0deg)';
+    }
+    } else {
+    rightBar.style.transform = 'rotate(180deg)';
+    var extraDegrees = degrees - 180;
+    leftBar.style.transform = `rotate(` + extraDegrees + `deg)`;
+    }
+    });
+    }
+</script>
+
+@* HELP *@
+@if (who != null && who.User.Isadmin == true)
+{
+    if (who.User.FazPicagens == true)
+    {
+        <script>
+            jQuery('#help').off('click');
+            jQuery('#help').click(function () {
+            var steps = [
+            {
+            element: "#help_picagens_timesheets",
+            popover: {
+            title: "Picagens e Timesheets",
+            description: "Aqui pode efetuar picagens e visitar a página de TimeSheets, onde pode visualizar e editar as TimeSheets.",
+            showButtons: true,
+            closeBtnText: 'Fechar',
+            nextBtnText: 'Próximo',
+            prevBtnText: 'Anterior',
+            side: "top",
+            align: 'start'
+            },
+            },
+            {
+            element: "#help_update_dados",
+            popover: {
+            title: "Atualização de dados via CarbonFoote e Primavera",
+            description: "A atualização dos dados para as timesheets é automáticamente preenchido aquando do seu preenchimento. Ainda assim, podem forçar essa atualização de dados usando estes botões",
+            showButtons: true,
+            closeBtnText: 'Fechar',
+            nextBtnText: 'Próximo',
+            prevBtnText: 'Anterior',
+            side: "top",
+            align: 'start'
+            },
+            },
+            {
+            element: "#help_stats",
+            popover: {
+            title: "Estatísticas",
+            description: "Aqui pode atualizar os dados estatísticos e pode alterar a visualização dos dados entre cartões e tabela.",
+            showButtons: true,
+            closeBtnText: 'Fechar',
+            nextBtnText: 'Próximo',
+            prevBtnText: 'Anterior',
+            doneBtnText: 'OK',
+            side: "top",
+            align: 'start'
+            },
+            },
+            ];
+            var driver = new Driver({ allowClose: false, });
+            driver.defineSteps(steps);
+            driver.start();
+            });
+        </script>
+    }
+    else
+    {
+        <script>
+            jQuery('#help').off('click');
+            jQuery('#help').click(function () {
+            var steps = [
+            {
+            element: "#help_update_dados",
+            popover: {
+            title: "Atualização de dados via CarbonFoote e Primavera",
+            description: "A atualização dos dados para as timesheets é automáticamente preenchido aquando do seu preenchimento. Ainda assim, podem forçar essa atualização de dados usando estes botões",
+            showButtons: true,
+            closeBtnText: 'Fechar',
+            nextBtnText: 'Próximo',
+            prevBtnText: 'Anterior',
+            side: "top",
+            align: 'start'
+            },
+            },
+            {
+            element: "#help_stats",
+            popover: {
+            title: "Estatísticas",
+            description: "Aqui pode atualizar os dados estatísticos e pode alterar a visualização dos dados entre cartões e tabela.",
+            showButtons: true,
+            closeBtnText: 'Fechar',
+            nextBtnText: 'Próximo',
+            prevBtnText: 'Anterior',
+            doneBtnText: 'OK',
+            side: "top",
+            align: 'start'
+            },
+            },
+            ];
+            var driver = new Driver({ allowClose: false, });
+            driver.defineSteps(steps);
+            driver.start();
+            });
+        </script>
+    }
+}
+else
+{
+    if (who.User.FazPicagens == true)
+    {
+        <script>
+            jQuery('#help').off('click');
+            jQuery('#help').click(function () {
+            var steps = [
+            {
+            element: "#help_picagens_timesheets",
+            popover: {
+            title: "Picagens e Timesheets",
+            description: "Aqui pode efetuar picagens e visitar a página de TimeSheets, onde pode visualizar e editar as TimeSheets.",
+            showButtons: true,
+            closeBtnText: 'Fechar',
+            nextBtnText: 'Próximo',
+            prevBtnText: 'Anterior',
+            doneBtnText: 'OK',
+            side: "top",
+            align: 'start'
+            },
+            },
+            ];
+            var driver = new Driver({ allowClose: false, });
+            driver.defineSteps(steps);
+            driver.start();
+            });
+        </script>
+    }
+}
+
+@* ALTERAR PASS *@
+@if (who != null && who.User.Changepassword == true)
+{
+    <!-- Modal -->
+    <div class="modal fade" id="newpass" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="newpassLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="newpassLabel">Alterar Palavra Passe</h5>
+                </div>
+                <div class="modal-body">
+
+                    @if (who.User.IsApenasPicagens == true)
+                    {
+                        <p>Olá @who.User.Name, bem-vindo à aplicação @who.Empresa.Empresa<br /> Altere a sua senha de acesso e introduza seus dados biométricos.</p>
+                    }
+                    else
+                    {
+                        <p>Olá @who.User.Name, bem-vindo à aplicação @who.Empresa.Empresa<br /> Para começar a utilizar a aplicação altere a sua senha de acesso.</p>
+                    }
+
+                    @if (who.User.IsApenasPicagens == true)
+                    {
+                        <div class="ms-0 form-check">
+
+                            @if (!ismonitoringface)
+                            {
+                                <button id="facebutton" class="btn btn-theme d-inline p-2" @onclick="@(()=> {JSRuntime.InvokeAsync<object>("visibilidadeModal", "#facialModal", "show"); GetFace();})">Inserir/Atualizar Dados</button>
+                            }
+                        </div>
+                    }
+
+                    @{
+                        var inputTypeNewPassowrd = visibleNewPassword ? "text" : "password";
+                        var inputTypeNewPassowrdConfirmation = visibleNewPasswordConfirmation ? "text" : "password";
+
+                        var newPassIcon = visibleNewPassword ? "fa-regular fa-eye-slash" : "fa-regular fa-eye";
+                        var newPassConfirmationIcon = visibleNewPasswordConfirmation ? "fa-regular fa-eye-slash" : "fa-regular fa-eye";
+                    }
+
+                    <label for="pass_nova" class="form-label">Nova palavra passe</label>
+                    <div class="d-flex align-items-center">
+                        <input type="@inputTypeNewPassowrd" name="pass_nova" id="pass_nova" class="form-control"
+                               style="max-width: 94%;" @bind="pass_nova" />
+                        <i class="@newPassIcon ms-2" @onclick="@(() => { visibleNewPassword = !visibleNewPassword; })"></i>
+                    </div>
+
+                    <label for="pass_confirma" class="form-label">Confirmar nova palavra passe</label>
+                    <div class="d-flex align-items-center">
+                        <input type="@inputTypeNewPassowrdConfirmation" name="pass_confirma" id="pass_confirma" class="form-control"
+                               style="max-width: 94%;" @bind="pass_confirma" />
+                        <i class="@newPassConfirmationIcon ms-2" @onclick="@(() => { visibleNewPasswordConfirmation = !visibleNewPasswordConfirmation; })"></i>
+                    </div>
+
+                    <p style="color:red">@Erro</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-theme" @onclick="@(()=>{ChangePass();})">Alterar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" id="facialModal" tabindex="-1" aria-labelledby="facialModalLabel" aria-hidden="true">
+    <div class="modal-dialog" style="max-width: 380px;">
+        <div class="modal-content">
+            <div class="modal-header d-flex justify-content-between  align-items-center vitro-cor-secundaria">
+                <h5 class="modal-title d-flex align-items-center" id="facialModalLabel">
+                    <span class="fa-solid fa-camera me-2"></span> Login Facial
+                </h5>
+
+                @if (ismonitoringface)
+                {
+                    <button id="facebutton" style="float:right;" class="btn btn-danger p-2" @onclick="@(() => { GetFace(); JSRuntime.InvokeAsync<object>("visibilidadeModal", "#facialModal", "toggle"); })">Cancelar</button>
+                }
+
+            </div>
+            <div class="modal-body">
+                <div class="ms-0 form-check">
+                    <div id="erro" class="ms-3 d-inline p-2"></div>
+
+                    <div id="login_face" class="mt-3" style="display:none">
+                        <video id="cam" width="316" height="240" autoplay muted></video>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section>
+    <script>
+
+        window.initializeTooltips = () => {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            })
+        }
+
+        function initializeDotNetReference(dotNetRef) {
+            dotNetReference = dotNetRef;
+        }
+
+        //usa variáveis globais que estão definidas no _Layout.cshtml
+        function GetFace() {
+            document.getElementById("login_face").setAttribute('style', 'display:block');
+
+            Promise.all([
+                faceapi.nets.tinyFaceDetector.loadFromUri("/js/face/models"),
+                //faceapi.nets.ssdMobilenetv1.loadFromUri("js/face/models"),
+                faceapi.nets.faceRecognitionNet.loadFromUri("js/face/models"),
+                faceapi.nets.faceLandmark68Net.loadFromUri("js/face/models"),
+                //faceapi.nets.faceExpressionNet.loadFromUri("js/face/models"),
+                //faceapi.nets.ageGenderNet.loadFromUri("js/face/models"),
+            ]);
+
+            if (navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function (stream) {
+                        streamReference = stream; // Store the stream reference
+                        var video = document.getElementById('cam');
+                        video.srcObject = stream;
+                        document.getElementById('erro').innerHTML = '<div class="spinner-grow spinner-grow-sm text-success"></div> A carregar dados, aguarde...';
+
+                        video.addEventListener('loadedmetadata', () => {
+                            const aspectRatio = video.videoWidth / video.videoHeight;
+                            let newWidth = video.clientWidth;
+                            let newHeight = newWidth / aspectRatio;
+
+                            if (newHeight > video.clientHeight) {
+                                newHeight = video.clientHeight;
+                                newWidth = newHeight * aspectRatio;
+                            }
+
+                            video.width = newWidth;
+                            video.height = newHeight;
+                        });
+
+                        video.addEventListener("play", () => {
+                            const canvas = faceapi.createCanvasFromMedia(video);
+                            canvas.setAttribute('style', 'left:2em;position:absolute');
+                            canvas.setAttribute('class', 'facialcanva');
+                            document.getElementById("login_face").prepend(canvas);
+
+                            const displaySize = { width: video.width, height: video.height };
+                            faceapi.matchDimensions(canvas, displaySize);
+
+                            let consecutiveKnownDetections = 0;
+
+                            // Before setting up the new interval, clear the previous one if exists
+                            if (processingIntervalId) {
+                                clearInterval(processingIntervalId);
+                            }
+
+                            processingIntervalId = setInterval(async () => {
+                                const detections = await faceapi
+                                    .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                                    .withFaceLandmarks()
+                                    .withFaceDescriptors();
+                                // const detections = await faceapi
+                                //     .detectAllFaces(video, new faceapi.SsdMobilenetv1Options())
+                                //     .withFaceLandmarks()
+                                //     .withFaceDescriptors();
+
+                                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                                canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+
+                                const threshold = 0.5; // Limite inicial
+                                const dynamicThreshold = threshold + 0.2; // Ajuste dinâmico
+
+                                const descriptions = []; // Array para os descriptors da deteção
+
+                                resizedDetections.forEach(detection => {
+                                    descriptions.push(detection.descriptor); // Guarda cada descriptor
+                                });
+
+                                const results = resizedDetections.map((d) => {
+                                    const isAboveThreshold = d.detection._score > dynamicThreshold;
+                                    if (isAboveThreshold) {
+                                        return { label: "unknown" };
+                                    } else {
+                                        return { label: "Foto" };
+                                    }
+                                });
+
+                                results.forEach((result, i) => {
+                                    const box = resizedDetections[i].detection.box;
+                                    var drawBox = "";
+
+                                    if (result.label === "unknown") {
+                                        consecutiveKnownDetections++;
+                                        var newlabel = "";
+                                        const label = newlabel;
+                                        drawBox = new faceapi.draw.DrawBox(box, {
+                                            label: label.toString(),
+                                            boxColor: 'green',
+                                        });
+
+                                        faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+
+                                    } else {
+                                        consecutiveKnownDetections = 0;
+                                        const label = result.label;
+                                        drawBox = new faceapi.draw.DrawBox(box, {
+                                            label: "",
+                                            boxColor: 'transparent',
+                                        });
+                                    }
+
+                                    drawBox.draw(canvas);
+
+                                    if (consecutiveKnownDetections >= 10) {
+                                        shouldStopProcessing = true;
+                                        consecutiveKnownDetections = 0;
+
+                                        if (video != "" && video.srcObject) {
+                                            video.srcObject.getTracks().forEach(track => track.stop());
+                                        }
+
+                                        saveFace(descriptions);
+                                    }
+
+                                });
+
+                                document.getElementById('erro').innerHTML = 'A reconhecer faces...';
+
+
+                            }, 50);
+                        });
+
+                    })
+                    .catch(function (error) {
+                        document.getElementById('erro').textContent = 'Error accessing camera: ' + error;
+                    });
+            }
+        }
+
+        function StopFace() {
+            if (streamReference) {
+                // para a câmara
+                streamReference.getTracks().forEach(track => track.stop());
+            }
+            if (processingIntervalId) {
+                // limpa o intervalo
+                clearInterval(processingIntervalId);
+            }
+
+            const video = document.getElementById('cam');
+            if (video) {
+                video.srcObject = null;
+            }
+            const canvas = document.querySelector('.facialcanva');
+            if (canvas) {
+                canvas.remove();
+            }
+            document.getElementById('erro').innerHTML = "Parado...";
+            document.getElementById("login_face").setAttribute('style', 'display:none');
+
+            visibilidadeModal('#facialModal', 'hide');
+        }
+
+        function saveFace(descriptors) {
+            let flatDescriptors = {};
+            Object.keys(descriptors).forEach(key => {
+                Object.assign(flatDescriptors, descriptors[key]);
+            });
+
+            const descriptorsString = JSON.stringify(flatDescriptors);
+
+            dotNetReference.invokeMethodAsync("AxClock.Pages.Myinfo.SaveFace", descriptorsString);
+
+            StopFace();
+        }
+
+        //browser fingerprint
+        function bfingerprint() {
+            if (document.getElementById("myCanvas")) {
+                document.getElementById("myCanvas").remove();
+            }
+
+            var canvas = document.createElement('canvas');
+            canvas.id = "myCanvas";
+            canvas.width = 200;
+            canvas.height = 40;
+            canvas.style.display = "none";
+
+            var body = document.getElementsByTagName("body")[0];
+            body.appendChild(canvas);
+
+            var canvas = document.getElementById("myCanvas");
+            var ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "rgb(255,0,255)";
+            ctx.beginPath();
+            ctx.rect(20, 20, 150, 100);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+            ctx.beginPath();
+            ctx.fillStyle = "rgb(0,255,255)";
+            ctx.arc(50, 50, 50, 0, Math.PI * 2, true);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+
+            txt = "abz190#$%^£éú";
+            ctx.textBaseline = "top";
+            ctx.font = '17px "Arial 17"';
+            ctx.textBaseline = "alphabetic";
+            ctx.fillStyle = "rgb(255,5,5)";
+            ctx.rotate(.03);
+            ctx.fillText(txt, 4, 17);
+            ctx.fillStyle = "rgb(155,255,5)";
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "red";
+            ctx.fillRect(20, 12, 100, 5);
+
+            // hashing function
+            src = canvas.toDataURL();
+            hash = 0;
+            for (i = 0; i < src.length; i++) {
+                char = src.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+
+            return hash;
+        }
+
+        function visibilidadeModal(modalId, comportamento) {
+            jQuery(modalId).modal(comportamento);
+        }
+
+    </script>
+</section>
+
+@code {
+
+    private DotNetObjectReference<Dashboard> objRef_index;
+
+    EmpresaUserSession who = null;
+    CrmEmpresa empresa = null;
+    private List<CrmConfig> configs = new List<CrmConfig>();
+    private string path = "";
+    private string pathTimesheet = "Timesheet";
+    private string IP = "";
+    private string pass_nova = "";
+    private string pass_confirma = "";
+    private string Erro = "";
+    private string Mensagem = "";
+    private int areasize = 0;
+    private bool isHttps = false;
+    public List<CrmUtilizador> UsersRows = new List<CrmUtilizador>() { };
+    public List<UserFull> UsersFull = new List<UserFull>() { };
+    public List<CrmPicagem> PicagensRows = new List<CrmPicagem>() { };
+    private int NumColaboradoresAtivos = 0;
+    private int NumColaboradoresFalta = 0;
+    private string AssiduidadeTheme = "border-theme";
+    private decimal AssiduidadeToday = 0;
+
+    private bool visibleNewPassword = false;
+    private bool visibleNewPasswordConfirmation = false;
+
+    List<Avisos> listaAvisos = new List<Avisos>() { };
+
+    private bool ismonitoringface = false;
+
+    private bool updatingferias = false;
+    private bool updatingtimesheets = false;
+    private bool showtable = false;
+    private readonly object updateLock = new object();
+
+    private bool carregarGrafico = false;
+    private bool carregarPicagem = true;
+    HashSet<int> utilizadoresSemPicagem = new HashSet<int>();
+    private DbContext dbContext2;
+    private bool acessoNegado = false;
+
+    //Dados faciais
+    public async void GetFace()
+    {
+        ismonitoringface = !ismonitoringface;
+        if (ismonitoringface)
+        {
+            await JSRuntime.InvokeVoidAsync("GetFace");
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("StopFace");
+        }
+        StateHasChanged();
+    }
+
+    [JSInvokable("Construlink.Pages.Myinfo.SaveFace")]
+    public async void SaveFace(string facedata)
+    {
+        BaseControleContext dbContext = new BaseControleContext();
+        Erro = "";
+        Mensagem = "";
+
+        try
+        {
+            CrmUtilizadorFacial facialuser = dbContext.CrmUtilizadorFacials.FirstOrDefault(u => u.IdUtilizador == who.User.Id);
+            if (facialuser != null)
+            {
+                facialuser.Biomarkers = facedata.Replace("{", "").Replace("}", "");
+            }
+            else
+            {
+                CrmUtilizadorFacial newuser = new CrmUtilizadorFacial() { };
+                newuser.IdUtilizador = who.User.Id;
+                newuser.Name = who.User.Name;
+                newuser.Biomarkers = facedata.Replace("{", "").Replace("}", "");
+                dbContext.CrmUtilizadorFacials.Add(newuser);
+            }
+
+            await dbContext.SaveChangesAsync();
+            Mensagem = "Os dados faciais foram guardados/alterados com sucesso!";
+            await utils.UserLogAsync(who.User.Id, $"Inseriu/Alterou dados de reconhecimento facial");
+            GetFace();
+        }
+        catch (Exception ex)
+        {
+            Erro = ex.Message;
+        }
+
+        var timer = new System.Timers.Timer(5000); // 5 segundos
+        timer.Elapsed += TimerElapsed;
+        timer.AutoReset = false;
+        timer.Start();
+        dbContext.Dispose();
+        StateHasChanged();
+    }
+
+    //Altera a password no primeiro login
+    private async Task ChangePass()
+    {
+        BaseControleContext dbContext = new BaseControleContext();
+
+        Erro = "";
+        Mensagem = "";
+
+        if (pass_nova.Trim() == "" || pass_confirma.Trim() == "")
+        {
+            Erro = "Para alterar a senha deve preencher a Nova palavra passe e a Confirmação da nova palavra passe";
+        }
+
+        if (pass_nova.Trim() != "" && pass_confirma.Trim() != "")
+        {
+            if (pass_nova.Trim() == pass_confirma.Trim())
+            {
+                string newpass = Utils.Hash(pass_nova.Trim(), Configuration);
+                who.User.Agpassword = newpass;
+                who.User.Changepassword = false;
+                CrmUtilizador ouser = dbContext.CrmUtilizadors.FirstOrDefault(f => f.Id == who.User.Id);
+                ouser.Agpassword = who.User.Agpassword;
+                ouser.Changepassword = who.User.Changepassword;
+                Erro = "";
+            }
+            else
+            {
+                Erro = "A nova palavra passe e a confirmação não coincidem";
+            }
+        }
+
+        if (Erro == "")
+        {
+            try
+            {
+                await JSRuntime.InvokeAsync<object>("showModal", "#newpass", "toggle");
+                await dbContext.SaveChangesAsync();
+                Utils.UserLog(who.User.Id, $"Alterou a senha inicial");
+                Mensagem = "A sua senha foi alterada com sucesso";
+            }
+            catch (Exception ex)
+            {
+                Erro = ex.Message;
+            }
+        }
+
+        dbContext.Dispose();
+    }
+
+    protected override void OnInitialized()
+    {
+        objRef_index = DotNetObjectReference.Create(this);
+
+        if (utils.AgSession.ContainsKey("user"))
+        {
+            who = (EmpresaUserSession)utils.AgSession["user"];
+        }
+
+        if (utils.AgSession.ContainsKey("Empresa"))
+        {
+            empresa = (CrmEmpresa)utils.AgSession["Empresa"];
+        }
+
+        else
+        {
+            Console.WriteLine("Empresa not found in session.");
+        }
+
+        if (who != null)
+        {
+            if (who.User.Isadmin != true && who.User.FazPicagens != true && who.User.Isactive == true)
+            {
+                acessoNegado = true;
+            }
+        }
+
+        GetAvisos();
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                BaseControleContext dbContext = new BaseControleContext();
+                dbContext2 = DbContextFactory.GetDbContext(who.Empresa.BaseNome);
+                
+                
+
+                //verifica protocolo
+                isHttps = await utils.CheckProtocolAsync(NavigationManager.Uri);
+
+                //obtem IP
+                var httpClient = new HttpClient();
+                IP = await httpClient.GetStringAsync("https://api.ipify.org");
+                if (utils.AgSession.ContainsKey("IP"))
+                {
+                    utils.AgSession.Remove("IP");
+                }
+                utils.AgSession.Add("IP", IP);
+
+                //verifica configurações
+                configs = await dbContext2.Set<CrmConfig>().ToListAsync();
+
+                //verifica se é para alterar a pass
+                if (who.User.Changepassword == true)
+                {
+                    await JSRuntime.InvokeAsync<object>("showModal", "#newpass", "show");
+                }
+
+                //carrega dados, atualiza picagens, atualiza serviços, gera timesheets automáticas
+                if (who.User.Isadmin == true)
+                {
+                    GetData();
+                    UpdatePicagens();
+                }
+
+                dbContext.Dispose();
+            }
+            catch (Exception ex)
+            {
+            }
+        }
+        else
+        {
+            if (carregarGrafico)
+            {
+                GetData();
+                carregarGrafico = false;
+            }
+        }
+
+        if (who.User.Changepassword != true)
+        {
+            if (who.User.IsApenasPicagens == true)
+            {
+                await makePicagem();
+                await Task.Delay(2000);
+                utils.AgSession.Remove("user");
+                await JSRuntime.InvokeVoidAsync("deleteCookie", "user"); //elimina a cookie
+                NavigationManager.NavigateTo("Loginchao");
+            }
+        }
+        
+        base.OnAfterRenderAsync(firstRender);
+    }
+
+
+    private async Task<string> ObterAreaPorCoordenadasAsync(double latitude, double longitude)
+{
+    var url = $"https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat={latitude}&lon={longitude}";
+    using var http = new HttpClient();
+        http.DefaultRequestHeaders.Add("User-Agent", "Construlink");
+
+    var response = await http.GetAsync(url);
+    if (!response.IsSuccessStatusCode) return "Desconhecido";
+
+    var json = await response.Content.ReadAsStringAsync();
+    using var doc = JsonDocument.Parse(json);
+
+    if (doc.RootElement.TryGetProperty("address", out var address))
+    {
+        string[] prioridades = new[] { "town", "city", "village", "municipality", "suburb", "county", "state" };
+
+        foreach (var prop in prioridades)
+        {
+            if (address.TryGetProperty(prop, out var local))
+                return local.GetString();
+        }
+    }
+
+    return "Desconhecido";
+}
+
+private DateTime _ultimaPicagem = DateTime.MinValue;
+private bool _cooldown         = false;
+
+// 2️⃣  makePicagem COMPLETO, já com cooldown de 15 s
+private async Task makePicagem()
+{
+    // BLOQUEIO anti-spam – se ainda não passaram 15 s, sai logo
+    if (_cooldown || DateTime.Now - _ultimaPicagem < TimeSpan.FromSeconds(15))
+        return;
+
+    _cooldown      = true;          // trava o botão
+    _ultimaPicagem = DateTime.Now;  // marca quando se picou
+
+    Erro     = "";
+    Mensagem = "";
+    string comportamento = "";
+
+    Geolocation? coordenadas = null;
+    string? area             = null;
+
+    try
+    {
+        coordenadas = await JSRuntime.InvokeAsync<Geolocation>("getLocation");
+        if (coordenadas != null)
+            area = await ObterAreaPorCoordenadasAsync(coordenadas.Latitude, coordenadas.Longitude);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Erro ao obter localização: " + ex.Message);
+    }
+
+    var picagensToday = dbContext2.Set<CrmPicagem>()
+        .FirstOrDefault(p => p.Utilizadorid == who.User.Id &&
+                             p.Data.HasValue &&
+                             p.Data.Value.Date == DateTime.Today);
+
+    if (picagensToday != null)
+    {
+        if (picagensToday.Entrada != null && picagensToday.Entrada.Value.Year > 1900 &&
+            picagensToday.InicioAlmoco == picagensToday.Entrada)
+        {
+            picagensToday.InicioAlmoco = DateTime.Now;
+            picagensToday.Ip2          = IP;
+            comportamento              = "Picagem Início de Almoço";
+        }
+        else if (picagensToday.InicioAlmoco != null && picagensToday.InicioAlmoco.Value.Year > 1900 &&
+                 picagensToday.FimAlmoco == picagensToday.Entrada)
+        {
+            picagensToday.FimAlmoco = DateTime.Now;
+            picagensToday.Ip3       = IP;
+            comportamento           = "Picagem Fim de Almoço";
+        }
+        else if (picagensToday.FimAlmoco != null && picagensToday.FimAlmoco.Value.Year > 1900 &&
+                 picagensToday.Saida == picagensToday.Entrada)
+        {
+            picagensToday.Saida = DateTime.Now;
+            picagensToday.Ip4   = IP;
+            comportamento       = "Picagem Saída";
+        }
+    }
+    else
+    {
+        CrmPicagem nova = new CrmPicagem
+        {
+            Entrada       = DateTime.Now,
+            InicioAlmoco  = DateTime.Now,
+            FimAlmoco     = DateTime.Now,
+            Saida         = DateTime.Now,
+            Utilizadorid  = who.User.Id,
+            Data          = DateTime.Today,
+            SaidaForcada  = false,
+            Ip1           = IP,
+            Latitude      = coordenadas?.Latitude,
+            Longitude     = coordenadas?.Longitude,
+            Area          = area
+        };
+        await dbContext2.AddAsync(nova);
+        comportamento = "Picagem Entrada";
+    }
+
+    try
+    {
+        await dbContext2.SaveChangesAsync();
+        await utils.UserLogAsync(who.User.Id, comportamento);
+        Mensagem = "Picagem efetuada com sucesso!";
+    }
+    catch (Exception ex)
+    {
+        Erro = ex.Message;
+    }
+
+    // liberta o botão passado 15 s
+    var relax = new System.Timers.Timer(15_000)
+    {
+        AutoReset = false
+    };
+    relax.Elapsed += (_, __) =>
+    {
+        _cooldown = false;
+        InvokeAsync(StateHasChanged);
+        relax.Dispose();
+    };
+    relax.Start();
+
+    if (who.User.Isadmin is true)
+        GetData();
+
+    StateHasChanged();
+}
+    private void GetAvisos()
+    {
+        BaseControleContext baseListaAvisos = new BaseControleContext();
+
+        listaAvisos = baseListaAvisos.Set<Avisos>().Where(i => i.IsDeleted != true && i.IsAtivo == true &&
+            (i.IdEmpresa == who.Empresa.Id || i.IdEmpresa == 0 || i.IdEmpresa == null)).ToList();
+
+        foreach (Avisos avisoPopUp in listaAvisos)
+        {
+            if (avisoPopUp.DataFim < DateTime.Now.Date)
+            {
+                avisoPopUp.IsAtivo = false;
+            }
+        }
+
+        listaAvisos = listaAvisos.Where(i => i.IsAtivo == true).ToList();
+        baseListaAvisos.SaveChanges();
+    }
+
+    public void Dispose()
+    {
+        objRef_index?.Dispose();
+    }
+
+    //carrega dados
+   private async Task GetData()
+    {
+    BaseControleContext dbContext = new BaseControleContext();
+
+    await JSRuntime.InvokeAsync<object>("loadingstats");
+
+    // Buscar empresas associadas ao utilizador logado
+    var listaEmpresasId = dbContext.UtilizadorEmpresas
+        .Where(ue => ue.UtilizadorId == who.User.Id)
+        .Select(ue => ue.EmpresaId)
+        .ToList();
+
+    //IDs dos utilizadores dessas empresas
+    var listaIdsUtilizadoresMesmaEmpresa = dbContext.UtilizadorEmpresas
+        .Where(ue => listaEmpresasId.Contains(ue.EmpresaId))
+        .Select(ue => ue.UtilizadorId)
+        .Distinct()
+        .ToList();
+
+    //utilizadores ativos que fazem picagens e não são superadmin
+    var listaUtilizadores = dbContext.CrmUtilizadors
+        .Where(u =>
+            listaIdsUtilizadoresMesmaEmpresa.Contains(u.Id) &&
+            !(u.IsDeleted ?? false) &&
+            u.IsSuperAdmin != true &&
+            u.Isactive == true &&
+            u.FazPicagens == true)
+        .OrderBy(o => o.Name)
+        .ToList();
+
+    UsersRows = listaUtilizadores;
+
+    // junta dados
+    UsersFull.Clear();
+    utilizadoresSemPicagem.Clear();
+    foreach (CrmUtilizador utilizador in UsersRows)
+    {
+        var nuser = new UserFull()
+        {
+            user = utilizador,
+            picagem = GetPicagem(utilizador.Id),
+            picagemrow = GetPicagemRow(utilizador.Id)
+        };
+        UsersFull.Add(nuser);
+
+        if (nuser.picagem.Key == null)
+        {
+            utilizadoresSemPicagem.Add(nuser.user.Id);
+        }
+    }
+
+    // Corrigir tipo: int? para int
+    var utilizadoresValidos = UsersRows.Select(u => (int?)u.Id).ToList();
+
+    // ✅ Agora declara isto aqui (se não estiver já na class)
+    int NumColaboradores = utilizadoresValidos.Count;
+
+    NumColaboradoresAtivos = dbContext2.Set<CrmPicagem>()
+        .Where(s =>
+            s.Data.HasValue &&
+            s.Data.Value.Date == DateTime.Today &&
+            utilizadoresValidos.Contains(s.Utilizadorid))
+        .Count();
+
+    NumColaboradoresFalta = NumColaboradores - NumColaboradoresAtivos;
+
+    // assiduidade
+    AssiduidadeToday = NumColaboradores > 0
+        ? Math.Round(((decimal)NumColaboradoresAtivos * 100 / (decimal)NumColaboradores), 1)
+        : 0;
+
+    AssiduidadeTheme = AssiduidadeToday switch
+    {
+        >= 66 => "border-theme",
+        >= 33 => "border-warning",
+        _ => "border-danger"
+    };
+
+    await JSRuntime.InvokeVoidAsync("updateChartRotation", AssiduidadeToday);
+
+    await JSRuntime.InvokeAsync<object>("loadingstats");
+
+    dbContext.Dispose();
+    StateHasChanged();
+}
+    private KeyValuePair<string, string> GetPicagem(int id)
+    {
+        try
+        {
+            var query = dbContext2.Set<CrmPicagem>()
+                .Where(s => s.Utilizadorid == id && s.Data.HasValue && s.Data.Value.Date == DateTime.Today)
+                .FirstOrDefault();
+
+            if (query != null)
+            {
+                DateTime? entrada = query.Entrada;
+                DateTime? inicioAlmoco = query.InicioAlmoco;
+                DateTime? fimAlmoco = query.FimAlmoco;
+                DateTime? saida = query.Saida;
+
+                var dates = new Dictionary<string, DateTime?>
+            {
+                {"Entrada", entrada},
+                {"Inicio Almoço", inicioAlmoco},
+                {"Fim Almoço", fimAlmoco},
+                {"Saída", saida}
+            };
+
+                // filtra pela ultima data
+                var latestDateEntry = dates
+                    .Where(d => d.Value.HasValue)
+                    .OrderByDescending(d => d.Value.Value)
+                    .FirstOrDefault();
+
+                if (!latestDateEntry.Equals(default(KeyValuePair<string, DateTime?>)))
+                {
+                    return new KeyValuePair<string, string>(latestDateEntry.Key, latestDateEntry.Value.Value.ToShortTimeString());
+                }
+            }
+
+            // retorna vazio se não existir picagem
+            return new KeyValuePair<string, string>();
+        }
+        catch (Exception)
+        {
+            return new KeyValuePair<string, string>();
+        }
+    }
+
+    private CrmPicagem GetPicagemRow(int id)
+    {
+        try
+        {
+            return dbContext2.Set<CrmPicagem>()
+                .Where(s => s.Utilizadorid == id && s.Data.HasValue && s.Data.Value.Date == DateTime.Today)
+                .FirstOrDefault();
+
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    //SERVIÇOS AUTOMATICOS
+    //Faz saida automática nos que não tiverem
+    private async Task UpdatePicagens()
+    {
+        var picagensToUpdate = dbContext2.Set<CrmPicagem>().Where(p => p.Entrada.Value < DateTime.Today && p.Entrada.Value.Year > 1900 && (p.Saida == null || p.Saida.Value.Year <= 1900));
+        foreach (var picagem in picagensToUpdate)
+        {
+            picagem.Saida = new DateTime(picagem.Entrada.Value.Year, picagem.Entrada.Value.Month, picagem.Entrada.Value.Day, 17, 30, 0);
+
+            //verifica se tem data superior à data da entrada no mesmo dia
+            if (picagem.InicioAlmoco.Value >= new DateTime(picagem.Entrada.Value.Year, picagem.Entrada.Value.Month, picagem.Entrada.Value.Day, 17, 30, 0))
+            {
+                picagem.Saida = picagem.InicioAlmoco;
+            }
+            if (picagem.FimAlmoco.Value >= new DateTime(picagem.Entrada.Value.Year, picagem.Entrada.Value.Month, picagem.Entrada.Value.Day, 17, 30, 0))
+            {
+                picagem.Saida = picagem.FimAlmoco;
+            }
+            if (picagem.Saida.Value >= new DateTime(picagem.Entrada.Value.Year, picagem.Entrada.Value.Month, picagem.Entrada.Value.Day, 17, 30, 0))
+            {
+                picagem.Saida = picagem.Saida;
+            }
+
+            picagem.SaidaForcada = true;
+        }
+
+        await dbContext2.SaveChangesAsync();
+        GetData();
+    }
+
+    //temporizador para eliminar as mensagems
+    private void TimerElapsed(object sender, ElapsedEventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            Erro = "";
+            Mensagem = "";
+            StateHasChanged();
+        });
+    }
+
+    //tipo de dados
+    public class UserFull
+    {
+        public CrmUtilizador user { get; set; }
+        public KeyValuePair<string, string> picagem { get; set; }
+        public CrmPicagem picagemrow { get; set; }
+    }
+
+}
