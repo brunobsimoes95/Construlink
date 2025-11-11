@@ -1,0 +1,231 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\dashboard.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\dashboard.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\wwwroot\\css\\site.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}",
+      "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:wwwroot\\css\\site.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\configs.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\configs.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\controle\\loginunificado.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\controle\\loginunificado.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\wwwroot\\css\\mobiscroll.custom\\js\\calendario.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
+      "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:wwwroot\\css\\mobiscroll.custom\\js\\calendario.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\calendario\\calendarioobras.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\calendario\\calendarioobras.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\_host.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\_host.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\controlepicagens\\picagens.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\controlepicagens\\picagens.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\controle\\loginsofacial.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\controle\\loginsofacial.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\shared\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:shared\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\data\\utils.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:data\\utils.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\controle\\selecionarempresa.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\controle\\selecionarempresa.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 2,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{004be353-6879-467c-9d1e-9ac23cdf6d49}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Dashboard.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Dashboard.razor",
+              "RelativeDocumentMoniker": "Pages\\Dashboard.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Dashboard.razor",
+              "RelativeToolTip": "Pages\\Dashboard.razor",
+              "ViewState": "AgIAAAgGAAAAAAAAAAAkwH0FAAAGAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-07-11T16:43:56.093Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "site.css",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\wwwroot\\css\\site.css",
+              "RelativeDocumentMoniker": "wwwroot\\css\\site.css",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\wwwroot\\css\\site.css",
+              "RelativeToolTip": "wwwroot\\css\\site.css",
+              "ViewState": "AgIAAFYBAAAAAAAAAAAgwGABAAAXAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
+              "WhenOpened": "2025-07-11T16:39:21.531Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Configs.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Configs.razor",
+              "RelativeDocumentMoniker": "Pages\\Configs.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Configs.razor",
+              "RelativeToolTip": "Pages\\Configs.razor",
+              "ViewState": "AgIAABMBAAAAAAAAAAAAABwBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-07-11T16:37:21.347Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "CalendarioObras.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Calendario\\CalendarioObras.razor",
+              "RelativeDocumentMoniker": "Pages\\Calendario\\CalendarioObras.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Calendario\\CalendarioObras.razor",
+              "RelativeToolTip": "Pages\\Calendario\\CalendarioObras.razor",
+              "ViewState": "AgIAALoAAAAAAAAAAAAEwMwAAAAzAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-07-11T16:23:30.897Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Calendario.js",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\wwwroot\\css\\mobiscroll.custom\\js\\Calendario.js",
+              "RelativeDocumentMoniker": "wwwroot\\css\\mobiscroll.custom\\js\\Calendario.js",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\wwwroot\\css\\mobiscroll.custom\\js\\Calendario.js",
+              "RelativeToolTip": "wwwroot\\css\\mobiscroll.custom\\js\\Calendario.js",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAA1AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
+              "WhenOpened": "2025-07-11T16:19:14.553Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "_Host.cshtml",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\_Host.cshtml",
+              "RelativeDocumentMoniker": "Pages\\_Host.cshtml",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\_Host.cshtml",
+              "RelativeToolTip": "Pages\\_Host.cshtml",
+              "ViewState": "AgIAADgAAAAAAAAAAAAIwFoAAAAKAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-07-11T16:17:58.835Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "Picagens.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\ControlePicagens\\Picagens.razor",
+              "RelativeDocumentMoniker": "Pages\\ControlePicagens\\Picagens.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\ControlePicagens\\Picagens.razor",
+              "RelativeToolTip": "Pages\\ControlePicagens\\Picagens.razor",
+              "ViewState": "AgIAANsBAAAAAAAAAAAkwPIBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-07-11T16:15:33.632Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "MainLayout.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Shared\\MainLayout.razor",
+              "RelativeDocumentMoniker": "Shared\\MainLayout.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Shared\\MainLayout.razor",
+              "RelativeToolTip": "Shared\\MainLayout.razor",
+              "ViewState": "AgIAAMgAAAAAAAAAAAAkwOIAAAAkAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-07-11T16:08:17.522Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "SelecionarEmpresa.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Controle\\SelecionarEmpresa.razor",
+              "RelativeDocumentMoniker": "Pages\\Controle\\SelecionarEmpresa.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Controle\\SelecionarEmpresa.razor",
+              "RelativeToolTip": "Pages\\Controle\\SelecionarEmpresa.razor",
+              "ViewState": "AgIAABMAAAAAAAAAAAAkwCUAAAAHAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-07-11T16:02:40.071Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "LoginSoFacial.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Controle\\LoginSoFacial.razor",
+              "RelativeDocumentMoniker": "Pages\\Controle\\LoginSoFacial.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Controle\\LoginSoFacial.razor",
+              "RelativeToolTip": "Pages\\Controle\\LoginSoFacial.razor",
+              "ViewState": "AgIAAPwAAAAAAAAAAAAmwCQBAAAsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-07-10T21:07:45.742Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "LoginUnificado.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Controle\\LoginUnificado.razor",
+              "RelativeDocumentMoniker": "Pages\\Controle\\LoginUnificado.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Controle\\LoginUnificado.razor",
+              "RelativeToolTip": "Pages\\Controle\\LoginUnificado.razor",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAArAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-07-10T20:17:00.729Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "Utils.cs",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Data\\Utils.cs",
+              "RelativeDocumentMoniker": "Data\\Utils.cs",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Data\\Utils.cs",
+              "RelativeToolTip": "Data\\Utils.cs",
+              "ViewState": "AgIAAD0AAAAAAAAAAAAIwE0AAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-07-10T20:22:07.819Z"
+            }
+          ]
+        },
+        {
+          "DockedWidth": 138,
+          "SelectedChildIndex": -1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

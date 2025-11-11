@@ -1,0 +1,188 @@
+is_global = true
+build_property.MudDebugAnalyzer = 
+build_property.MudAllowedAttributePattern = 
+build_property.MudIllegalParameters = 
+build_property.TargetFramework = net8.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = true
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = 
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property.RootNamespace = Construlink
+build_property.RootNamespace = Construlink
+build_property.ProjectDir = C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.RazorLangVersion = 8.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 8.0
+build_property.EnableCodeStyleSeverity = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/App.razor]
+build_metadata.AdditionalFiles.TargetPath = QXBwLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Auditoria.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQXVkaXRvcmlhLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Calendario/CalendarioObras.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2FsZW5kYXJpb1xDYWxlbmRhcmlvT2JyYXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Colaboradores/Consultas.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ29sYWJvcmFkb3Jlc1xDb25zdWx0YXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Configs.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ29uZmlncy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/ControlePicagens/Ausencias.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ29udHJvbGVQaWNhZ2Vuc1xBdXNlbmNpYXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/ControlePicagens/ControlarPicagens.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ29udHJvbGVQaWNhZ2Vuc1xDb250cm9sYXJQaWNhZ2Vucy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/ControlePicagens/Picagens.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ29udHJvbGVQaWNhZ2Vuc1xQaWNhZ2Vucy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Controle/EitaEmpresa.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ29udHJvbGVcRWl0YUVtcHJlc2EucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Controle/LoginSoFacial.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ29udHJvbGVcTG9naW5Tb0ZhY2lhbC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Controle/LoginUnificado.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ29udHJvbGVcTG9naW5VbmlmaWNhZG8ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Controle/Manutencao.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ29udHJvbGVcTWFudXRlbmNhby5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Controle/SelecionarEmpresa.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ29udHJvbGVcU2VsZWNpb25hckVtcHJlc2EucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Dashboard.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRGFzaGJvYXJkLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/DirRH/Colaboradores.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRGlyUkhcQ29sYWJvcmFkb3Jlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/DirRH/ColaboradoresAnexos.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRGlyUkhcQ29sYWJvcmFkb3Jlc0FuZXhvcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/DirRH/ColaboradoresContrato.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRGlyUkhcQ29sYWJvcmFkb3Jlc0NvbnRyYXRvLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/DirRH/ColaboradoresDetalhe.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRGlyUkhcQ29sYWJvcmFkb3Jlc0RldGFsaGUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/DirRH/ColaboradoresEdit.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRGlyUkhcQ29sYWJvcmFkb3Jlc0VkaXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/DirRH/ColaboradoresFerias.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRGlyUkhcQ29sYWJvcmFkb3Jlc0Zlcmlhcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Empreendimentos/Empreendimento.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRW1wcmVlbmRpbWVudG9zXEVtcHJlZW5kaW1lbnRvLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Empreendimentos/ModalEditarAgendamento.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRW1wcmVlbmRpbWVudG9zXE1vZGFsRWRpdGFyQWdlbmRhbWVudG8ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Entidades/Entidades.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRW50aWRhZGVzXEVudGlkYWRlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSW5kZXgucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Myinfo.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcTXlpbmZvLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Organizacao/Controlo.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcT3JnYW5pemFjYW9cQ29udHJvbG8ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Organizacao/EditarAvisos.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcT3JnYW5pemFjYW9cRWRpdGFyQXZpc29zLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Organizacao/EditarManutencoes.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcT3JnYW5pemFjYW9cRWRpdGFyTWFudXRlbmNvZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Organizacao/EditarPatches.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcT3JnYW5pemFjYW9cRWRpdGFyUGF0Y2hlcy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Organizacao/Feriados.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcT3JnYW5pemFjYW9cRmVyaWFkb3MucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Organizacao/Horarios.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcT3JnYW5pemFjYW9cSG9yYXJpb3MucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Organizacao/ModalTurnos.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcT3JnYW5pemFjYW9cTW9kYWxUdXJub3MucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Organizacao/TurnosHorarios.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcT3JnYW5pemFjYW9cVHVybm9zSG9yYXJpb3MucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Organizacao/Utilizadores.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcT3JnYW5pemFjYW9cVXRpbGl6YWRvcmVzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0ltcG9ydHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = X0ltcG9ydHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Shared/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = U2hhcmVkXE1haW5MYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-9q9khysfgm
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Shared/NoLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = U2hhcmVkXE5vTGF5b3V0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = b-77hvxs6lcl
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/Error.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRXJyb3IuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/_Host.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0hvc3QuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/bfs-b/Desktop/Construlink/Construlink - Copy/Pages/_Layout.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0xheW91dC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 

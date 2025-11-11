@@ -1,0 +1,50 @@
+[
+  {
+    "ContainingType": "Construlink.Data.PdfController",
+    "Method": "Gerar",
+    "RelativePath": "api/Pdf/gerar",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "Construlink.Data.PdfRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Construlink.Data.UtilsController",
+    "Method": "GetColaboradorFile",
+    "RelativePath": "api/Utils/GetColaboradorFile/{fileName}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "fileName",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Construlink.Data.UtilsController",
+    "Method": "GetImage",
+    "RelativePath": "api/Utils/GetImage/{fileName}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "fileName",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  }
+]
