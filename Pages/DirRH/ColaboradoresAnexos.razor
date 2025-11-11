@@ -1,0 +1,572 @@
+﻿@using System.IO
+@using System.Linq
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Data
+@using Construlink.Models
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IDbContextFactoryService dbContextFactoryService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<div class="pa-4">
+    <MudCard Class="mb-4" Elevation="0">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <div style="display: flex; align-items: center;">
+                    <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Class="mr-3" Color="Color.Primary" />
+                    <MudText Typo="Typo.h6">Adicionar Anexos</MudText>
+                </div>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudText Typo="Typo.body2" Class="mb-3">
+                É possível anexar até @maxAllowedFiles documentos com tamanho máximo de @((maxFileSize / (1024 * 1024)).ToString("F1"))MB cada
+            </MudText>
+            <MudFileUpload T="IReadOnlyList<IBrowserFile>"
+                           @ref="fileUpload"
+                           @key="@fileUploadKey"
+                           FilesChanged="OnInputFileChanged"
+                           Multiple="true"
+                           MaximumFileCount="@maxAllowedFiles"
+                           Accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.txt">
+                <ActivatorContent>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.CloudUpload">
+                        Selecionar Ficheiros
+                    </MudButton>
+                </ActivatorContent>
+            </MudFileUpload>
+
+            @if (selectedFiles?.Any() == true)
+            {
+                <MudText Typo="Typo.subtitle2" Class="mt-3 mb-2">Ficheiros Selecionados:</MudText>
+                <MudList T="string" Dense="true">
+                    @foreach (var file in selectedFiles)
+                    {
+                        <MudListItem>
+                            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                <div style="display: flex; align-items: center;">
+                                    <MudIcon Icon="@GetFileIcon(file.Name)" Class="mr-2" />
+                                    <MudText>@file.Name (@((file.Size / 1024.0 / 1024.0).ToString("F2")) MB)</MudText>
+                                </div>
+                                <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                               Size="Size.Medium"
+                                               Color="Color.Error"
+                                               OnClick="() => RemoveSelectedFile(file)" />
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Success"
+                           StartIcon="@Icons.Material.Filled.Upload"
+                           OnClick="UploadSelectedFiles"
+                           Disabled="@isLoading"
+                           Class="mt-3">
+                    @if (isLoading)
+                    {
+                        <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                        <MudText Class="ms-2">A carregar...</MudText>
+                    }
+                    else
+                    {
+                        <MudText>Anexar Ficheiros</MudText>
+                    }
+                </MudButton>
+            }
+        </MudCardContent>
+    </MudCard>
+
+    <MudCard Elevation="0">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <div style="display: flex; align-items: center;">
+                        <MudIcon Icon="@Icons.Material.Filled.AttachFile" Class="mr-3" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Anexos do Documento</MudText>
+                    </div>
+                    <MudChip T="string" Color="Color.Default" Size="Size.Small">
+                        @anexoLinhas.Count anexo(s)
+                    </MudChip>
+                </div>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent Class="pa-0">
+            @if (anexoLinhas.Any())
+            {
+                <MudTable Items="@anexoLinhas" Elevation="0" Hover="true" Dense="true" Striped="true" Loading="@isLoadingAnexos">
+                    <HeaderContent>
+                        <MudTh Style="width: 50px;"></MudTh>
+                        <MudTh>Nome do Ficheiro</MudTh>
+                        <MudTh Style="width: 120px;">Tipo</MudTh>
+                        <MudTh Style="width: 100px;">Tamanho</MudTh>
+                        <MudTh Style="width: 140px;">Data</MudTh>
+                        <MudTh Style="width: 120px;">Ações</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>
+                            <MudIcon Icon="@GetFileIcon(context.FilePath)" Color="Color.Primary" />
+                        </MudTd>
+                        <MudTd>
+                            <MudText Typo="Typo.body2">@GetDisplayFileName(context.FilePath)</MudText>
+                        </MudTd>
+                        <MudTd>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetFileTypeColor(context.FilePath)">
+                                @GetFileExtension(context.FilePath).ToUpper()
+                            </MudChip>
+                        </MudTd>
+                        <MudTd>
+                            <MudText Typo="Typo.caption">@GetFileSizeDisplay(context.FilePath)</MudText>
+                        </MudTd>
+                        <MudTd>
+                            <MudText Typo="Typo.caption">@GetFileDate(context.FilePath)</MudText>
+                        </MudTd>
+                        <MudTd>
+                            <div style="display: flex; gap: 8px;">
+                                <MudTooltip Text="Transferir">
+                                    <MudIconButton Icon="@Icons.Material.Filled.Download"
+                                                   Size="Size.Small"
+                                                   Color="Color.Primary"
+                                                   OnClick="() => DownloadFileFromStream(context)" />
+                                </MudTooltip>
+
+                                <MudTooltip Text="Eliminar">
+                                    <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                                   Size="Size.Small"
+                                                   Color="Color.Error"
+                                                   OnClick="() => ConfirmDeleteAnexo(context)" />
+                                </MudTooltip>
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <div class="pa-4 text-center">
+                            <MudIcon Icon="@Icons.Material.Outlined.AttachFile" Size="Size.Large" Class="mb-2" Color="Color.Surface" />
+                            <MudText Typo="Typo.body1" Color="Color.Surface">Nenhum anexo encontrado</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Surface">
+                                Utilize o botão acima para adicionar anexos
+                            </MudText>
+                        </div>
+                    </NoRecordsContent>
+                </MudTable>
+            }
+            else
+            {
+                <div class="pa-6 text-center">
+                    <MudIcon Icon="@Icons.Material.Outlined.AttachFile" Size="Size.Large" Class="mb-2" Color="Color.Surface" />
+                    <MudText Typo="Typo.body1" Color="Color.Surface">Nenhum anexo encontrado</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Surface">
+                        Utilize o botão acima para adicionar anexos
+                    </MudText>
+                </div>
+            }
+        </MudCardContent>
+    </MudCard>
+</div>
+
+@code {
+    [Parameter] public int ColaboradorId { get; set; } // Parâmetro para receber o ID do colaborador
+    [Parameter] public EmpresaUserSession UserSession { get; set; }
+    [Parameter] public EventCallback OnAnexosChanged { get; set; }
+
+    // As injeções abaixo já estão no componente pai, mas são úteis para este componente
+    // @inject IDialogService DialogService
+    // @inject ISnackbar Snackbar
+
+    private List<CrmAnexo> anexoLinhas = new List<CrmAnexo>();
+    private MudFileUpload<IReadOnlyList<IBrowserFile>> fileUpload;
+    private IReadOnlyList<IBrowserFile> selectedFiles = new List<IBrowserFile>();
+    private bool isLoading = false;
+    private bool isLoadingAnexos = false;
+    private string fileUploadKey = Guid.NewGuid().ToString();
+    private CrmAnexo anexoParaEliminar = null;
+
+    // CONFIGURAÇÕES
+    private long maxFileSize = 1024 * 1024 * 5; // 5MB
+    private int maxAllowedFiles = 5;
+
+    // PROPRIEDADES COMPUTADAS
+    private bool IsDocumentReadOnly => false; // Neste contexto, o documento não é de leitura, então retornamos false.
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ColaboradorId > 0 && UserSession != null)
+        {
+            await LoadAnexos();
+        }
+    }
+
+    // MÉTODO PARA CARREGAR ANEXOS
+    private async Task LoadAnexos()
+    {
+        try
+        {
+            isLoadingAnexos = true;
+            StateHasChanged();
+
+            using var context = dbContextFactoryService.GetDbContext(UserSession.Empresa.BaseNome);
+
+            // Adaptar a query para buscar anexos pelo Id do Colaborador
+            anexoLinhas = await context.Set<CrmAnexo>()
+                .Where(doc => doc.CategoriaId == ColaboradorId && doc.Categoria == "Documento_Colaborador")
+                .OrderByDescending(a => a.Id)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar anexos: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoadingAnexos = false;
+            StateHasChanged();
+        }
+    }
+
+    // MÉTODO PARA QUANDO ARQUIVOS SÃO SELECIONADOS
+    private void OnInputFileChanged(IReadOnlyList<IBrowserFile> files)
+    {
+        selectedFiles = files;
+        StateHasChanged();
+    }
+
+    // MÉTODO PARA REMOVER ARQUIVO DA SELEÇÃO
+    private void RemoveSelectedFile(IBrowserFile fileToRemove)
+    {
+        selectedFiles = selectedFiles.Where(f => f != fileToRemove).ToList();
+
+        if (!selectedFiles.Any())
+        {
+            fileUploadKey = Guid.NewGuid().ToString(); // Redefine a chave para permitir a seleção do mesmo arquivo
+        }
+
+        StateHasChanged();
+    }
+
+    // MÉTODO PARA UPLOAD DOS ARQUIVOS
+    private async Task UploadSelectedFiles()
+    {
+        if (!selectedFiles?.Any() == true)
+        {
+            Snackbar.Add("Nenhum ficheiro selecionado", Severity.Warning);
+            return;
+        }
+
+        if (selectedFiles.Count() > maxAllowedFiles)
+        {
+            Snackbar.Add($"Por favor selecione até {maxAllowedFiles} documentos de cada vez.", Severity.Error);
+            return;
+        }
+
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            using var context = dbContextFactoryService.GetDbContext(UserSession.Empresa.BaseNome);
+
+            var successCount = 0;
+            var errorCount = 0;
+
+            foreach (var file in selectedFiles)
+            {
+                try
+                {
+                    // Validar tamanho do arquivo
+                    if (file.Size > maxFileSize)
+                    {
+                        Snackbar.Add($"Ficheiro '{file.Name}' excede o tamanho máximo de {maxFileSize / (1024 * 1024)}MB", Severity.Warning);
+                        errorCount++;
+                        continue;
+                    }
+
+                    // Gerar nome único para o arquivo
+                    var fileExtension = Path.GetExtension(file.Name);
+                    var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file.Name);
+                    var uniqueFileName = $"{fileNameWithoutExtension}_{DateTime.Now:yyyyMMddHHmmss}{fileExtension}";
+
+                    // Caminho modificado para incluir o nome da base de dados
+                    var documentsPath = Path.Combine(utils.Parametros["folderPath"], UserSession.Empresa.BaseNome, "documents");
+                    var fullPath = Path.Combine(documentsPath, uniqueFileName);
+
+                    // Criar diretório se não existir
+                    Directory.CreateDirectory(documentsPath);
+
+                    // Salvar arquivo
+                    await using (var fs = new FileStream(fullPath, FileMode.Create))
+                    {
+                        await file.OpenReadStream(maxFileSize).CopyToAsync(fs);
+                    }
+
+                    // Criar registro na base de dados
+                    var novoAnexo = new CrmAnexo
+                        {
+                            Categoria = "Documento_Colaborador", // Definir a categoria para anexos de colaborador
+                            CategoriaId = ColaboradorId,
+                            FilePath = uniqueFileName
+                        };
+
+                    context.Set<CrmAnexo>().Add(novoAnexo);
+                    await context.SaveChangesAsync();
+
+                    successCount++;
+                }
+                catch (Exception ex)
+                {
+                    errorCount++;
+                    Snackbar.Add($"Erro ao anexar '{file.Name}': {ex.Message}", Severity.Error);
+                }
+            }
+
+            // Log da atividade
+            await utils.UserLogAsync(UserSession.User.Id, $"Anexou {successCount} documento(s) ao colaborador {ColaboradorId}");
+
+            // Mostrar resultado
+            if (successCount > 0)
+            {
+                Snackbar.Add($"{successCount} ficheiro(s) anexado(s) com sucesso!", Severity.Success);
+                await OnAnexosChanged.InvokeAsync(); // Notificar componente pai
+                fileUploadKey = Guid.NewGuid().ToString();
+            }
+
+            if (errorCount > 0)
+            {
+                Snackbar.Add($"{errorCount} ficheiro(s) falharam ao anexar", Severity.Warning);
+            }
+
+            // Limpar seleção e recarregar lista
+            selectedFiles = new List<IBrowserFile>();
+            await LoadAnexos();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro geral no upload: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // MÉTODO PARA CONFIRMAR ELIMINAÇÃO
+    private async Task ConfirmDeleteAnexo(CrmAnexo anexo)
+    {
+        anexoParaEliminar = anexo;
+
+        var parameters = new DialogParameters<MudMessageBox>();
+        parameters.Add(x => x.Title, "Confirmar Eliminação");
+        parameters.Add(x => x.Message, $"A eliminação de anexos é permanente e irreversível.\n\nPretende realmente eliminar o anexo '{anexo.FilePath}'?");
+        parameters.Add(x => x.YesText, "Eliminar");
+        parameters.Add(x => x.NoText, "Cancelar");
+
+        var options = new DialogOptions()
+            {
+                CloseButton = true,
+                MaxWidth = MaxWidth.Small,
+                Position = DialogPosition.Center
+            };
+
+        var messageBox = await DialogService.ShowAsync<MudMessageBox>("", parameters, options);
+        var result = await messageBox.Result;
+
+        if (!result.Canceled && result.Data is bool resultBool && resultBool)
+        {
+            await DeleteAnexo(anexo);
+        }
+
+        anexoParaEliminar = null;
+        StateHasChanged();
+    }
+
+    // MÉTODO PARA ELIMINAR ANEXO
+    private async Task DeleteAnexo(CrmAnexo anexo)
+    {
+        if (anexo == null) return;
+
+        try
+        {
+            await using var context = dbContextFactoryService.GetDbContext(UserSession.Empresa.BaseNome);
+
+            // Remover da base de dados
+            context.Set<CrmAnexo>().Remove(anexo);
+
+            // Remover arquivo físico - caminho corrigido
+            var documentsPath = Path.Combine(utils.Parametros["folderPath"], UserSession.Empresa.BaseNome, "documents");
+            var filePath = Path.Combine(documentsPath, anexo.FilePath);
+
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+
+            await context.SaveChangesAsync();
+            await utils.UserLogAsync(UserSession.User.Id, $"Eliminou anexo '{anexo.FilePath}' do colaborador {ColaboradorId}");
+
+            Snackbar.Add("Anexo eliminado com sucesso!", Severity.Success);
+
+            // Recarregar lista
+            await LoadAnexos();
+            await OnAnexosChanged.InvokeAsync(); // Notificar componente pai
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao eliminar anexo: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    // MÉTODO PARA DOWNLOAD
+    private async Task DownloadFileFromStream(CrmAnexo doc)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(doc.FilePath))
+            {
+                Snackbar.Add("Caminho do ficheiro não encontrado", Severity.Warning);
+                return;
+            }
+
+            // Caminho corrigido para incluir o nome da base de dados
+            var documentsPath = Path.Combine(utils.Parametros["folderPath"], UserSession.Empresa.BaseNome, "documents");
+            var fileName = Path.Combine(documentsPath, doc.FilePath);
+
+            if (!File.Exists(fileName))
+            {
+                Snackbar.Add("Ficheiro não encontrado no servidor", Severity.Warning);
+                return;
+            }
+
+            var fileStream = File.OpenRead(fileName);
+            using var streamRef = new DotNetStreamReference(stream: fileStream);
+            await JSRuntime.InvokeVoidAsync("downloadFileFromStream", doc.FilePath, streamRef);
+
+            await utils.UserLogAsync(UserSession.User.Id, $"Transferiu anexo '{doc.FilePath}' do colaborador {ColaboradorId}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao transferir ficheiro: {ex.Message}", Severity.Error);
+        }
+    }
+
+    // MÉTODOS AUXILIARES PARA UI
+    private string GetFileIcon(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName)) return Icons.Material.Filled.InsertDriveFile;
+
+        var extension = Path.GetExtension(fileName).ToLower();
+        return extension switch
+        {
+            ".pdf" => Icons.Material.Filled.PictureAsPdf,
+            ".doc" or ".docx" => Icons.Material.Filled.Description,
+            ".xls" or ".xlsx" => Icons.Material.Filled.GridOn,
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" => Icons.Material.Filled.Image,
+            ".txt" => Icons.Material.Filled.TextSnippet,
+            ".zip" or ".rar" or ".7z" => Icons.Material.Filled.Archive,
+            _ => Icons.Material.Filled.InsertDriveFile
+        };
+    }
+
+    private Color GetFileTypeColor(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName)) return Color.Default;
+
+        var extension = Path.GetExtension(fileName).ToLower();
+        return extension switch
+        {
+            ".pdf" => Color.Error,
+            ".doc" or ".docx" => Color.Primary,
+            ".xls" or ".xlsx" => Color.Success,
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" => Color.Secondary,
+            ".txt" => Color.Info,
+            ".zip" or ".rar" or ".7z" => Color.Warning,
+            _ => Color.Default
+        };
+    }
+
+    private string GetFileExtension(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName)) return "FILE";
+        var extension = Path.GetExtension(fileName);
+        return string.IsNullOrEmpty(extension) ? "FILE" : extension.TrimStart('.');
+    }
+
+    private string GetDisplayFileName(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName)) return "Ficheiro sem nome";
+
+        // Se o nome contém timestamp, remover para exibição mais limpa
+        var parts = fileName.Split('_');
+        if (parts.Length > 1 && parts[parts.Length - 1].Contains("___")) // Procura pela marcação de timestamp
+        {
+            var cleanName = fileName.Substring(0, fileName.LastIndexOf("___"));
+            var originalName = cleanName.Substring(cleanName.IndexOf("_") + 1);
+            return originalName + Path.GetExtension(fileName);
+        }
+
+        return fileName;
+    }
+
+    private string GetFileSizeDisplay(string fileName)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(fileName)) return "N/A";
+
+            var documentsPath = Path.Combine(utils.Parametros["folderPath"], UserSession.Empresa.BaseNome, "documents");
+            var filePath = Path.Combine(documentsPath, fileName);
+
+            if (File.Exists(filePath))
+            {
+                var fileInfo = new FileInfo(filePath);
+                var sizeInMB = fileInfo.Length / 1024.0 / 1024.0;
+
+                if (sizeInMB < 1)
+                {
+                    var sizeInKB = fileInfo.Length / 1024.0;
+                    return $"{sizeInKB:F1} KB";
+                }
+
+                return $"{sizeInMB:F1} MB";
+            }
+
+            return "N/A";
+        }
+        catch
+        {
+            return "N/A";
+        }
+    }
+
+    private string GetFileDate(string fileName)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(fileName)) return "N/A";
+
+            var documentsPath = Path.Combine(utils.Parametros["folderPath"], UserSession.Empresa.BaseNome, "documents");
+            var filePath = Path.Combine(documentsPath, fileName);
+
+            if (File.Exists(filePath))
+            {
+                var fileInfo = new FileInfo(filePath);
+                return fileInfo.CreationTime.ToString("dd/MM/yyyy");
+            }
+
+            return "N/A";
+        }
+        catch
+        {
+            return "N/A";
+        }
+    }
+}

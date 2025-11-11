@@ -1,0 +1,174 @@
+﻿@page "/ColaboradoresDetalhe/{id}"
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IDbContextFactoryService dbContextFactoryService
+
+<PageTitle>Colaborador</PageTitle>
+
+@if (colaborador is null)
+{
+    <p class="text-muted">Colaborador não encontrado.</p>
+}
+else
+{
+    <div class="row mb-4 border-bottom shadow">
+        <div class="col-md-6">
+            <h1 class="mt-4">@colaborador.Nome</h1>
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="/">Home</a></li>
+                <li class="breadcrumb-item"><a href="/Colaboradores">Colaboradores</a></li>
+                <li class="breadcrumb-item active">Info</li>
+            </ol>
+        </div>
+        <div class="col-md-6 text-end mt-5">
+            <button class="btn btn-secondary" onclick="history.back()">
+                <i class="fa-solid fa-arrow-left"></i> Voltar
+            </button>
+
+            <button class="btn btn-secondary ms-1" @onclick="GoEditar">
+                <i class="fas fa-pen-to-square"></i> Editar
+            </button>
+        </div>
+
+    </div>
+
+    <div class="row g-4">
+
+        <div class="col-12 col-lg-4">
+            <div class="card h-100 text-center shadow-sm">
+
+                <img src="@(string.IsNullOrEmpty(colaborador.CaminhoFoto) ? "/images/perfil4.png" : colaborador.CaminhoFoto)"
+                     alt="@colaborador.Nome"
+                     class="rounded-circle overflow-hidden shadow mt-2 border border-theme border-2 img-cover profile-image-preview"
+                     style="width: 150px; height: 150px; display: block; margin: 0 auto; object-fit: cover; cursor: pointer;">
+
+                <div class="card-body">
+                    <h5 class="card-title mb-2">@colaborador.Nome</h5>
+
+                    <p class="small mb-1 text-muted">
+                        <i class="fa-solid fa-hashtag me-1"></i>@colaborador.Codigo
+                    </p>
+                    <p class="small mb-1 text-muted">
+                        <i class="fa-solid fa-phone me-1"></i>@colaborador.Telefone
+                    </p>
+                    <p class="small mb-1 text-muted">
+                        <i class="fa-regular fa-envelope me-1"></i>@colaborador.Email
+                    </p>
+                    <p class="small text-muted">
+                        <i class="fa-regular fa-building me-1"></i>@colaborador.Empresa
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info pessoais -->
+        <div class="col-12 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white fw-bold">
+                    <i class="fa-solid fa-circle-info me-1"></i> Informações
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-5">Nome Completo</dt>
+                        <dd class="col-7">@colaborador.Nome</dd>
+                        <dt class="col-5">Morada</dt>
+                        <dd class="col-7">@($"{colaborador.Morada} {colaborador.Concelho}")</dd>
+                        <dt class="col-5">Cód. Postal</dt>
+                        <dd class="col-7">@($"{colaborador.CodPostal} {colaborador.Localidade}")</dd>
+                        <dt class="col-5">Data Nasc.</dt>
+                        <dd class="col-7">@colaborador.DataNascimento?.ToShortDateString()</dd>
+                        <dt class="col-5">Estado Civil</dt>
+                        <dd class="col-7">@colaborador.EstadoCivil</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Documentos + Bancário -->
+        <div class="col-12 col-lg-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-white fw-bold">
+                    <i class="fa-solid fa-passport me-1"></i> Documentos
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-6">Cartão Cid.</dt>
+                        <dd class="col-6">@colaborador.Cc</dd>
+                        <dt class="col-6">NIF</dt>
+                        <dd class="col-6">@colaborador.Nif</dd>
+                        <dt class="col-6">Seg. Social</dt>
+                        <dd class="col-6">@colaborador.SegSocial</dd>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-white fw-bold">
+                    <i class="fa-solid fa-building-columns me-1"></i> Dados Bancários
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-4">NIB</dt>
+                        <dd class="col-8">@colaborador.Nib</dd>
+                        <dt class="col-4">IBAN</dt>
+                        <dd class="col-8">@colaborador.Iban</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (contrato is not null)
+    {
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white fw-bold">
+                        <i class="fa-solid fa-handshake me-1"></i> Dados de Contratação
+                    </div>
+                    <div class="card-body">
+                        <dl class="row mb-0">
+                            <dt class="col-3 col-md-2">Admissão</dt>
+                            <dd class="col-9 col-md-4">@contrato.DataInicio?.ToString("dd/MM/yyyy")</dd>
+
+                            <dt class="col-3 col-md-2">Nº Mecanográfico</dt>
+                            <dd class="col-9 col-md-4">@contrato.NumMecanografico</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code 
+{
+    [Parameter] public string id { get; set; } = "";
+
+    private EmpresaUserSession who;
+    private Funcionario? colaborador;
+    private Contrato? contrato;
+
+    protected override void OnInitialized()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        if (who.User.Isadmin != true) { NavigationManager.NavigateTo("/"); return; }
+
+        var ctx = dbContextFactoryService.GetDbContext(who.Empresa.BaseNome);
+
+        colaborador = ctx.Set<Funcionario>().FirstOrDefault(f => f.Id.ToString() == id);
+        contrato = ctx.Set<Contrato>().FirstOrDefault(c => c.IdFuncionario == colaborador!.Id);
+    }
+
+    private void GoEditar()
+        => NavigationManager.NavigateTo($"/ColaboradoresEdit/{id}");
+
+}

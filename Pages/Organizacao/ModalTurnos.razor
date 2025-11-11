@@ -1,0 +1,126 @@
+﻿@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.Data.SqlClient
+@using Microsoft.EntityFrameworkCore
+@inject IDialogService Dialog
+@inject IConfiguration _configuration
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService DbContextFactory
+
+<MudDialog>
+	<DialogContent>
+
+		@if (!string.IsNullOrEmpty(Erro))
+		{
+			<MudText Color="Color.Error">@Erro</MudText>
+		}
+
+		<div class="form-check col-md-12">
+			<div class="d-flex align-items-baseline">
+				<label class="form-label mb-0 me-1">Turno: </label>
+				<select class="d-block w-100 mb-2" style="height:37px; font-size: 17px;"
+						@onchange="@(e => TurnoMudou(e))">
+					<option value="0" selected disabled></option>
+					@foreach (TipoTurno turno in listaTipos)
+					{
+						<option value="@turno.Id" selected="@(TurnoArgumento.Tipo == turno.Id ? "selected" : null)">
+							@turno.Nome
+						</option>
+					}
+				</select>
+			</div>
+		</div>
+
+		<MudTimePicker PickerVariant="PickerVariant.Dialog" Label="24 hours" @bind-Time="TurnoArgumento.Entrada" />
+		<MudTimePicker PickerVariant="PickerVariant.Dialog" Label="24 hours" @bind-Time="TurnoArgumento.Pausa" />
+		<MudTimePicker PickerVariant="PickerVariant.Dialog" Label="24 hours" @bind-Time="TurnoArgumento.Retorno" />
+		<MudTimePicker PickerVariant="PickerVariant.Dialog" Label="24 hours" @bind-Time="TurnoArgumento.Saida" />
+
+	</DialogContent>
+	<DialogActions>
+		<MudButton OnClick="Cancel">Cancel</MudButton>
+		<MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
+	</DialogActions>
+</MudDialog>
+
+@code 
+{
+	[CascadingParameter]
+	public MudDialogInstance MudDialog { get; set; } = null!;
+
+	[Parameter]
+	public Turnos? TurnoArgumento { get; set; }
+
+	private DbContext dbContext;
+	EmpresaUserSession who = null;
+	public List<TipoTurno>? listaTipos = new List<TipoTurno>() { };
+	public List<Turnos>? listaTurnos = new List<Turnos>() { };
+	private string Erro = string.Empty;
+
+	protected override void OnInitialized()
+	{
+		who = (EmpresaUserSession)utils.AgSession["user"];
+        dbContext = DbContextFactory.GetDbContext(who.Empresa.BaseNome);
+
+		if (TurnoArgumento is null)
+		{
+			TurnoArgumento = new Turnos();
+		}
+
+		GetListaTipos();
+		GetListaTurnos();
+
+		base.OnInitialized();
+	}
+
+	private void GetListaTipos()
+	{
+		listaTipos = dbContext.Set<TipoTurno>().ToList();
+	}
+
+	private void GetListaTurnos()
+	{
+		listaTurnos = dbContext.Set<Turnos>().ToList();
+	}
+
+	private async Task TurnoMudou(ChangeEventArgs e)
+	{
+		TipoTurno? tipo = new TipoTurno() { };
+
+		string idSelecionadoString = e.Value?.ToString();
+		if (!string.IsNullOrEmpty(idSelecionadoString) && int.TryParse(idSelecionadoString, out int idSelecionado))
+		{
+			if (idSelecionado > 0)
+			{
+				tipo = listaTipos.FirstOrDefault(i => i.Id == idSelecionado);
+			}
+
+			if (tipo is not null && tipo.Id > 0)
+			{
+				TurnoArgumento.Tipo = tipo.Id;
+				TurnoArgumento.NomeTipo = tipo.Nome;
+			}
+		}
+	}
+
+	private async Task Submit()
+	{
+		if (listaTurnos.Any(i => i.Tipo == TurnoArgumento.Tipo && i.Id != TurnoArgumento.Id))
+		{
+			Erro = "Ja existe um turno" + TurnoArgumento.NomeTipo + " definido.";
+			return;
+		}
+		else
+		{
+			MudDialog.Close(DialogResult.Ok(TurnoArgumento));
+		}
+	}
+
+	private void Cancel() => MudDialog.Cancel();
+}

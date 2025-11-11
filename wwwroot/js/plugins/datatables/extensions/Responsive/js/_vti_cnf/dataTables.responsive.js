@@ -1,0 +1,9 @@
+vti_encoding:SR|utf8-nl
+vti_author:SR|DOMINGOS\\domingos-pc
+vti_modifiedby:SR|DOMINGOS\\domingos-pc
+vti_timelastmodified:TR|01 Oct 2015 17:40:34 -0000
+vti_timecreated:TR|01 Oct 2015 17:40:34 -0000
+vti_cacheddtm:TX|01 Oct 2015 17:40:34 -0000
+vti_filesize:IR|25098
+vti_extenderversion:SR|12.0.0.0
+vti_backlinkinfo:VX|plugins/datatables/extensions/Responsive/examples/styling/compact.html plugins/datatables/extensions/Responsive/examples/child-rows/right-column.html plugins/datatables/extensions/Responsive/examples/initialisation/option.html plugins/datatables/extensions/Responsive/examples/initialisation/default.html plugins/datatables/extensions/Responsive/examples/display-control/fixedHeader.html plugins/datatables/extensions/Responsive/examples/display-control/auto.html plugins/datatables/extensions/Responsive/examples/child-rows/disable-child-rows.html plugins/datatables/extensions/Responsive/examples/initialisation/className.html plugins/datatables/extensions/Responsive/examples/display-control/init-classes.html plugins/datatables/extensions/Responsive/examples/child-rows/whole-row-control.html plugins/datatables/extensions/Responsive/examples/styling/foundation.html plugins/datatables/extensions/Responsive/examples/initialisation/new.html plugins/datatables/extensions/Responsive/examples/child-rows/column-control.html plugins/datatables/extensions/Responsive/examples/display-control/classes.html plugins/datatables/extensions/Responsive/examples/initialisation/ajax.html plugins/datatables/extensions/Responsive/examples/styling/scrolling.html plugins/datatables/extensions/Responsive/examples/styling/bootstrap.html plugins/datatables/extensions/Responsive/examples/child-rows/custom-renderer.html plugins/datatables/extensions/Responsive/examples/display-control/complexHeader.html

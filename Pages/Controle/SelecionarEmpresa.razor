@@ -1,0 +1,437 @@
+﻿@page "/"
+@inherits LayoutComponentBase
+@layout NoLayout
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Shared
+@using Newtonsoft.Json
+@inject NavigationManager NavigationManager
+@inject Utils utils
+@inject IJSRuntime JSRuntime
+@inject IWebHostEnvironment Env
+@inject LayoutUpdateService LayoutUpdateService
+@inject IConfiguration Configuration
+
+
+<PageTitle>Selecionar Empresa</PageTitle>
+
+<style>
+    body {
+    background-color: #f4f4f4;
+    }
+
+    .header-icon-wrapper svg {
+    font-size: 1.5rem;
+    }
+</style>
+
+@if (who != null)
+{
+    <nav class="sb-topnav navbar navbar-expand navbar-light bg-dark shadow" style="background-image: linear-gradient(120deg, black 0%, black 70%);">
+        
+        <!-- Navbar Brand-->
+         <a class="navbar-brand ps-3" href="">
+            <img src="images/uploads/construlinkLogo.png" alt="logo" style="width:130px; height:auto;">
+        </a>
+
+       
+
+        <div class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0">
+        </div>
+
+    </nav>
+
+    <div class="container-fluid p-0" style="background-image: url('/images/bg-dark.jpg'); background-size: cover; background-repeat: no-repeat; min-height: 100vh;">
+        <div class="row g-0" style="min-height: 100vh;">
+
+            <div class="col-md-9 p-5">
+                <h2 style="color: white;">Empresas</h2>
+                <p style="color: floralwhite;">Por favor, selecione a empresa a que deseja aceder.</p>
+
+                <div class="d-flex flex-wrap mt-4">
+                    @foreach (CrmEmpresa empresa in empresasDesteUtilizador)
+{
+                        <MudCard Style="width: 300px;" Class="mx-3 mb-4 p-0" Elevation="7">
+
+                            <!-- cabeçalho --------------------------------------------------- -->
+                            <MudCardHeader Class="pt-2 pb-1" Style="border-bottom: 1px solid rgba(0,0,0,.54);">
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.button" HtmlTag="h3"
+                                             Style="text-transform:none;">@empresa.Empresa</MudText>
+                                </CardHeaderContent>
+
+                                <CardHeaderActions>
+                                    @* Só admins / super-admins vêem o ícone de edição *@
+                                    @if (who?.User?.Isadmin == true || who?.User?.IsSuperAdmin == true)
+                                    {
+                                        <MudIconButton Class="header-icon-wrapper"
+                                                       Icon="@Utils.GetSvgPathData("web","solid","gear")"
+                                                       Color="Color.Dark"
+                                                       @onclick="() => RedirectToEditCompany(empresa.Id)" />
+                                    }
+                                </CardHeaderActions>
+                            </MudCardHeader>
+
+                            <!-- imagem ------------------------------------------------------ -->
+                            <MudCardMedia Image="@Utils.GetImgUrlFromName(empresa.ImagemCard)"
+                                          Height="250" Style="cursor:pointer;"
+                                          @onclick="() => Redirecionar(empresa.Id)" />
+
+                        </MudCard>
+                    }
+
+                </div>
+            </div>
+
+
+            @if (tituloPatch != null && listaPatchNotesFeatures.Any())
+            {
+                <div class="col-md-3 d-flex p-3 flex-column justify-content-start" style="background-color: black; color: white; padding: 2rem; min-height: 100vh;">
+                    <h2>Patch Notes @(tituloPatch.Data?.ToString("dd/MM/yyyy"))</h2>
+                    <h3 style="padding-top: 1rem; padding-bottom: 0.2rem; font-size: 1.6rem;">@tituloPatch.Mensagem</h3>
+                    <ul>
+                        @foreach (PatchNotes feature in listaPatchNotesFeatures)
+                        {
+                            <li style="list-style-type: disc;">@feature.Mensagem</li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<script>
+    function showModal(modalId, comportamento)
+    {
+        jQuery(modalId).modal(comportamento);
+    }
+</script>
+
+<section>
+    <script>
+
+        //GESTÃO DE COOKIES
+
+        function setCookie(name, value, days) {
+        var expires = "";
+        if (days) {
+        var date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/";
+        }
+
+        function getCookie(name) {
+        var nameEQ = name + "=";
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+        }
+
+        function deleteCookie(name) {
+        document.cookie = name + '=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        }
+
+    </script>
+</section>
+
+@code {
+
+    EmpresaUserSession who = null;
+    CrmEmpresa empresaSession = null;
+    List<CrmEmpresa> empresasDesteUtilizador = new List<CrmEmpresa>();
+    List<Avisos> listaAvisos = new List<Avisos>() { };
+
+    private List<CrmConfig> configs = new List<CrmConfig>();
+    private bool geolocation = false;
+    private string path = "";
+
+    private string pass_nova = "";
+    private string pass_confirma = "";
+
+    private string Erro = "";
+    private string Mensagem = "";
+
+    private bool ChangePasswordModalOpen = false;
+
+    private bool AvisoModalOpen = false;
+
+    List<PatchNotes> listaPatchNotes = new List<PatchNotes>() { };
+    PatchNotes tituloPatch = new PatchNotes() { };
+    List<PatchNotes> listaPatchNotesFeatures = new List<PatchNotes>() { };
+
+    protected override void OnInitialized()
+    {
+        if (!utils.AgSession.ContainsKey("user"))
+        {
+            NavigationManager.NavigateTo("login", true);
+            return; 
+        }
+
+        who = (EmpresaUserSession)utils.AgSession["user"];
+
+        //verifica se está a abrir na app ou no browser
+        var uri = new Uri(NavigationManager.Uri);
+        var runningInWebView = uri.Query.Contains("runningInWebView=true");
+        if (runningInWebView)
+        {
+            utils.AgSession.Add("app", true);
+        }
+
+        GetPatchNotes();
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        //Instancia a base de dados de controle (contem os utilizadores, a lista de empresas e a auditoria)
+        BaseControleContext dbContext = new BaseControleContext();
+        EstadoManutencao estadoManutencao = dbContext.EstadoManutencao.FirstOrDefault(i => i.Id > 0);
+
+        //verifica cookie se ja existe um cookie de utilizador
+        if (utils.AgSession.ContainsKey("user") != true)
+        {
+            //verifica cookie
+            var cookieuser = await JSRuntime.InvokeAsync<string>("getCookie", "user");
+
+            if (cookieuser != null)
+            {
+                cookieuser = Encrypter.Decrypt(cookieuser);
+                EmpresaUserSession olduser = JsonConvert.DeserializeObject<EmpresaUserSession>(cookieuser);
+
+                if (estadoManutencao is not null && estadoManutencao.Estado == true)
+                {
+                    if (olduser.User.IsSuperAdmin != true)
+                    {
+                        NavigationManager.NavigateTo("Manutencao");
+                    }
+                }
+
+                CrmUtilizador newuser = dbContext.CrmUtilizadors.FirstOrDefault(f => f.Id == olduser.User.Id);
+                if (newuser != null)
+                {
+                    if (newuser.Isactive == true)
+                    {
+                        EmpresaUserSession newWho = new EmpresaUserSession()
+                            {
+                                User = newuser,
+                                Empresa = new CrmEmpresa()
+                            };
+
+                        utils.AgSession.Add("user", newWho);
+                        who = (EmpresaUserSession)utils.AgSession["user"];
+
+                        //preenchimento da lista de empresas associadas a este utilizador
+                        empresasDesteUtilizador = GetEmpresas(dbContext).Result;
+
+                        StateHasChanged();
+                    }
+                    else
+                    {
+                        await JSRuntime.InvokeVoidAsync("deleteCookie", "user");
+
+                        if (estadoManutencao is not null && estadoManutencao.Estado == true)
+                        {
+                            NavigationManager.NavigateTo("Manutencao");
+                        }
+                        else
+                        {
+                            NavigationManager.NavigateTo("login");
+                        }
+                    }
+                }
+                else
+                {
+                    if (estadoManutencao is not null && estadoManutencao.Estado == true)
+                    {
+                        NavigationManager.NavigateTo("Manutencao");
+                    }
+                }
+            }
+            else
+            {
+                if (estadoManutencao is not null && estadoManutencao.Estado == true)
+                {
+                    NavigationManager.NavigateTo("Manutencao");
+                }
+                else
+                {
+                    NavigationManager.NavigateTo("login");
+                }
+            }
+        }
+        else
+        {
+            if (firstRender)
+            {
+                who = (EmpresaUserSession)utils.AgSession["user"];
+
+                if (estadoManutencao is not null && estadoManutencao.Estado == true)
+                {
+                    if (who.User.IsSuperAdmin != true)
+                    {
+                        NavigationManager.NavigateTo("Manutencao");
+                    }
+                }
+
+                //envia para as cookies
+                string sessionuser = JsonConvert.SerializeObject(who);
+                await JSRuntime.InvokeAsync<string>("setCookie", "user", Encrypter.Encrypt(sessionuser), 7);
+
+                //configurações
+                configs = dbContext.CrmConfigs.ToList();
+
+                //preenchimento da lista de empresas associadas a este utilizador
+                empresasDesteUtilizador = GetEmpresas(dbContext).Result;
+                StateHasChanged();
+            }
+        }
+
+        if (!ChangePasswordModalOpen)
+        {
+            ChangePasswordModalOpen = true;
+
+            // Só verificar who.User se who != null e who.User != null
+            if (who != null && who.User != null && who.User.Changepassword == true)
+            {
+                await JSRuntime.InvokeAsync<object>("showModal", "#newpass", "show");
+            }
+        }
+
+        if (who.User.IsApenasPicagens == true)
+        {
+            if (empresasDesteUtilizador.Count() == 1)
+            {
+                Redirecionar(empresasDesteUtilizador[0].Id);
+            }
+        }
+
+        dbContext.Dispose();
+        base.OnAfterRenderAsync(firstRender);
+    }
+
+    private void GetPatchNotes()
+    {
+        BaseControleContext baseListaPatchs = new BaseControleContext();
+
+        listaPatchNotes = baseListaPatchs.Set<PatchNotes>().Where(i => i.IsDeleted != true).ToList();
+
+        SeparaListasPatch();
+    }
+
+    private void SeparaListasPatch()
+    {
+        tituloPatch = listaPatchNotes.FirstOrDefault(i => i.IsTitulo == true && i.IsDeleted != true && i.IsAtivo == true);
+        listaPatchNotesFeatures = listaPatchNotes.Where(i => i.IsTitulo != true && i.IsDeleted != true && i.IsAtivo == true).ToList();
+    }
+
+    //Altera a password no primeiro login
+    private async Task ChangePass()
+    {
+        BaseControleContext dbContextLocal = new BaseControleContext();
+
+        Erro = "";
+        Mensagem = "";
+
+        if (pass_nova.Trim() == "" || pass_confirma.Trim() == "")
+        {
+            Erro = "Para alterar a senha deve preencher a Nova palavra passe e a Confirmação da nova palavra passe";
+        }
+
+        if (pass_nova.Trim() != "" && pass_confirma.Trim() != "")
+        {
+            if (pass_nova.Trim() == pass_confirma.Trim())
+            {
+                string newpass = Utils.Hash(pass_nova.Trim(), Configuration);
+                who.User.Agpassword = newpass;
+
+                who.User.Changepassword = false;
+                CrmUtilizador ouser = dbContextLocal.CrmUtilizadors.FirstOrDefault(f => f.Id == who.User.Id);
+                ouser.Agpassword = who.User.Agpassword;
+                ouser.Changepassword = who.User.Changepassword;
+                Erro = "";
+            }
+            else
+            {
+                Erro = "A nova palavra passe e a confirmação não coincidem";
+            }
+        }
+
+        if (Erro == "")
+        {
+            try
+            {
+                await JSRuntime.InvokeAsync<object>("showModal", "#newpass", "toggle");
+                await dbContextLocal.SaveChangesAsync();
+                Utils.UserLog(who.User.Id, $"Alterou a senha inicial");
+                Mensagem = "A sua senha foi alterada com sucesso";
+            }
+            catch (Exception ex)
+            {
+                Erro = ex.Message;
+            }
+        }
+        dbContextLocal.Dispose();
+    }
+
+    //função que vai buscar as empresas associadas ao utilizador logado (who.Id)
+    private async Task<List<CrmEmpresa>> GetEmpresas(BaseControleContext dbContext)
+    {
+        try
+        {
+            List<int> utilizadorEmpresasId = dbContext.UtilizadorEmpresas.Where(i => i.UtilizadorId == who.User.Id).Select(i => i.EmpresaId).ToList();
+            List<CrmEmpresa> listaEmpresas = dbContext.CrmEmpresas.Where(i => utilizadorEmpresasId.Contains(i.Id)).ToList();
+
+            return listaEmpresas ;
+        }
+        catch (Exception)
+        {
+            return new List<CrmEmpresa>();
+        }
+    }
+
+    //função de redirecionamento para a empresa escolhida (Também faz set da Session)
+    private async Task Redirecionar(int IdEmpresaSelecionada)
+    {
+        empresaSession = empresasDesteUtilizador.Find(i => i.Id == IdEmpresaSelecionada);
+
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        who.Empresa = empresaSession;
+
+        string sessionuser = JsonConvert.SerializeObject(who);
+        await JSRuntime.InvokeAsync<string>("setCookie", "user", sessionuser, 7);
+
+        NavigationManager.NavigateTo("/DashBoard");
+    }
+
+    public async Task RedirectToEditCompany(int companyId) {
+        empresaSession = empresasDesteUtilizador.Find(i => i.Id == companyId);
+
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        who.Empresa = empresaSession;
+
+        string sessionuser = JsonConvert.SerializeObject(who);
+        await JSRuntime.InvokeAsync<string>("setCookie", "user", sessionuser, 7);
+
+        NavigationManager.NavigateTo($"EditaEmpresa/{companyId}");
+    }
+
+    //função que desloga o utilizador
+    private async Task logout()
+    {
+        await utils.UserLogAsync(who.User.Id, $"LOGOUT");
+        utils.AgSession.Remove("user");
+        await JSRuntime.InvokeVoidAsync("deleteCookie", "user"); //elimina a cookie
+        NavigationManager.NavigateTo("LoginUnificado");
+    }
+}
+
+
+         

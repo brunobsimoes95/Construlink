@@ -1,0 +1,151 @@
+﻿@page "/ControlarPicagens/{IDPICAGEM:int}"
+@using System.Text.Json
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+
+@using Construlink.Shared
+@using Microsoft.Data.SqlClient
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject IDialogService Dialog
+@inject IConfiguration _configuration
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService DbContextFactory
+@inject IJSRuntime JSRuntime
+
+<MudDialog>
+	<DialogContent>
+
+		<MudTextField Label="Hora de Entrada" Variant="Variant.Outlined" InputType="InputType.Time" FullWidth="false" @bind-Value="HoraEntrada" />
+		<MudTextField Label="Hora de Hora de Almoço" Variant="Variant.Outlined" InputType="InputType.Time" FullWidth="false" @bind-Value="HoraAlmoco" />
+		<MudTextField Label="Hora de Fim de Almoço" Variant="Variant.Outlined" InputType="InputType.Time" FullWidth="false" @bind-Value="HoraFimAlmoco" />
+		<MudTextField Label="Hora de Saida" Variant="Variant.Outlined" InputType="InputType.Time" FullWidth="false" @bind-Value="HoraSaida" />
+		
+	</DialogContent>
+	<DialogActions>
+		<MudButton OnClick="Cancel">Cancel</MudButton>
+		<MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
+	</DialogActions>
+</MudDialog>
+
+@code
+{
+	[CascadingParameter]
+	public MudDialogInstance MudDialog { get; set; } = null!;
+
+	[Parameter]
+	public required int IDPICAGEM { get; set; }
+
+	private DbContext dbContext;
+	EmpresaUserSession who = null;
+
+	private TimeSpan HoraEntrada = new TimeSpan(12);
+	private TimeSpan HoraAlmoco = new TimeSpan(12);
+	private TimeSpan HoraFimAlmoco = new TimeSpan(12);
+	private TimeSpan HoraSaida = new TimeSpan(12);
+
+	CrmPicagem picagem = new CrmPicagem() { };
+
+	public string error = string.Empty;
+
+	protected override void OnInitialized()
+	{
+		who = (EmpresaUserSession)utils.AgSession["user"];
+		dbContext = DbContextFactory.GetDbContext(who.Empresa.BaseNome);
+
+		GetPicagem();
+
+		base.OnInitialized();
+	}
+
+	public class GeoResult
+	{
+		public double latitude { get; set; }
+		public double longitude { get; set; }
+	}
+
+	private async Task<string> ObterAreaPorCoordenadasAsync(double latitude, double longitude)
+	{
+		var url = $"https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat={latitude}&lon={longitude}";
+		using var http = new HttpClient();
+		http.DefaultRequestHeaders.Add("User-Agent", "Construlink");
+
+		var response = await http.GetAsync(url);
+		if (!response.IsSuccessStatusCode) return "Desconhecido";
+
+		var json = await response.Content.ReadAsStringAsync();
+		using var doc = JsonDocument.Parse(json);
+
+		if (doc.RootElement.TryGetProperty("address", out var address))
+		{
+			string[] prioridades = new[] { "town", "city", "village", "municipality", "suburb", "county", "state" };
+
+			foreach (var prop in prioridades)
+			{
+				if (address.TryGetProperty(prop, out var local))
+					return local.GetString();
+			}
+		}
+
+		return "Desconhecido";
+	}
+
+	private void GetPicagem()
+	{
+		picagem = dbContext.Set<CrmPicagem>().FirstOrDefault(i => i.Id == IDPICAGEM);
+
+		if (picagem is not null)
+		{
+			HoraEntrada = picagem.Entrada?.TimeOfDay ?? TimeSpan.Zero;
+			HoraAlmoco = picagem.InicioAlmoco?.TimeOfDay ?? TimeSpan.Zero;
+			HoraFimAlmoco = picagem.FimAlmoco?.TimeOfDay ?? TimeSpan.Zero;
+			HoraSaida = picagem.Saida?.TimeOfDay ?? TimeSpan.Zero;
+		}
+	}
+
+	private async Task Submit()
+	{
+		try
+		{
+			var coords = await JSRuntime.InvokeAsync<GeoResult>("getLocation");
+			var area = await ObterAreaPorCoordenadasAsync(coords.latitude, coords.longitude);
+
+			picagem.Latitude = coords.latitude;
+			picagem.Longitude = coords.longitude;
+			picagem.Area = area;
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine("Erro ao obter localização: " + ex.Message);
+			// opcional: picagem.Area = "Erro ao obter localização";
+		}
+
+
+		DateTime diaEntrada = picagem.Entrada?.Date ?? DateTime.Now;
+		DateTime diaAlmoco = picagem.Entrada?.Date ?? DateTime.Now;
+		DateTime diaVolta = picagem.Entrada?.Date ?? DateTime.Now;
+		DateTime diaSaida = picagem.Entrada?.Date ?? DateTime.Now;
+
+		TimeSpan horaEntrada = HoraEntrada;
+		TimeSpan horaAlmoco = HoraAlmoco;
+		TimeSpan horaVolta = HoraFimAlmoco;
+		TimeSpan horaSaida = HoraSaida;
+
+		DateTime novo = diaEntrada.Add(horaEntrada);
+		DateTime novo2 = diaAlmoco.Add(horaAlmoco);
+		DateTime novo3 = diaVolta.Add(horaVolta);
+		DateTime novo4 = diaSaida.Add(horaSaida);
+
+		picagem.Entrada = novo;
+		picagem.InicioAlmoco = novo2;
+		picagem.FimAlmoco = novo3;
+		picagem.Saida = novo4;
+
+		MudDialog.Close(DialogResult.Ok(picagem));
+	}
+
+	private void Cancel() => MudDialog.Cancel();
+}

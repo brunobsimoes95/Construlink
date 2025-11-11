@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Construlink")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ddfc0b446caf1c7d048730313a521e56e5cb4b80")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+51ae5eeac71ec34064e5184d6a3d2e642de756d6")]
 [assembly: System.Reflection.AssemblyProductAttribute("Construlink")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Construlink")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

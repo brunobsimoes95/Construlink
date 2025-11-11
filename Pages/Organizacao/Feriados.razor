@@ -1,0 +1,643 @@
+﻿@page "/Feriados"
+@using System.Globalization
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.EntityFrameworkCore
+@using Newtonsoft.Json
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService DbContextFactory
+
+
+<div class="row mt-2 mb-2">
+    <div class="col-md-6 col-sm-12 col-12 mt-2">
+        <div class="mb-2" style="display: flex; align-items: center;">
+            <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+            <h4 class="ms-2 mt-2 hide-on-mobile">Feriados</h4>
+        </div>
+    </div>
+    <div class="col-md-6 col-sm-12 col-12 mt-4 hide-on-mobile">
+        <ol class="breadcrumb" style="float:right;">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item active">Administração</li>
+            <li class="breadcrumb-item active">Organização</li>
+            <li class="breadcrumb-item active">Feriados</li>
+        </ol>
+    </div>
+    <div class="col-md-5 col-sm-12 col-12 show-on-mobile">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item active">Administração</li>
+            <li class="breadcrumb-item active">Organização</li>
+            <li class="breadcrumb-item active">Feriados</li>
+        </ol>
+    </div>
+</div>
+
+@* show informação *@
+<div class="row">
+    <div class="col-md-12 mb-3">
+
+        <MudCard Class="mb-3" Elevation="4">
+            <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+                <MudText Typo="Typo.button" Class="m-0">
+                    <MudIcon Icon="fa-solid fa-circle-dot" Class="me-2" Style="font-size: 0.95rem !important;" /> Ações
+                </MudText>
+            </MudCardHeader>
+            <hr style="margin: 0; border: 0; border-top: 1px solid #000; !important;" />
+            <MudCardContent>
+                <MudStack Row="true" Spacing="2" Class="justify-end">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Success" OnClick="@(SyncFeriados)" Class="me-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Autorenew" Class="me-2" />
+                        Sincronizar Feriados
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="@(AdicionarFeriado)">
+                        <MudIcon Icon="@Icons.Material.Filled.CalendarToday" Class="me-2" />
+                        Adicionar Feriado
+                    </MudButton>
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+
+        <MudTable ServerData="ServerReload"
+                  T="TableFeriado"
+                  Dense="true"
+                  Hover="true"
+                  @ref="table"
+                  Elevation="4">
+                  <ToolBarContent>
+                <MudSpacer />
+
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="ms-auto">
+                    <!-- Filtro de Mês -->
+                    <MudAutocomplete T="string"
+                                     SearchFunc="BuscaMes"
+                                     ValueChanged="OnSelecionaMes"
+                                     ToStringFunc="(x => x)"
+                                     Clearable="true"
+                                     ResetValueOnEmptyText
+                                     Dense="true"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Placeholder="Selecionar Mês"
+                                     Style="min-width:160px;" />
+
+                    <!-- Pesquisar -->
+                    <MudTextField T="string"
+                                   ValueChanged="@(s => OnSearch(s))"
+                                   Placeholder="Pesquisar..."
+                                   Adornment="Adornment.Start"
+                                   Immediate="true"
+                                   AdornmentIcon="@Icons.Material.Filled.Search"
+                                   IconSize="Size.Medium"
+                                   Dense="true"
+                                   Variant="Variant.Outlined"
+                                   Margin="Margin.Dense"
+                                   Style="min-width:200px;" />
+                </MudStack>
+            </ToolBarContent>
+
+            <HeaderContent>
+                <MudTh Style="width:60px;"><MudTableSortLabel SortLabel="details" T="TableFeriado">Gravar</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="descricao" T="TableFeriado">Descrição</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="mes" T="TableFeriado">Mês</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="dia" T="TableFeriado">Dia</MudTableSortLabel></MudTh>
+                <MudTh><MudTableSortLabel SortLabel="trabalha" T="TableFeriado">Trabalha</MudTableSortLabel></MudTh>
+                <MudTh>Remover</MudTh>
+
+            </HeaderContent>
+
+            <RowTemplate>
+
+                <MudTd Style="width: 10%;" DataLabel="Ações">
+                    <MudContainer Class="d-flex p-0 m-0">
+                        
+
+                        <MudButton Class="btn-default"
+                                   Style="border:none !important; background-color:transparent !important;"
+                                   OnClick="@(async () => {
+                                                SelectedFeriado = feriados.FirstOrDefault(x => x.Id == context.Id);
+                                                 await SaveFeriado(context);
+                                            })">
+
+                            <MudIcon Icon="far fa-save" Style="font-size: 0.950rem !important;"></MudIcon>
+                        </MudButton>
+                    </MudContainer>
+                </MudTd>
+
+
+                <MudTd DataLabel="Descrição">
+                    @if (context.Edita == true)
+                    {
+                        <MudTextField T="string" @bind-Value="context.Descricao" />
+                    }
+                    else
+                    {
+                        @context.Descricao
+                    }
+                </MudTd>
+
+                <MudTd DataLabel="Mês">
+                    <MudNumericField T="int?" @bind-Value="context.Mes" Min="1" Max="12" />
+                </MudTd>
+
+                <MudTd DataLabel="Dia">
+                    <MudNumericField T="int?" @bind-Value="context.Dia" Min="1" Max="31" />
+                </MudTd>
+
+                <MudTd DataLabel="Trabalha">
+                    <p hidden>@context.Trabalha</p>
+                    <label id="access_prod" class='cnk-switch'>
+                        <input type='checkbox' @bind="context.Trabalha" />
+                        <span class='cnk-switch-slider round'></span>
+                    </label>
+                </MudTd>
+                <MudTd>
+                    <MudButton Class="btn-default"
+                               Style="border:none !important; background-color:transparent !important; color:red;"
+                               OnClick="@(()=> { DeletedFeriado = feriados.FirstOrDefault(x => x.Id == context.Id); })">
+
+                        <MudIcon Icon="far fa-trash-can" Style="font-size: 0.950rem !important;"></MudIcon>
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+
+            <NoRecordsContent>
+                <MudText>Não existem feriados cadastrados.</MudText>
+            </NoRecordsContent>
+
+            <LoadingContent>
+                <MudText>Carregando...</MudText>
+            </LoadingContent>
+
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+
+    </div>
+</div>
+
+<!-- Delete Modal -->
+@if (DeletedFeriado != null)
+{
+    <div class="modal fade" id="deleteferiadoModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deleteferiadoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteferiadoModalLabel"><span><i class="far fa-trash-can"></i></span> Eliminar Feriado</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @onclick="@(()=>{ DeletedFeriado = null;})"></button>
+                </div>
+                <div class="modal-body">
+                    <p>A eliminação de registos é permanente e irreversível.</p>
+                    <p>Pretende realmente eliminar o feriado '@DeletedFeriado.Descricao'?</p>
+                </div>
+                <div class="modal-footer">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Success" OnClick="@(()=> { DeletedFeriado=null; })" Class="me-2" data-bs-dismiss="modal">
+                        Cancelar
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" OnClick="@(()=>{ ConfirmDeleteFeriado(); })">
+                        Guardar
+                    </MudButton>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<script>
+    function cleanTables_feriados() {
+        if (document.getElementById("tab_feriados_wrapper")) {
+            document.getElementById("tab_feriados_wrapper").remove();
+        }
+    }
+
+    function showModal(modalId, comportamento) {
+        jQuery(modalId).modal(comportamento);
+    }
+</script>
+
+@code {
+    private int? mesFiltro;   // ← mês seleccionado (1-12), null = todos
+    EmpresaUserSession who = null;
+    private string path = "";
+    private List<CrmFeriado> feriados = new List<CrmFeriado>();
+    CrmFeriado SelectedFeriado = null;
+    CrmFeriado DeletedFeriado = null;
+    private string Erro = "";
+    private string Mensagem = "";
+    private readonly object updateLock = new object();
+    private DbContext dbContext;
+    private MudTable<TableFeriado> table;
+    private List<TableFeriado> allTblObjects = new();
+    private List<TableFeriado> tblObjects = new();
+    private IEnumerable<TableFeriado> pagedData;
+    private int totalItems;
+    private string searchString = "";
+    private string? MesSelecionado;
+
+       private readonly List<string> Meses = new()
+{
+    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+};
+
+    
+
+    protected override void OnInitialized()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        if (who.User.Isadmin != true)
+        {
+            NavigationManager.NavigateTo("/");
+        }
+        dbContext = DbContextFactory.GetDbContext(who.Empresa.BaseNome);
+        base.OnInitialized();
+    }
+
+    protected override async void OnAfterRender(bool firstRender)
+    {
+        if (firstRender == true)
+        {
+            await GetFeriados();
+        }
+        else
+        {
+            if (DeletedFeriado != null)
+            {
+                await JSRuntime.InvokeAsync<object>("showModal", "#deleteferiadoModal", "show");
+            }
+        }
+
+        base.OnAfterRender(firstRender);
+    }
+
+    private async Task GetFeriados()
+    {
+        if (feriados.Count > 0)
+        {
+            feriados.Clear();
+            await JSRuntime.InvokeAsync<object>("cleanTables_feriados");
+            StateHasChanged();
+        }
+
+        lock (updateLock)
+        {
+            try
+            {
+                feriados = dbContext.Set<CrmFeriado>().ToList();
+
+                allTblObjects = feriados.Select(f => new TableFeriado
+                    {
+                        Id = f.Id,
+                        Descricao = f.Descricao,
+                        Mes = f.Mes,
+                        Dia = f.Dia,
+                        Trabalha = f.Trabalha,
+                        Edita = false //Inicializa a Edita como false.
+                    }).OrderBy(o => o.Descricao).ToList();
+
+                tblObjects = allTblObjects;
+            }
+            catch (Exception)
+            {
+
+            }
+            finally
+            {
+                StateHasChanged();
+            }
+        }
+        if (table != null)
+        {
+            table.ReloadServerData();
+        }
+    }
+
+    private Task<IEnumerable<string>> BuscaMes(string val, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(val))
+            return Task.FromResult(Meses.AsEnumerable());
+
+        return Task.FromResult(Meses
+            .Where(m => m.Contains(val, StringComparison.OrdinalIgnoreCase))
+            .AsEnumerable());
+    }
+
+    private async void OnSelecionaMes(string mes)
+    {
+        // se limpou o campo ⇒ mostra tudo
+        mesFiltro = string.IsNullOrWhiteSpace(mes)
+            ? null
+            : (int?)(Meses.IndexOf(mes) + 1);   // Janeiro=1, Fevereiro=2…
+
+        await table.ReloadServerData();
+    }
+
+
+    private async Task ConfirmDeleteFeriado()
+    {
+        await SaveFeriado(null);
+        DeletedFeriado = null;
+    }
+
+    private int? _mesFiltro;
+    private int? MesFiltro
+    {
+        get => _mesFiltro;
+        set
+        {
+            if (_mesFiltro != value)
+            {
+                _mesFiltro = value;
+                _ = table.ReloadServerData();  
+            }
+        }
+    }
+
+    private async Task SaveFeriado(TableFeriado tableFeriado)
+    {
+        try
+        {
+            Erro = "";
+            Mensagem = "";
+            string comportamento = "";
+
+            if (tableFeriado != null)
+            {
+                if (SelectedFeriado == null)           // ── novo
+                {
+                    SelectedFeriado = new CrmFeriado
+                        {
+                            Descricao = tableFeriado.Descricao,
+                            Mes = tableFeriado.Mes,
+                            Dia = tableFeriado.Dia,
+                            Trabalha = tableFeriado.Trabalha ?? false
+                        };
+                }
+                else                                   // ── edição
+                {
+                    SelectedFeriado.Descricao = tableFeriado.Descricao;
+                    SelectedFeriado.Mes = tableFeriado.Mes;
+                    SelectedFeriado.Dia = tableFeriado.Dia;
+                    SelectedFeriado.Trabalha = tableFeriado.Trabalha ?? false;
+                }
+
+                // ─────────────────────────────────────────────────────────────
+                // 1. validações básicas
+                if (string.IsNullOrWhiteSpace(SelectedFeriado.Descricao))
+                { Erro = "Deve inserir uma descrição correta!"; return; }
+
+                if (!DateTime.TryParseExact(
+                        $"{DateTime.Today.Year}-{SelectedFeriado.Mes:D2}-{SelectedFeriado.Dia:D2}",
+                        "yyyy-MM-dd", null, DateTimeStyles.None, out _))
+                { Erro = "Deve inserir uma data válida (mês e dia)!"; return; }
+
+                // ─────────────────────────────────────────────────────────────
+                // 2. BLOQUEIA DUPLICADOS
+                bool existeDuplicado = dbContext.Set<CrmFeriado>().Any(f =>
+                        f.Id != SelectedFeriado.Id &&                         // ignora o próprio
+                        (
+                                /* mesma data */  (f.Mes == SelectedFeriado.Mes && f.Dia == SelectedFeriado.Dia)
+                            /* ou mesma descrição (se quiser) */
+                            || f.Descricao.ToLower() == SelectedFeriado.Descricao.ToLower()
+                        ));
+
+                if (existeDuplicado)
+                {
+                    Erro = "Já existe um feriado com essa data ou descrição!";
+                    return;
+                }
+                // ─────────────────────────────────────────────────────────────
+
+                if (SelectedFeriado.Id == 0)
+                {
+                    dbContext.Set<CrmFeriado>().Add(SelectedFeriado);
+                    comportamento = $"Ins. feriado '{SelectedFeriado.Descricao}'";
+                    Mensagem = "Feriado inserido com sucesso!";
+                }
+                else
+                {
+                    var docfinal = dbContext.Set<CrmFeriado>()
+                                            .FirstOrDefault(f => f.Id == SelectedFeriado.Id);
+                    if (docfinal != null)
+                        dbContext.Entry(docfinal).CurrentValues.SetValues(SelectedFeriado);
+
+                    comportamento = $"Ed. feriado '{SelectedFeriado.Descricao}'";
+                    Mensagem = "Feriado editado com sucesso!";
+                }
+
+                await dbContext.SaveChangesAsync();
+                await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+                await utils.UserLogAsync(who.User.Id, comportamento);
+                SelectedFeriado = null;
+            }
+            else if (DeletedFeriado != null)           // ── apagar
+            {
+                if (DeletedFeriado.Id != 0)
+                {
+                    dbContext.Set<CrmFeriado>().Remove(DeletedFeriado);
+                    await dbContext.SaveChangesAsync();
+                    await JSRuntime.InvokeAsync<object>("showToast", "Feriado eliminado com sucesso!", "bg-theme");
+                    await utils.UserLogAsync(who.User.Id, $"Elm. feriado '{DeletedFeriado.Descricao}'");
+                }
+                DeletedFeriado = null;
+                await JSRuntime.InvokeAsync<object>("showModal", "#deleteferiadoModal", "toggle");
+            }
+        }
+        catch
+        {
+            Erro = "Ocorreu um erro ao gravar o feriado.";
+        }
+
+        if (string.IsNullOrEmpty(Erro))
+            await GetFeriados();
+    }
+
+
+    private async Task SyncFeriados()
+    {
+        string countryCode = "PT";
+        int year = DateTime.Now.Year;
+        string url = $"https://date.nager.at/api/v3/publicholidays/{year}/{countryCode}";
+        using (HttpClient client = new HttpClient())
+        {
+            HttpResponseMessage response = await client.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+
+            string responseBody = await response.Content.ReadAsStringAsync();
+            List<Holiday> listFeriados = JsonConvert.DeserializeObject<List<Holiday>>(responseBody);
+
+            var defaultHolidays = new List<CrmFeriado>
+            {
+                new CrmFeriado { Descricao = "Carnaval", Mes = 3, Dia = 4, Trabalha = false },
+                new CrmFeriado { Descricao = "Sexta-feira Santa", Mes = 4, Dia = 18, Trabalha = false },
+                new CrmFeriado { Descricao = "Domingos de Páscoa", Mes = 3, Dia = 31, Trabalha = false },
+                new CrmFeriado { Descricao = "Dia da Liberdade", Mes = 4, Dia = 25, Trabalha = false },
+                new CrmFeriado { Descricao = "Dia do Trabalhador", Mes = 5, Dia = 1, Trabalha = false },
+                new CrmFeriado { Descricao = "Dia de Portugal", Mes = 6, Dia = 10, Trabalha = false },
+                new CrmFeriado { Descricao = "S. António", Mes = 6, Dia = 13, Trabalha = true },
+                new CrmFeriado { Descricao = "S. João", Mes = 6, Dia = 24, Trabalha = false },
+                new CrmFeriado { Descricao = "Assunção de Nossa Senhora", Mes = 8, Dia = 15, Trabalha = false },
+                new CrmFeriado { Descricao = "Implantação da República", Mes = 10, Dia = 5, Trabalha = false },
+                new CrmFeriado { Descricao = "Dia de Todos-os-Santos", Mes = 11, Dia = 1, Trabalha = false },
+                new CrmFeriado { Descricao = "Restauração da Independência", Mes = 12, Dia = 1, Trabalha = false },
+                 new CrmFeriado { Descricao = "Imaculada Conceição", Mes = 12, Dia = 8, Trabalha = false },
+                new CrmFeriado { Descricao = "Natal", Mes = 12, Dia = 25, Trabalha = false },
+                  new CrmFeriado { Descricao = "Ano Novo", Mes = 1, Dia = 1, Trabalha = false },
+            };
+
+
+            foreach (var defaultHoliday in defaultHolidays)
+            {
+                var existingHoliday = dbContext.Set<CrmFeriado>().FirstOrDefault(f => f.Descricao == defaultHoliday.Descricao);
+                if (existingHoliday == null)
+                {
+                    dbContext.Set<CrmFeriado>().Add(new CrmFeriado { Descricao = defaultHoliday.Descricao, Mes = defaultHoliday.Mes, Dia = defaultHoliday.Dia, Trabalha = defaultHoliday.Trabalha });
+
+                }
+                else
+                {
+
+                    existingHoliday.Dia = defaultHoliday.Dia;
+                    existingHoliday.Mes = defaultHoliday.Mes;
+                    existingHoliday.Trabalha = defaultHoliday.Trabalha;
+
+                }
+            }
+            await dbContext.SaveChangesAsync();
+
+            foreach (Holiday feriado in listFeriados)
+            {
+                CrmFeriado updferiado = dbContext.Set<CrmFeriado>().FirstOrDefault(f => f.Descricao.Contains(feriado.LocalName));
+                if (updferiado != null)
+                {
+                    updferiado.Dia = DateTime.Parse(feriado.Date).Date.Day;
+                    updferiado.Mes = DateTime.Parse(feriado.Date).Date.Month;
+
+                }
+            }
+
+            await dbContext.SaveChangesAsync();
+        }
+
+        Mensagem = $"Feriados sincronizados com sucesso!";
+        await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+        await utils.UserLogAsync(who.User.Id, "Sincr. Feriados");
+        await GetFeriados();
+    }
+
+    private void OnSearch(string s)
+    {
+        searchString = s;
+        table.ReloadServerData();
+    }
+
+    private void TimerElapsed(object sender, ElapsedEventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            Erro = "";
+            Mensagem = "";
+            StateHasChanged();
+        });
+    }
+
+    private async Task<TableData<TableFeriado>> ServerReload(TableState state, CancellationToken token)
+    {
+        IEnumerable<TableFeriado> data = tblObjects
+            .Where(item =>
+                (mesFiltro == null || item.Mes == mesFiltro) &&          // <-- novo filtro
+                (string.IsNullOrWhiteSpace(searchString) || MatchesSearch(item, searchString)))
+            .ToArray();
+
+
+        switch (state.SortLabel)
+        {
+            case "descricao":
+                data = data.OrderByDirection(state.SortDirection, o => o.Descricao);
+                break;
+            case "mes":
+                data = data.OrderByDirection(state.SortDirection, o => o.Mes);
+                break;
+            case "dia":
+                data = data.OrderByDirection(state.SortDirection, o => o.Dia);
+                break;
+            case "trabalha":
+                data = data.OrderByDirection(state.SortDirection, o => o.Trabalha);
+                break;
+        }
+
+        totalItems = data.Count();
+
+        data = data
+            .Skip(state.Page * state.PageSize)
+            .Take(state.PageSize)
+            .ToArray();
+
+        pagedData = data;
+        return new TableData<TableFeriado>()
+            {
+                TotalItems = totalItems,
+                Items = pagedData
+            };
+    }
+
+    private bool MatchesSearch(TableFeriado item, string text)
+    {
+        text = text.Trim().ToLower();
+        if ((item.Descricao ?? "").ToLower().Contains(text)) return true;
+        return false;
+    }
+
+    private void AdicionarFeriado()
+    {
+        tblObjects.Insert(0, new TableFeriado
+            {
+                Id = 0,
+                Dia = 1,
+                Mes = 1,
+                Trabalha = false,
+                Descricao = "",
+                Edita = true
+            });
+        Erro = "";
+        Mensagem = "";
+        table.ReloadServerData();
+    }
+
+
+    public class Holiday
+    {
+        public string Date { get; set; }
+        public string LocalName { get; set; }
+        public string Name { get; set; }
+        public string CountryCode { get; set; }
+        public bool Fixed { get; set; }
+        public bool Global { get; set; }
+        public string[] Counties { get; set; }
+        public int? LaunchYear { get; set; }
+        public string Type { get; set; }
+    }
+
+    public class TableFeriado
+    {
+        public int Id { get; set; }
+        public string Descricao { get; set; }
+        public int? Mes { get; set; }
+        public int? Dia { get; set; }
+        public bool? Trabalha { get; set; }
+        public bool? Edita { get; set; }
+
+    }
+}

@@ -1,0 +1,91 @@
+﻿@page "/"
+@namespace Construlink.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    Layout = "_Layout";
+}
+
+<app>
+    <component type="typeof(App)" render-mode="ServerPrerendered" />
+</app>
+
+<div id="blazor-error-ui">
+    <environment include="Staging,Production">
+        An error has occurred. This application may no longer respond until reloaded.
+    </environment>
+    <environment include="Development">
+        An unhandled exception has occurred. See browser dev tools for details.
+    </environment>
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>
+
+@* Geolocalizacao *@
+<script src="js/Geolocalizacao/geolocalizacao.js"></script>
+
+@* <link href="css/mobiscroll.custom/css/mobiscroll.javascript.min.css" rel="stylesheet" />
+<script src="/css/mobiscroll.custom/js/mobiscroll.js"></script>
+<script src="/css/mobiscroll.custom/js/locales/mobiscroll.pt-PT.js"></script> *@
+@* <script src="/css/mobiscroll.custom/js/Calendario.js"></script>
+<script src="/js/download.js"></script> *@
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script src="js/Calendario.js"></script>
+
+
+<!--Função para impressão-->
+<section>
+    <script>
+        function ImprimirElementoEspecifico(elemento) {
+            var elementToPrint = document.getElementById(elemento);
+
+            // Clone the element to avoid modifying the original DOM
+            var clonedElement = elementToPrint.cloneNode(true);
+
+            // Preserve input values
+            var inputs = clonedElement.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => {
+                if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
+                    input.setAttribute('value', input.value);
+                } else if (input.tagName === 'SELECT') {
+                    const selectedOption = input.options[input.selectedIndex];
+                    if (selectedOption) {
+                        selectedOption.setAttribute('selected', 'selected');
+                    }
+                }
+            });
+
+            // Replace the body content temporarily
+            var originalContents = document.body.innerHTML;
+            document.body.innerHTML = clonedElement.outerHTML;
+
+            // Ensure reflow and rendering are complete before printing
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    window.print();
+                    document.body.innerHTML = originalContents; // Restore the original content
+                    location.reload(); // Reload to restore Blazor state
+                });
+            });
+        }
+    </script>
+
+    <script>
+        window.showToast = function (message, colorClass) {
+            const toast = document.createElement("div");
+            toast.className = "toast align-items-center text-white " + colorClass + " show position-fixed bottom-0 end-0 m-3";
+            toast.role = "alert";
+            toast.style.zIndex = 9999;
+            toast.innerHTML = `
+                <div class="d-flex">
+                  <div class="toast-body">${message}</div>
+                </div>`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        };
+    </script>
+
+</section>

@@ -1,0 +1,937 @@
+﻿@page "/Controlo"
+@layout MainLayout
+
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+yFrameworkCore
+@using MudBlazor
+
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDialogService DialogService
+@inject IDbContextFactoryService DbContextFactory
+
+<style>
+
+    .botaoGuardar {
+    background-color: #000 !important;
+    color: #fff !important;
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+    }
+
+    .botaoGuardar:hover {
+    background-color: #f0f0f0 !important;
+    border: 1px solid #000 !important;
+    border-color: #000 !important;
+    color: #000 !important;
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+    }
+
+</style>
+
+<PageTitle>Controlo</PageTitle>
+
+<div id="loader" class="app-loader">
+    <span class="spinner"></span>
+</div>
+
+
+<div class="row mt-2 mb-2">
+    <div class="col-md-6 col-sm-12 col-12 mt-3">
+        <div class="mb-2" style="display: flex; align-items: center;">
+            <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+            <h4 class="ms-2 mt-2 hide-on-mobile">Área de Controlo</h4>
+        </div>
+    </div>
+    <div class="col-md-6 col-sm-12 col-12 mt-3 hide-on-mobile">
+        <ol class="breadcrumb" style="float:right;">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item">Administração</li>
+            <li class="breadcrumb-item active">Área de Controlo</li>
+        </ol>
+    </div>
+    <div class="col-md-6 col-sm-12 col-12 show-on-mobile">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item">Administração</li>
+            <li class="breadcrumb-item active">Área de Controlo</li>
+        </ol>
+    </div>
+</div>
+
+<MudCard Class="mb-0 p-0 mt-4" Elevation="4">
+    <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+        <CardHeaderContent>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <MudText Typo="Typo.button" HtmlTag="h3" Class="d-flex align-items-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Construction" Class="me-2" Style="font-size: 1.0rem !important;" />
+                    Detalhes de Manutenção
+                </MudText>
+
+                @if(estadoManutencao is not null && estadoManutencao.Estado == true)
+                {
+                    <MudButton OnClick="DesativarManutencao" Variant="Variant.Filled" Color="Color.Success">
+                        Desativar Manutenção
+                    </MudButton>
+                }
+                else
+                {
+                    <MudButton OnClick="AtivarManutencao" Variant="Variant.Filled" Color="Color.Error">
+                        Ativar Manutenção
+                    </MudButton>
+                }
+
+            </div>
+        </CardHeaderContent>
+    </MudCardHeader>
+
+    <hr style="margin: 0; border: 0; border-top: 1px solid #000 !important;" />
+
+    <MudCardContent Class="p-4">
+
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudCard Style="cursor: pointer;" Class="hover-shadow" @onclick="MostrarManutencaoForm">
+                    <MudCardContent Class="p-0">
+                        <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">
+                                    <MudIcon Icon="@Icons.Material.Filled.Build" Class="me-2" />
+                                    Modo Manutenção
+                                </MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+
+                        <div class="d-flex justify-center align-items-center" style="height: 300px;">
+                            <MudIcon Icon="@Icons.Material.Filled.Construction" Style="font-size: 16rem; color: #bdbdbd;" />
+                        </div>
+
+                        <MudText Typo="Typo.body2" Style="background-color: #f4f4f4; padding: 8px; text-align: center;">
+                            Ativar ou desativar o modo de manutenção e avisos.
+                        </MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="4">
+                <MudCard Style="cursor: pointer;" Class="hover-shadow" @onclick="MostrarAvisosForm">
+                    <MudCardContent Class="p-0">
+                        <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">
+                                    <MudIcon Icon="@Icons.Material.Filled.Warning" Class="me-2" />
+                                    Avisos
+                                </MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+
+                        <div class="d-flex justify-center align-items-center" style="height: 300px;">
+                            <MudIcon Icon="@Icons.Material.Filled.WarningAmber" Style="font-size: 15rem; color: #bdbdbd;" />
+                        </div>
+
+                        <MudText Typo="Typo.body2" Style="background-color: #f4f4f4; padding: 8px; text-align: center;">
+                            Editar mensagem e avisos.
+                        </MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+
+            <MudItem xs="12" md="4">
+                <MudCard Style="cursor: pointer;" Class="hover-shadow" @onclick="MostrarPatchNotesForm">
+                    <MudCardContent Class="p-0">
+                        <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">
+                                    <MudIcon Icon="@Icons.Material.Filled.EditNote" Class="me-2" />
+                                    Patch Notes
+                                </MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+
+                        <div class="d-flex justify-center align-items-center" style="height: 300px;">
+                            <MudIcon Icon="@Icons.Material.Filled.NoteAlt" Style="font-size: 15rem; color: #bdbdbd;" />
+                        </div>
+
+                        <MudText Typo="Typo.body2" Style="background-color: #f4f4f4; padding: 8px; text-align: center;">
+                            Editar mensagem e versão das Patch Notes.
+                        </MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+
+        <!-- Formulário de Manutenção -->
+        @if (mostrarManutencao)
+        {
+            <MudPaper Class="p-4 mt-4 mb-4" Elevation="4">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <MudText Typo="Typo.h6" Class="m-0">Modo Manutenção</MudText>
+
+                    @if (!carregarFormManutencoes)
+                    {
+                        <button type="button" class="btn btn-theme btn-sm" @onclick="ToggleManutencao">
+                            <i class="fa-solid fa-arrow-down"></i>
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-theme btn-sm" @onclick="ToggleManutencao">
+                            <i class="fa-solid fa-arrow-up"></i>
+                        </button>
+                    }
+                </div>
+
+                @if (carregarFormManutencoes)
+                {
+                    <div id="collapseManutencao">
+                        <MudTextField T="string" Label="Tipo da Manutenção" Variant="Variant.Outlined" FullWidth="true" @bind-Value="manutencao.Titulo" />
+                        <MudTextField T="string" Label="Mensagem de manutenção" Variant="Variant.Outlined" FullWidth="true" @bind-Value="manutencao.Mensagem" />
+                        <MudTextField T="TimeSpan?" Label="Hora de Retorno" Variant="Variant.Outlined" InputType="InputType.Time" FullWidth="false" @bind-Value="manutencao.HoraRetorno" />
+
+                        <MudButton OnClick="ResetForms" Class="mt-2">Fechar</MudButton>
+                        <MudButton OnClick="SaveManutencao" Class="mt-2 botaoGuardar">Guardar</MudButton>
+                    </div>
+                }
+            </MudPaper>            
+
+            @* TABELA MANUTENÇÕES *@
+            <div class="row" id="help_tabela">
+                <div class="col-md-12 mb-3">
+                    @if (listManutencoes.Any())
+                    {
+                        <div class="card shadow">
+                            <div class="card-header vitro-cor-secundaria"><span class="fa-solid fa-table me-2"></span>Tabela de Manutenções</div>
+                            <div class="card-body">
+
+                                <MudTable Items="listManutencoes" Striped="true" Bordered="true" Hover="true">                                    
+                                    <HeaderContent>
+                                        <MudTh Style="width: 5%">Editar</MudTh>
+                                        <MudTh Style="width: 20%;">Titulo</MudTh>
+                                        <MudTh Style="width: 45%;">Mensagem</MudTh>
+                                        <MudTh Style="width: 15%;">
+                                            <MudTableSortLabel InitialDirection="SortDirection.Ascending"
+                                            SortBy="new Func<Manutencoes, object>(i => i.HoraRetorno)">
+                                                Hora Retorno
+                                            </MudTableSortLabel>
+                                        </MudTh>
+                                        <MudTh Style="width: 10%">Estado</MudTh>
+                                        <MudTh Style="width: 5%;">Eliminar</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate>
+                                        <MudTd DataLabel="Editar" Align="Align.Center">
+                                            <MudTooltip Text="Editar">
+                                                <MudIconButton Icon="@Icons.Material.Filled.EditNote" Color="Color.Warning" @onclick="(() => EditarManutencoes(context))" />
+                                            </MudTooltip>
+                                        </MudTd>
+                                        <MudTd DataLabel="Titulo" Align="Align.Center">@context.Titulo</MudTd>
+                                        <MudTd DataLabel="Mensagem" Align="Align.Left" Style="word-wrap: break-word; white-space: normal;">@context.Mensagem</MudTd>
+                                        <MudTd DataLabel="Hora Retorno" Align="Align.Left">@(context.HoraRetorno.HasValue ? context.HoraRetorno.Value.ToString(@"hh\:mm") : "--:--")</MudTd>
+                                        <MudTd DataLabel="Estado" Align="Align.Center">
+                                            <MudSwitch T="bool?"
+                                            Value="context.IsAtivo"
+                                            ValueChanged="(newValue) => MudarEstadoManutencao(context, newValue)"
+                                            Color="Color.Success"
+                                            UncheckedColor="Color.Error" />
+                                        </MudTd>
+                                        <MudTd Align="Align.Center">
+                                            <MudTooltip Text="Excluir">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" @onclick="(() => ApagarManutencao(context))" />
+                                            </MudTooltip>
+                                        </MudTd>
+                                    </RowTemplate>
+                                    <PagerContent>
+                                        <MudTablePager />
+                                    </PagerContent>
+                                </MudTable>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <p>Não exitem dados para exibir..</p>
+                    }
+                </div>
+            </div>
+        }
+
+
+        <!-- Formulário de Avisos -->
+        @if (mostrarAvisos)
+        {
+            <MudPaper Class="p-4 mt-4 mb-4" Elevation="4">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <MudText Typo="Typo.h6" Class="m-0">Avisos</MudText>
+                    @if (!carregarFormAvisos)
+                    {
+                        <button type="button" class="btn btn-theme btn-sm" @onclick="ToggleAviso">
+                            <i class="fa-solid fa-arrow-down"></i>
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-theme btn-sm" @onclick="ToggleAviso">
+                            <i class="fa-solid fa-arrow-up"></i>
+                        </button>
+                    }
+                </div>
+                @if (carregarFormAvisos)
+                {
+                    <MudTextField T="string" Label="Tipo de Aviso" Variant="Variant.Outlined" FullWidth="true" @bind-Value="aviso.Tipo" />
+                    <MudTextField T="string" Label="Mensagem de aviso" Variant="Variant.Outlined" FullWidth="true" @bind-Value="aviso.Mensagem" />
+                    <MudTextField T="TimeSpan?" Label="Hora de Inico" Variant="Variant.Outlined" InputType="InputType.Time" FullWidth="false" @bind-Value="aviso.HoraInicio" />
+                    <MudTextField T="TimeSpan?" Label="Hora de Retorno" Variant="Variant.Outlined" InputType="InputType.Time" FullWidth="false" @bind-Value="aviso.HoraFim" />
+                    <MudTextField T="DateTime?" Format="yyyy-MM-dd" Label="Data" InputType="InputType.Date" Variant="Variant.Outlined" FullWidth="false" @bind-Value="aviso.DataFim" />
+                    <MudSelect T="int?" @bind-Value="aviso.IdEmpresa" Label="Empresa" Placeholder="Empresa" Variant="Variant.Outlined" FullWidth="true">
+                        <MudSelectItem Value="@( (int?)null )">Todas as Empresas</MudSelectItem>
+                        @foreach (CrmEmpresa empresa in listaEmpresas)
+                        {
+                            <MudSelectItem Value="@( (int?)empresa.Id )">@empresa.Empresa</MudSelectItem>
+                        }
+                    </MudSelect>
+
+                    <MudButton OnClick="ResetForms" Class="mt-2">Fechar</MudButton>
+                    <MudButton OnClick="GravarAviso" Class="mt-2 botaoGuardar">Guardar</MudButton>
+                }
+            </MudPaper>
+
+            @* TABELA AVISOS *@
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    @if (listaAvisos.Any())
+                    {
+                        <div class="card shadow">
+                            <div class="card-header vitro-cor-secundaria"><span class="fa-solid fa-table me-2"></span>Tabela de Avisos</div>
+                            <div class="card-body">
+
+                                <MudTable Items="listaAvisos" Striped="true" Bordered="true" Hover="true" Filter="new Func <Avisos, bool> (FuncaoFiltrar)">
+                                    <ToolBarContent>
+                                        <MudTextField @bind-Value="filtro" Immediate="true" Placeholder="Filtrar" Adornment="Adornment.Start" AdornmentColor="Color.Warning" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                                    </ToolBarContent>
+                                    <HeaderContent>
+                                        <MudTh Style="width: 5%">Editar</MudTh>
+                                        <MudTh Style="width: 10%;">Tipo</MudTh>
+                                        <MudTh Style="width: 35%;">Mensagem</MudTh>
+                                        <MudTh Style="width: 10%;">Hora Inicio</MudTh>
+                                        <MudTh Style="width: 10%;">Hora Fim</MudTh>
+                                        <MudTh Style="width: 10%;">
+                                            <MudTableSortLabel InitialDirection="SortDirection.Ascending"
+                                            SortBy="new Func<Avisos, object>(i => i.DataFim)">
+                                                Data Fim
+                                            </MudTableSortLabel>
+                                        </MudTh>
+                                        <MudTh Style="width: 10%;">Empresa</MudTh>
+                                        <MudTh Style="width: 5%;">Estado</MudTh>
+                                        <MudTh Style="width: 5%;">Eliminar</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate>
+                                        <MudTd DataLabel="Editar" Align="Align.Center">
+                                            <MudTooltip Text="Editar">
+                                                <MudIconButton Icon="@Icons.Material.Filled.EditNote" Color="Color.Warning" @onclick="(() => EditarAvisos(context))" />
+                                            </MudTooltip>
+                                        </MudTd>
+                                        <MudTd DataLabel="Tipo" Align="Align.Center">@context.Tipo</MudTd>
+                                        <MudTd DataLabel="Mensagem" Align="Align.Left" Style="word-wrap: break-word; white-space: normal; cursor: pointer;" @onclick="(() => EditarAvisos(context))">@(context.Mensagem)</MudTd>
+                                        <MudTd DataLabel="Hora Inicio" Align="Align.Left" Style="cursor: pointer;" @onclick="(() => EditarAvisos(context))">@(context.HoraInicio.HasValue ? context.HoraInicio.Value.ToString(@"hh\:mm") : "--:--")</MudTd>
+                                        <MudTd DataLabel="Hora Fim" Align="Align.Left" Style="cursor: pointer;" @onclick="(() => EditarAvisos(context))">@(context.HoraFim.HasValue ? context.HoraFim.Value.ToString(@"hh\:mm") : "--:--")</MudTd>
+                                        <MudTd DataLabel="Data" Align="Align.Center" Style="cursor: pointer;" @onclick="(() => EditarAvisos(context))">@context.DataFim?.ToString("dd-MM-yyyy")</MudTd>
+                                        <MudTd DataLabel="Empresa" Align="Align.Left" Style="cursor: pointer;" @onclick="(() => EditarAvisos(context))">@GetNomeEmpresa(context)</MudTd>
+                                        <MudTd DataLabel="Estado" Align="Align.Center">
+                                            <MudSwitch T="bool?"
+                                            Value="context.IsAtivo"
+                                            ValueChanged="(newValue) => MudarAtivo(context, newValue)"
+                                            Color="Color.Success"
+                                            UncheckedColor="Color.Error" />
+                                        </MudTd>
+                                        <MudTd Align="Align.Center">
+                                            <MudTooltip Text="Excluir">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" @onclick="(() => ApagarAviso(context))" />
+                                            </MudTooltip>
+                                        </MudTd>
+                                    </RowTemplate>
+                                    <PagerContent>
+                                        <MudTablePager />
+                                    </PagerContent>
+                                </MudTable>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <p>Não exitem dados para exibir..</p>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Formulário de Patch Notes -->
+        @if (mostrarPatchNotes)
+        {
+            <MudPaper Class="p-4 my-4" Elevation="4">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <MudText Typo="Typo.h6">Patch Notes</MudText>
+                    @if (!carregarFormPatches)
+                    {
+                        <button type="button" class="btn btn-theme btn-sm" @onclick="togglePatchNote">
+                            <i class="fa-solid fa-arrow-down"></i>
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" class="btn btn-theme btn-sm" @onclick="togglePatchNote">
+                            <i class="fa-solid fa-arrow-up"></i>
+                        </button>
+                    }
+                </div>
+
+                @if (carregarFormPatches)
+                {
+                    <div class="row" style="align-items: center">
+                        <div class="col-md-1">
+                            <MudCheckBox Label="Titulo" @bind-Value="patch.IsTitulo"></MudCheckBox>
+                        </div>
+                        <div class="col-md-11">
+                            <MudTextField T="string" Label="Notas/Versão" Variant="Variant.Outlined" FullWidth="true" @bind-Value="patch.Mensagem" />
+                        </div>
+                    </div>
+                    
+                    <MudTextField T="DateTime?" Format="yyyy-MM-dd" Label="Data" InputType="InputType.Date" Variant="Variant.Outlined" FullWidth="false" @bind-Value="patch.Data"/>
+
+                    <MudButton OnClick="ResetForms" Class="mt-2">Fechar</MudButton>
+                    <MudButton Class="mt-2 botaoGuardar" @onclick="GuardarPatchNotes">Guardar</MudButton>
+                }
+
+            </MudPaper>
+
+            @* TABELA PATCH TITULOS *@
+            <div class="row" id="help_tabela">
+                <div class="col-md-12 mb-3">
+                    @if (listaPatchNotesTitulos.Any())
+                    {
+                        <div class="card shadow">
+                            <div class="card-header vitro-cor-secundaria"><span class="fa-solid fa-table me-2"></span>Titulo do Patch</div>
+                            <div class="card-body">
+
+                                <MudTable Items="listaPatchNotesTitulos" Striped="true" Bordered="true" Hover="true">
+                                    <HeaderContent>
+                                        <MudTh Style="width: 5%;">Editar</MudTh>
+                                        <MudTh Style="width: 65%;">Mensagem</MudTh>
+                                        <MudTh Style="width: 10%;">
+                                            <MudTableSortLabel InitialDirection="SortDirection.Ascending"
+                                            SortBy="new Func<PatchNotes, object>(i => i.Data)">
+                                                Data do Patch
+                                            </MudTableSortLabel>
+                                        </MudTh>
+                                        <MudTh Style="width: 10%;">Estado</MudTh>
+                                        <MudTh Style="width: 5%;">Eliminar</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate>
+                                        <MudTd DataLabel="Editar" Align="Align.Center">
+                                            <MudTooltip Text="Editar">
+                                                <MudIconButton Icon="@Icons.Material.Filled.EditNote" Color="Color.Warning" @onclick="(() => EditarPatches(context))" />
+                                            </MudTooltip>
+                                        </MudTd>
+                                        <MudTd DataLabel="Mensagem" Align="Align.Left" Style="word-wrap: break-word; white-space: normal;">@context.Mensagem</MudTd>
+                                        <MudTd DataLabel="Data" Align="Align.Center">@context.Data?.ToString("dd-MM-yyyy")</MudTd>
+                                        <MudTd DataLabel="Estado" Align="Align.Center">
+                                            <MudSwitch T="bool?"
+                                            Value="context.IsAtivo"
+                                            ValueChanged="(newValue) => MudarAtivoPatchNotes(context, newValue)"
+                                            Color="Color.Success"
+                                            UncheckedColor="Color.Error" />
+                                        </MudTd>
+                                        <MudTd Align="Align.Center">
+                                            <MudTooltip Text="Excluir">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" @onclick="(() => ApagarPatchNotes(context))" />
+                                            </MudTooltip>
+                                        </MudTd>
+                                    </RowTemplate>
+                                    <PagerContent>
+                                        <MudTablePager />
+                                    </PagerContent>
+                                </MudTable>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <p>Não exitem dados para exibir..</p>
+                    }
+                </div>
+            </div>
+
+            @* TABELA PATCH ATUALIZAÇÕES / NOVIDADES *@
+            <div class="row" id="help_tabela">
+                <div class="col-md-12 mb-3">
+                    @if (listaPatchNotesFeatures.Any())
+                    {
+                        <div class="card shadow">
+                            <div class="card-header vitro-cor-secundaria"><span class="fa-solid fa-table me-2"></span>Features do Patch</div>
+                            <div class="card-body">
+
+                                <MudTable Items="listaPatchNotesFeatures" Striped="true" Bordered="true" Hover="true">
+                                    <HeaderContent>
+                                        <MudTh Style="width: 5%">Editar</MudTh>
+                                        <MudTh Style="width: 65%;">Mensagem</MudTh>
+                                        <MudTh Style="width: 10%;">
+                                            <MudTableSortLabel InitialDirection="SortDirection.Ascending"
+                                            SortBy="new Func<PatchNotes, object>(i => i.Data)">
+                                                Data do Patch
+                                            </MudTableSortLabel>
+                                        </MudTh>
+                                        <MudTh Style="width: 10%;">Estado</MudTh>
+                                        <MudTh Style="width: 5%;">Eliminar</MudTh>
+                                    </HeaderContent>
+                                    <RowTemplate>
+                                        <MudTd DataLabel="Editar" Align="Align.Center">
+                                            <MudTooltip Text="Editar">
+                                                <MudIconButton Icon="@Icons.Material.Filled.EditNote" Color="Color.Warning" @onclick="(() => EditarPatches(context))" />
+                                            </MudTooltip>
+                                        </MudTd>
+                                        <MudTd DataLabel="Mensagem" Align="Align.Left" Style="word-wrap: break-word; white-space: normal;">@context.Mensagem</MudTd>
+                                        <MudTd DataLabel="Data" Align="Align.Center">@context.Data?.ToString("dd-MM-yyyy")</MudTd>
+                                        <MudTd DataLabel="Estado" Align="Align.Center">
+                                            <MudSwitch T="bool?"
+                                            Value="context.IsAtivo"
+                                            ValueChanged="(newValue) => MudarAtivoPatchNotes(context, newValue)"
+                                            Color="Color.Success"
+                                            UncheckedColor="Color.Error" />
+                                        </MudTd>
+                                        <MudTd Align="Align.Center">
+                                            <MudTooltip Text="Excluir">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" @onclick="(() => ApagarPatchNotes(context))" />
+                                            </MudTooltip>
+                                        </MudTd>
+                                    </RowTemplate>
+                                    <PagerContent>
+                                        <MudTablePager />
+                                    </PagerContent>
+                                </MudTable>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <p>Não exitem dados para exibir..</p>
+                    }
+                </div>
+            </div>
+        }
+
+    </MudCardContent>
+</MudCard>
+
+@code 
+{
+    public bool IsTitulo { get; set; } = true;
+    private string path = "";    
+    private bool carregarFormManutencoes = true;
+    private bool carregarFormAvisos = true;
+    private bool carregarFormPatches = true;
+    private bool mostrarManutencao = false;
+    private bool mostrarAvisos = false;
+    private bool mostrarPatchNotes = false;
+    private string filtro = string.Empty;
+
+    EmpresaUserSession who = new();
+    BaseControleContext dbContext = new BaseControleContext();
+    List<CrmEmpresa> listaEmpresas = new List<CrmEmpresa>() { };
+    List<Avisos> listaAvisos = new List<Avisos>() { };
+    List<Manutencoes> listManutencoes = new List<Manutencoes>() { };
+    List<PatchNotes> listaPatchNotes = new List<PatchNotes>() { }; 
+    List<PatchNotes> listaPatchNotesTitulos = new List<PatchNotes>() { }; 
+    List<PatchNotes> listaPatchNotesFeatures = new List<PatchNotes>() { };
+    EstadoManutencao estadoManutencao = new EstadoManutencao();
+
+
+    Avisos aviso = new();
+    Manutencoes manutencao = new();
+    PatchNotes patch = new();
+
+
+    protected override void OnInitialized()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        if (who.User.IsSuperAdmin != true)
+        {
+            NavigationManager.NavigateTo("/");
+        }
+
+        GetEstadoManutencao();
+        GetAvisos();
+        GetEmpresas();
+        GetManutencoes();
+        GetPatchNotes();
+        base.OnInitialized();
+    }
+
+    private void GetEstadoManutencao()
+    {
+        estadoManutencao = dbContext.EstadoManutencao.FirstOrDefault(i => i.Id > 0);
+    }
+
+    private void ToggleManutencao()
+    { 
+        carregarFormManutencoes = !carregarFormManutencoes;
+    }
+
+    private void ToggleAviso()
+    {
+        carregarFormAvisos = !carregarFormAvisos;
+    }
+
+    private void togglePatchNote()
+    {
+        carregarFormPatches = !carregarFormPatches;
+    }
+
+    private bool FuncaoFiltrar(Avisos item) => FuncaoFiltrar1(item, filtro);
+
+    private bool FuncaoFiltrar1(Avisos item, string filtroNomeDescricao)
+    {
+        if (string.IsNullOrWhiteSpace(filtroNomeDescricao))
+            return true;
+
+        if (!string.IsNullOrWhiteSpace(item.Tipo))
+        {
+            if (item.Tipo.Contains(filtroNomeDescricao, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
+
+    private void GetPatchNotes()
+    {
+        listaPatchNotes = dbContext.Set<PatchNotes>().Where(i => i.IsDeleted != true).ToList();
+
+        SeparaListasPatch();
+    }
+
+    private void SeparaListasPatch()
+    {
+        listaPatchNotesTitulos = listaPatchNotes.Where(i => i.IsTitulo == true && i.IsDeleted != true).ToList();
+        listaPatchNotesFeatures = listaPatchNotes.Where(i => i.IsTitulo != true && i.IsDeleted != true).ToList();
+    }
+
+    private void GetEmpresas()
+    {
+        listaEmpresas = dbContext.Set<CrmEmpresa>().ToList();
+    }
+
+    private string GetNomeEmpresa(Avisos item)
+    {
+        string nomeEmpresa = string.Empty;
+
+        nomeEmpresa = listaEmpresas
+            .Where(x => x.Id == item.IdEmpresa)
+            .Select(x => x.Empresa)
+            .FirstOrDefault();
+
+        return nomeEmpresa;
+    }
+
+    private async void AtivarManutencao()
+    {
+        bool? resposta = false;
+
+        resposta = await DialogService.ShowMessageBox("Ativar Manutenção", "Tem certeza que deseja deixar a aplicação indisponível ?", yesText: "Confirmar", cancelText: "Cancelar");       
+
+        @if (resposta == true)
+        {
+            EstadoManutencao manutencao = dbContext.EstadoManutencao.FirstOrDefault(i => i.Id > 0);
+            if (manutencao is not null)
+            {               
+                manutencao.Estado = true;
+                dbContext.SaveChanges();
+            }
+            else
+            {
+                manutencao = new EstadoManutencao
+                {
+                    Estado = true
+                };
+
+               
+                dbContext.Add(manutencao);
+                dbContext.SaveChanges();
+            }
+            estadoManutencao.Estado = true;
+        }
+        StateHasChanged();
+    }
+
+    private async void DesativarManutencao()
+    {
+        bool? resposta = false;
+        resposta = await DialogService.ShowMessageBox("Desativar Manutenção", "Tem certeza que deseja reativar a aplicação?", yesText: "Confirmar", cancelText: "Cancelar");
+        @if (resposta == true)
+        {
+            EstadoManutencao manutencao = dbContext.EstadoManutencao.FirstOrDefault(i => i.Id > 0);
+            if (manutencao is not null)
+            {
+                manutencao.Estado = false;
+                dbContext.SaveChanges();
+            }
+            else
+            {
+                manutencao = new EstadoManutencao
+                    {
+                        Estado = false
+                    };
+
+                dbContext.Add(manutencao);
+                dbContext.SaveChanges();
+            }
+             estadoManutencao.Estado = false;
+        }
+        StateHasChanged();
+    }
+
+    private async void MudarAtivoPatchNotes(PatchNotes item, bool? valor)
+    {
+        if (valor == true)
+        {
+            item.IsAtivo = true;
+        }
+        else
+        {
+            item.IsAtivo = false;
+        }
+
+        dbContext.Update(item);
+        await dbContext.SaveChangesAsync();
+    }
+
+    #region Avisos
+    private async void MudarAtivo(Avisos item, bool? valor)
+    {
+        if (valor == true)
+        {
+            item.IsAtivo = true;
+        }
+        else
+        {
+            item.IsAtivo = false;
+        }
+
+        dbContext.Update(item);
+        await dbContext.SaveChangesAsync();
+    }
+
+    private async void ApagarAviso(Avisos item)
+    {
+        dbContext.Remove(item);
+        dbContext.SaveChanges();
+        GetAvisos();
+        StateHasChanged();
+    }
+
+    private async void ApagarPatchNotes(PatchNotes item)
+    {
+        dbContext.Remove(item);
+        dbContext.SaveChanges();
+        GetPatchNotes();
+        StateHasChanged();
+    }
+
+    private void GetAvisos()
+    {
+        listaAvisos = dbContext.Set<Avisos>().Where(i => i.IsDeleted != true).ToList(); 
+    }
+
+    private async void EditarAvisos(Avisos aviso)
+    {
+        var Parameters = new DialogParameters<EditarAvisos>
+        {
+            { x => x.AVISO, aviso }
+        };
+
+        var options = new DialogOptions { BackdropClick = false };
+        var dialog = await DialogService.ShowAsync<EditarAvisos>("Correção de Avisos", Parameters, options);
+
+        var res = await dialog.Result;
+
+        if (res is not null && res.Data is Avisos retorno)
+        {
+            if (retorno is not null && retorno.Id > 0)
+            {
+                aviso = retorno;
+
+                dbContext.SaveChanges();
+                StateHasChanged();
+            }
+        }
+    }
+    #endregion
+
+    private async void EditarPatches(PatchNotes patchnote)
+    {
+        var Parameters = new DialogParameters<EditarPatches>
+        {
+            { x => x.PATCH, patchnote }
+        };
+
+        var options = new DialogOptions { BackdropClick = false };
+        var dialog = await DialogService.ShowAsync<EditarPatches>("Correção de PatchNotes", Parameters, options);
+
+        var res = await dialog.Result;
+
+        if (res is not null && res.Data is PatchNotes retorno)
+        {
+            if (retorno is not null && retorno.Id > 0)
+            {
+                patchnote = retorno;
+
+                dbContext.SaveChanges();
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async void EditarManutencoes(Manutencoes manutencao)
+    {
+        var Parameters = new DialogParameters<EditarManutencoes>
+        {
+            { x => x.MANUTENCAO, manutencao}
+        };
+
+        var options = new DialogOptions { BackdropClick = false };
+        var dialog = await DialogService.ShowAsync<EditarManutencoes>("Correção de Manutenções", Parameters, options);
+
+        var res = await dialog.Result;
+
+        if (res is not null && res.Data is Manutencoes retorno)
+        {
+            if (retorno is not null && retorno.Id > 0)
+            {
+                manutencao = retorno;
+
+                dbContext.SaveChanges();
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async void MudarEstadoManutencao(Manutencoes item, bool? valor)
+    {
+        if (valor == true)
+        {
+            // Desativar todas as outras manutenções
+            foreach (var manut in listManutencoes)
+            {
+                if (manut.Id != item.Id && manut.IsAtivo)
+                {
+                    manut.IsAtivo = false;
+                    dbContext.Update(manut);
+                }
+            }
+
+            item.IsAtivo = true;
+        }
+        else
+        {
+            item.IsAtivo = false;
+        }
+
+        dbContext.Update(item);
+        await dbContext.SaveChangesAsync();
+
+        StateHasChanged();
+    }
+
+    private async void ApagarManutencao(Manutencoes item)
+    {
+        dbContext.Remove(item);
+        dbContext.SaveChanges();
+        GetManutencoes();
+        StateHasChanged();
+    }
+
+    private void GetManutencoes()
+    {
+        listManutencoes = dbContext.Set<Manutencoes>().Where(i => i.IsDeleted != true).ToList();
+    }
+
+    private void MostrarManutencaoForm()
+    {
+        ResetForms();
+        mostrarManutencao = true;
+        manutencao = new();
+    }
+
+    private void MostrarAvisosForm()
+    {
+        ResetForms();
+        mostrarAvisos = true;
+        aviso = new();
+    }
+
+    private void MostrarPatchNotesForm()
+    {
+        ResetForms();
+        mostrarPatchNotes = true;
+        patch = new();
+    }
+
+    private void GravarAviso()
+    {
+        if (!string.IsNullOrEmpty(aviso.Tipo) && !string.IsNullOrEmpty(aviso.Mensagem) && aviso.DataFim != null && aviso.DataFim != default)
+        {
+            dbContext.Add(aviso);
+            dbContext.SaveChanges();
+        }
+
+        aviso = new();
+        GetAvisos();
+        carregarFormAvisos = false;
+        StateHasChanged();
+    }
+
+    private void GuardarPatchNotes()
+    {
+        if (!string.IsNullOrEmpty(patch.Mensagem) && patch.Data is not null && patch.Data != default)
+        {
+            dbContext.Add(patch);
+            dbContext.SaveChanges();
+        }
+
+        patch = new();
+        GetPatchNotes();
+        carregarFormPatches = false;
+        StateHasChanged();
+    }
+
+    private void SaveManutencao()
+    {
+        if (!string.IsNullOrEmpty(manutencao.Titulo) && !string.IsNullOrEmpty(manutencao.Mensagem))
+        {
+            dbContext.Add(manutencao);
+            dbContext.SaveChanges();
+        }
+
+        manutencao = new();
+        carregarFormManutencoes = false;
+        GetManutencoes();
+        StateHasChanged();
+    }
+
+    private void ResetForms()
+    {
+        aviso = new();
+        patch = new();
+        manutencao = new();
+        mostrarManutencao = false;
+        mostrarAvisos = false;
+        mostrarPatchNotes = false;
+    }
+}

@@ -1,0 +1,307 @@
+﻿@page "/Colaboradores"
+@using System.Globalization
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Microsoft.EntityFrameworkCore
+@using Newtonsoft.Json.Linq
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService dbContextFactoryService
+
+<style>
+    .image-upload-area {
+        position: relative;
+        width: 150px;
+        height: 150px;
+        margin: 0 auto;
+        border-radius: 50%;
+        overflow: hidden;
+        cursor: pointer;
+        background-color: #f0f0f0;
+    }
+
+    .image-upload-label {
+        display: block;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+
+    #profileImagePreview {
+        transition: opacity 0.2s ease-in-out;
+    }
+
+    .image-upload-area:hover #profileImagePreview {
+        opacity: 0.7;
+    }
+
+    .upload-icon {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        background-color: rgba(0, 0, 0, 0.6);
+        color: white;
+        border-radius: 50%;
+        padding: 8px;
+        font-size: 1.2em;
+        transform: translate(25%, 25%);
+        opacity: 0;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .image-upload-area:hover .upload-icon {
+        opacity: 1;
+        transform: translate(0, 0);
+    }
+</style>
+
+<div class="row mt-2 mb-2">
+    <div class="col-md-6 mt-3">
+        <div class="row">
+            <div class="col-md-5" style="display: flex; align-items: center;">
+                <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                <MudText Typo="Typo.h5" Class="ms-1">Colaboradores</MudText>
+
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mt-3 hide-on-mobile">
+        <ol class="breadcrumb" style="float:right;">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item active">Colaboradores</li>
+        </ol>
+    </div>
+</div>
+
+<div class="row" id="help_filtros">
+    <div class="col-md-3 mb-3">
+        <label for="utilizadores">Colaboradores</label>
+        <select id="utilizadores" class="d-block w-100" @onchange="change_tipo">
+            <option value="-" selected="@("-"  == selectedTipo)">Todos</option>
+            <option value="1" selected="@("1" == selectedTipo)">Ativos</option>
+            <option value="0" selected="@("0" == selectedTipo)">Inativos</option>
+        </select>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <label for="pesquisar">Pesquisar</label>
+        <div class="input-group mb-3" style="height:46px;">
+            <input type="text" class="form-control" placeholder="Pesquisar..." aria-label="Pesquisar..." aria-describedby="basic-addon2" @bind-value="@search" @bind-value:event="oninput" @onkeyup=@((e) => { Search(e); })>
+            <div class="input-group-append">
+                <button class="btn btn-theme rounded-1 h-100" type="button" @onclick="@(()=>{ GetUsers(selectedTipo, search); })"><i class="fa-solid fa-magnifying-glass"></i></button>
+            </div>
+        </div>
+    </div> 
+</div>
+
+<div class="row">
+
+    @if (colaboradores.Count > 0)
+    {
+        @foreach (Funcionario item in colaboradores)
+        {
+            <div class="col-sm-6 col-md-4 col-xl-3">
+                <div class="card mb-4">
+                    <div class="card-body text-center">
+
+                        <div class="image-upload-area">
+                            <label for="imageUploadInput-@item.Id" class="image-upload-label">
+                                <img src="@(string.IsNullOrEmpty(item.CaminhoFoto) ? "/images/perfil4.png" : item.CaminhoFoto)"
+                                     alt="@item.Nome"
+                                     class="rounded-circle overflow-hidden shadow mt-2 border border-theme border-2 img-cover profile-image-preview"
+                                     style="width: 150px; height: 150px; display: block; margin: 0 auto; object-fit: cover; cursor: pointer;">
+                                <span class="upload-icon"><i class="fas fa-camera"></i></span>
+                            </label>
+
+                            <InputFile id="@($"imageUploadInput-{item.Id}")"
+                                       OnChange="@((e) => HandleFileSelection(e, item))"
+                                       accept="image/*"
+                                       style="display: none;" />
+                        </div>
+
+                        <h5 class="my-3">@item?.Nome</h5>
+                        <p class="text-muted mb-1"><i class="fa-solid fa-phone"></i> @(string.IsNullOrEmpty(item?.Telefone) ? "n/a" : item.Telefone)</p>
+                        <p class="text-muted mb-1"><i class="fa-regular fa-envelope"></i> @(string.IsNullOrEmpty(item?.Email) ? "n/a" : item.Email)</p>
+
+                        <div class="d-flex justify-content-center mb-2">
+                            <a href="@($"/ColaboradoresDetalhe/{item.Id}")" class="btn btn-theme rounded" title="Abrir"><i class="fas fa-folder-open"></i></a>
+                            @if (who.User.Isadmin == true)
+                            {
+                                <a href="@($"/ColaboradoresEdit/{item.Id}")" class="btn btn-secondary rounded ms-1" title="Editar"><i class="fa-regular fa-pen-to-square"></i></a>
+                            }
+                        </div>
+
+                        @if (isLoading)
+                        {
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <small class="ms-2 text-primary">Uploading...</small>
+                        }
+                        @if (!string.IsNullOrEmpty(errorMessage))
+                        {
+                            <div class="alert alert-danger mt-2" role="alert">
+                                @errorMessage
+                            </div>
+                        }
+
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <p>Sem dados para mostrar.</p>
+    }
+
+</div>
+
+@code 
+{
+    DbContext dbContext = null;
+    private string path = "";
+    private List<Funcionario> colaboradores = new();
+    private string search = "";
+    private string selectedTipo = "-";
+    private EmpresaUserSession who;
+    private int paginaAtual = 0;
+
+    private bool isLoading = false;
+    private string errorMessage;
+
+    protected override void OnInitialized()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        dbContext = dbContextFactoryService.GetDbContext(who.Empresa.BaseNome);
+
+        GetUsers(selectedTipo, search);
+
+        base.OnInitialized();
+    }
+
+    private async void GetUsers(string tipo, string search)
+    {
+        colaboradores.Clear();
+
+        colaboradores = await dbContext.Set<Funcionario>().ToListAsync();
+
+        // ativo / inativo
+        colaboradores = tipo switch
+        {
+            "0" => colaboradores.Where(c => c.Isactive != true).ToList(),
+            "1" => colaboradores.Where(c => c.Isactive == true).ToList(),
+            _ => colaboradores
+        };
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            colaboradores = colaboradores.Where(c =>
+                   (c.Nome ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)
+                || (c.Email ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)
+                || (c.Telefone ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)
+                || (c.Codigo ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task Search(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            GetUsers(selectedTipo, search);
+        }
+    }
+
+    private async Task change_tipo(ChangeEventArgs e)
+    {
+        selectedTipo = e.Value?.ToString();
+        GetUsers(selectedTipo, search);
+    }
+
+    private async Task HandleFileSelection(InputFileChangeEventArgs e, Funcionario func)
+    {
+        errorMessage = string.Empty;
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var file = e.File;
+            if (file == null) return;
+
+            if (file.Size > 5 * 1024 * 1024)
+            {
+                errorMessage = "Image size too large. Max 5MB.";
+                return;
+            }
+            if (!file.ContentType.StartsWith("image/"))
+            {
+                errorMessage = "Only image files are allowed.";
+                return;
+            }
+
+            string uploadsFolder = Path.Combine(Env.WebRootPath, "uploads", "profile_images");
+            if (!Directory.Exists(uploadsFolder))
+            {
+                Directory.CreateDirectory(uploadsFolder);
+            }
+
+            // Generate a unique file name
+            string uniqueFileName = Guid.NewGuid().ToString() + Path.GetExtension(file.Name);
+            string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+            // Save the file to the server
+            using (var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024)) // Limit size during stream read as well
+            {
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await stream.CopyToAsync(fileStream);
+                }
+            }
+
+            // Update database: get the latest entity, update its path, save
+            var funcionarioToUpdate = await dbContext.Set<Funcionario>().FindAsync(func.Id);
+            if (funcionarioToUpdate != null)
+            {
+                // OPTIONAL: Delete old image from server if it exists and is not a default/placeholder
+                if (!string.IsNullOrEmpty(funcionarioToUpdate.CaminhoFoto) && !funcionarioToUpdate.CaminhoFoto.Contains("default-profile.png"))
+                {
+                    string oldPhysicalPath = Path.Combine(Env.WebRootPath, funcionarioToUpdate.CaminhoFoto.TrimStart('/'));
+                    if (System.IO.File.Exists(oldPhysicalPath))
+                    {
+                        System.IO.File.Delete(oldPhysicalPath);
+                    }
+                }
+
+                // Update the model with the new relative path
+                funcionarioToUpdate.CaminhoFoto = Path.Combine("/uploads/profile_images", uniqueFileName).Replace("\\", "/");
+                dbContext.Update(funcionarioToUpdate);
+                await dbContext.SaveChangesAsync();
+
+                func.CaminhoFoto = funcionarioToUpdate.CaminhoFoto;
+            }
+        }
+        catch (IOException ex)
+        {
+            errorMessage = $"File operation failed: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred during upload: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+}

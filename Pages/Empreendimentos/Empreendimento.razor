@@ -1,0 +1,1593 @@
+﻿@page "/Empreendimento"
+@page "/Empreendimento/{AcaoEsperada}/{EntidadeId}/{ObraCodigo}"
+@using System.Globalization
+@using System.Text
+@using System.Text.RegularExpressions
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.JSInterop
+@using Newtonsoft.Json
+@using OfficeOpenXml;
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService dbContextFactoryService
+@inject IDialogService Dialog
+@inject IConfiguration _configuration
+@inject IDialogService DialogService
+
+@* <PageTitle>Obras</PageTitle> *@
+
+
+<div class="row mt-2 mb-2">
+    <div class="col-md-6 mt-3">
+        <div class="row">
+            <div class="col-md-5" style="display: flex; align-items: center;">
+                <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                <MudText Typo="Typo.h5" Class="ms-1">Obras</MudText>
+
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mt-3 hide-on-mobile">
+        <ol class="breadcrumb" style="float:right;">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item active">Obras</li>
+        </ol>
+    </div>
+</div>
+
+<!--VERIFICA O COMPORTAMENTO ESPERADO DA PAGINA, se é vizualizar a tabela de empreendimentos ou um empreendimento especifico-->
+@if (!verFormularios)
+{
+    <!--CARD DA TABELA DE EMPREENDIMENTOS-->
+    <div class="card shadow">
+        <div class="card-header vitro-cor-secundaria d-flex justify-content-between align-items-center">
+            <span>
+                <span class="fa-solid fa-table me-2"></span>
+                <span style="min-width: 200px !important; display: inline-block;">Lista de Obras</span>
+            </span>
+
+            <span>
+                <MudButton Class="me-2" Style="background-color:black; color:white;"
+                StartIcon="@Icons.Material.Filled.Add"
+                Variant="Variant.Filled"
+                OnClick="@(() => AdicionarEmpreendimento())">
+                    Adicionar
+                </MudButton>
+
+            </span>
+        </div>
+
+        <MudTable Items="empreendimentosCompleto" Striped="true" Bordered="true" Hover="true" Dense="true" Filter="new Func <EmpreendimentosNomesDto, bool> (FuncaoFiltrar)">
+            <ToolBarContent>
+                <MudTextField Immediate @bind-Value="filtro"
+                Placeholder="Filtrar"
+                Adornment="Adornment.Start"
+                AdornmentColor="Color.Warning"
+                AdornmentIcon="@Icons.Material.Filled.Search"
+                IconSize="Size.Medium"
+                Class="mt-0 mouse-apontar">
+                </MudTextField>
+            </ToolBarContent>
+            <HeaderContent>
+                <MudTh Style="width: 5%;">Editar</MudTh>
+                <MudTh Style="width: 10%;">Código</MudTh>
+                <MudTh Style="width: 30%;">Nome</MudTh>
+                <MudTh Style="width: 10%;">Cliente</MudTh>
+                <MudTh Style="width: 10%;">Estado</MudTh>
+                <MudTh Style="width: 5%;">Eliminar</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd Style="width: 5%;" Align="Align.Center">
+                    <MudTooltip Text="Editar">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Warning" @onclick="() => { VerObra(context.Obra.Codigo); }" />
+                    </MudTooltip>
+                </MudTd>
+                <MudTd Style="width: 10%;" Align="Align.Left">@context.Obra.Codigo</MudTd>
+                <MudTd Style="width: 30%;" Align="Align.Left">@context.Obra.Nome</MudTd>
+                <MudTd Style="width: 10%;" Align="Align.Left">
+
+                    <a href="javascript:void(0);" @onclick="() => IrParaCliente(context.Cliente)">@context.NomeCliente</a>
+
+                </MudTd>
+                <MudTd Style="width: 10%;" Align="Align.Left">@context.Obra.Estado</MudTd>
+                <MudTd Style="width: 5%;" Align="Align.Center">
+                    <MudTooltip Text="Excluir">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" @onclick="() => ConfirmarApagarObra(context.Obra.Id)" />
+                    </MudTooltip>
+                </MudTd>
+
+
+
+            </RowTemplate>
+            <NoRecordsContent>
+                Não existem dados a exibir.
+            </NoRecordsContent>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    </div>
+
+}
+
+//caso seja a visualização de um empreendimento específico
+else
+{
+    <!--CARD DADOS GERAIS-->
+    <div class="card shadow">
+        <div class="card-header vitro-cor-secundaria"><span class="fa-solid fa-table me-2"></span>Identificação</div>
+        <div class="card-body">
+
+            <div class="row">
+                <!--campo texto-->
+                <div class="form-check col-md-4">
+                    <label class="form-label mb-0">Código</label>
+                    <input type="text" class="form-control" @bind="obraEdicaoCriacao.Codigo" />
+                </div>
+
+                <!--campo texto-->
+                <div class="form-check col-md-8">
+                    <label class="form-label mb-0">Nome</label>
+                    <input type="text" class="form-control" @bind="obraEdicaoCriacao.Nome" />
+                </div>
+            </div>
+
+            <div class="row">
+                <!--campo dropdown-->
+                <div class="col-md-4">
+                    <label>Estado</label>
+                    <select class="d-block w-100" style="height:37px;" @bind="obraEdicaoCriacao.Estado">
+                        <option value="" selected disabled></option>
+                        @foreach (OsusrN2pEstado estado in estadosDaObra)
+                        {
+                            <option value="@estado.Descricao">@estado.Descricao</option>
+
+                        }
+                    </select>
+                </div>
+
+                <!--campo texto-->
+                <div class="form-check col-md-8">
+                    <label class="form-label mb-0">Observações</label>
+                    <input type="text" class="form-control" @bind="obraEdicaoCriacao.Obs" />
+                </div>
+
+                <!--campo dropdown com MudAutocomplete mas com layout igual aos outros-->
+                <div class="form-check col-md-4">
+                    <label class="form-label mb-0">Cliente</label>
+                    <MudAutocomplete T="CrmEntidade"
+                    Value="clienteSelecionado"
+                    SearchFunc="BuscaCliente"
+                    ToStringFunc="@(c => c.Nome)"
+                    ValueChanged="@(c => OnSelecaoCliente(c))"
+                    Clearable="true"
+                    ResetValueOnEmptyText
+                    Dense="true"
+                    Variant="Variant.Outlined"
+                    Margin="Margin.Dense"
+                    Placeholder="Selecionar Cliente"
+                    Style="min-height: 37px;" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4 mb-4">
+        <MudButton Class="me-2"
+        Variant="Variant.Filled"
+        Style="transition:0.2s;"
+        onmouseout="this.style.backgroundColor=''; this.style.color='';"
+        @onclick="@(() => { editarObra = false; adicionarObra = false; verFormularios = false; clienteSelecionado = new(); VoltarPagina(); })">
+            Cancelar
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+        Style="transition:0.2s;"
+        onmouseover="this.style.backgroundColor='#28a745'; this.style.color='white';"
+        onmouseout="this.style.backgroundColor=''; this.style.color='';"
+        @onclick="SaveEmpreendimento">
+            Guardar
+        </MudButton>
+    </div>
+
+    <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-0" Style="display: contents;" ActiveTabClass="border-solid border-2 mud-border-dark">
+        <MudTabPanel Style="text-transform: capitalize !important; background-color: white; color : black" Text="Morada">
+            <ChildContent>
+
+                <div class="card shadow mb-3">
+                    <div class="card-header vitro-cor-secundaria">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <span>
+                                    <i class="fa-solid fa-map-location fs-7 me-2"></i>
+                                    Morada do Empreendimento
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+
+                        <div class="row">
+                            <!--campo texto-->
+                            <div class="form-check col-md-6">
+                                <label class="form-label">Morada</label>
+                                <input type="text" class="form-control" @bind="obraEdicaoCriacao.Morada" />
+                            </div>
+
+                            <!--campo texto-->
+                            <div class="form-check col-md-6">
+                                <label class="form-label">Localidade</label>
+                                <input type="text" class="form-control" @bind="obraEdicaoCriacao.Localidade" />
+                            </div>
+
+                            <!--campo texto-->
+                            <div class="form-check col-md-6">
+                                <label class="form-label mt-1">Código Postal</label>
+                                <input type="text" class="form-control" @bind="obraEdicaoCriacao.CodigoPostal" />
+                            </div>
+
+                            <!--campo texto-->
+                            <div class="form-check col-md-6">
+                                <label class="form-label mt-1">Localidade Postal</label>
+                                <input type="text" class="form-control" @bind="obraEdicaoCriacao.LocalPostal" />
+                            </div>
+                        </div>
+
+                        @{
+                            bool mapaValido = !string.IsNullOrWhiteSpace(obraEdicaoCriacao.Morada)
+                            && !string.IsNullOrWhiteSpace(obraEdicaoCriacao.CodigoPostal)
+                            && !string.IsNullOrWhiteSpace(obraEdicaoCriacao.Localidade);
+                        }
+
+                        @if (!mapaValido)
+                        {
+                            <div class="mt-3">
+                                <div class="alert alert-info text-center">
+                                    Morada incompleta. <i class="ti-pencil-alt me-2 fs-5"></i>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            var moradaCompleta = Uri.EscapeDataString($"{obraEdicaoCriacao.Morada}, {obraEdicaoCriacao.CodigoPostal}, {obraEdicaoCriacao.Localidade}, Portugal");
+
+                            <div class="card border-2 mb-3 mt-3 border-light" style="width:100%; height:700px;">
+                                <iframe width="100%"
+                                height="100%"
+                                class="rounded-bottom-2"
+                                style="border: 0;"
+                                src="https://www.google.com/maps/embed/v1/place?key=AIzaSyCrKJSVhxrmzDWtRijAUBtGUtHqhhsEPrk&q=@moradaCompleta">
+                                </iframe>
+                            </div>
+                        }
+
+                    </div>
+                </div>
+
+            </ChildContent>
+        </MudTabPanel>
+
+        @if (!adicionarObra)
+        {
+            <MudTabPanel Style="text-transform: capitalize !important; background-color: white; color : black" Text="Agenda">
+                <ChildContent>
+                    <div class="card shadow mb-3">
+                        <div class="card-header vitro-cor-secundaria">
+                            <span><i class="fa-solid fa-users me-2"></i> Atribuir Colaborador à Obra</span>
+                            <button class="btn btn-success shadow ms-3" style="float:right;" @onclick="GerarExcel"><i class="fa-solid fa-file-excel"></i> Gerar Excel</button>
+                        </div>
+                        <div class="card-body">
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label>Selecionar colaborador</label>
+                                    <MudAutocomplete T="Funcionario"
+                                    SearchFunc="BuscaColaborador"
+                                    ToStringFunc="@(i => i?.Nome)"
+                                    Value="colaboradorSelecionado"
+                                    ValueChanged="OnSelecaoColaborador"
+                                    Placeholder="Pesquisar colaborador"
+                                    Dense="true"
+                                    Clearable="true"
+                                    ResetValueOnEmptyText
+                                    Variant="Variant.Outlined"
+                                    Margin="Margin.Dense" />
+                                </div>
+
+                                <div class="col-md-2">
+                                    <label>Data Início</label>
+                                    <input type="date" class="form-control" value="@DataInicioAgendamentoStr" @onchange="OnDataInicioAgendamentoChanged" />
+                                </div>
+
+                                <div class="col-md-2">
+                                    <label>Data Fim</label>
+                                    <input type="date" class="form-control" value="@DataFimAgendamentoStr" @onchange="OnDataFimAgendamentoChanged" />
+                                </div>
+
+                                <div class="col-md-2">
+                                    <label>Hora Entrada</label>
+                                    <input type="time" class="form-control"
+                                    value="@HoraEntradaStr"
+                                    @onchange="OnHoraEntradaChanged" />
+                                </div>
+
+                                <div class="col-md-2">
+                                    <label>Hora Saída</label>
+                                    <input type="time" class="form-control"
+                                    value="@HoraSaidaStr"
+                                    @onchange="OnHoraSaidaChanged" />
+                                </div>
+                            </div>
+
+                            <div class="mt-3 text-end">
+                                @if (!string.IsNullOrEmpty(alertaAgendamento))
+                                {
+                                    <div class="alert alert-danger mb-2 text-start" style="font-size: 0.9rem;">
+                                        @alertaAgendamento
+                                    </div>
+                                }
+
+                                <MudButton Variant="Variant.Filled"
+                                Style="transition:0.2s;"
+                                onmouseover="this.style.backgroundColor='#28a745'; this.style.color='white';"
+                                onmouseout="this.style.backgroundColor=''; this.style.color='';"
+                                Disabled="@(!string.IsNullOrEmpty(alertaAgendamento) && alertaAgendamento.Contains("ERRO"))"
+                                @onclick="@(() => { GuardarAgendamento(); })">
+                                    Guardar Agendamento
+                                </MudButton>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (listaAgendamentosDesdobrados?.Any() == true)
+
+                    {
+                        <div class="card shadow mb-3">
+                            <div class="card-header vitro-cor-secundaria">
+                                <span><i class="fa-solid fa-list me-2"></i> Colaboradores Atribuídos</span>
+                            </div>
+                            <div class="card-body p-0">
+                                <MudTable Items="listaAgendamentosDesdobrados" Striped="true" Bordered="true" Hover="true" Dense="true">
+                                    <HeaderContent>
+                                        <MudTh>Colaborador</MudTh>
+                                        <MudTh>Data</MudTh>
+                                        <MudTh>Hora Entrada</MudTh>
+                                        <MudTh>Hora Saída</MudTh>
+                                        <MudTh>Ações</MudTh>
+                                    </HeaderContent>
+
+                                    <RowTemplate>
+                                        <MudTd>@context.NomeFuncionario</MudTd>
+                                        <MudTd>@context.DataInicio.ToString("dd/MM/yyyy")</MudTd>
+                                        <MudTd>@(context.HoraEntrada.HasValue ? context.HoraEntrada.Value.ToString(@"hh\:mm") : "")</MudTd>
+                                        <MudTd>@(context.HoraSaida.HasValue ? context.HoraSaida.Value.ToString(@"hh\:mm") : "")</MudTd>
+                                        <MudTd>
+                                            <MudTooltip Text="Editar">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                Color="Color.Warning"
+                                                OnClick="() => EditarAgendamento(context)"
+                                                ToolTip="Editar" />
+                                            </MudTooltip>
+
+                                            <MudTooltip Text="Remover">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                Color="Color.Error"
+                                                OnClick="async () => await RemoverAgendamento(context)"
+                                                ToolTip="Remover" />
+                                            </MudTooltip>
+
+                                        </MudTd>
+                                    </RowTemplate>
+
+                                    <NoRecordsContent>
+                                        Ainda não existem colaboradores atribuídos.
+                                    </NoRecordsContent>
+                                </MudTable>
+                            </div>
+                        </div>
+                    }
+                </ChildContent>
+            </MudTabPanel>
+        }
+    </MudTabs>
+}
+
+@code {
+
+    [Parameter]
+    public string? AcaoEsperada { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? EntidadeId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? ObraCodigo { get; set; } = string.Empty;
+
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public string ContentText { get; set; } = "Tens a certeza que queres apagar?";
+    [Parameter] public string ButtonText { get; set; } = "Apagar";
+    [Parameter] public Color Color { get; set; } = Color.Error;
+
+    //estados do blazor
+    private string path = "";
+    private string Erro = "";
+    private string Mensagem = "";
+    private string filtro = string.Empty;
+    private string filtroFracoes = string.Empty;
+    private bool isloading = false;
+    private bool editarObra = false;
+    private bool adicionarObra = false;
+    private bool verFormularios = false;
+    private string previousPage = null;
+    private List<CrmAusencia> listaAusencias = new();
+    private List<CrmFeriado> listaFeriados = new();
+    private string alertaAgendamento = "";
+    private string DataInicioAgendamentoStr => novoAgendamento.DataInicio.ToString("yyyy-MM-dd");
+    private string DataFimAgendamentoStr => novoAgendamento.DataFim.ToString("yyyy-MM-dd");
+    private List<string> estadosPossiveis = new()
+    {
+        "Ativo", "Inativo", "Concluído", "Cancelado"
+    };
+
+    private List<CrmEntidade> listaClientes = new();
+    private CrmEntidade? clienteSelecionado;
+
+
+    FuncionarioObraAgendamento novoAgendamento = new()
+        {
+            DataInicio = DateTime.Today,
+            DataFim = DateTime.Today
+        };
+
+    //butão apagar fracao (dentro da tabela, icone lixeira)
+    private OsusrN2pFraco fracaoApagar = null;
+
+    //listas para as dropdowns do formulario
+    private List<OsusrN2pCondpagamento> listaCondicoesPagamento = new List<OsusrN2pCondpagamento>() { };
+    private List<OsusrN2pModospagamento> listaModosPagamento = new List<OsusrN2pModospagamento>() { };
+    private List<OsusrN2pProcesso> listaProcessos = new List<OsusrN2pProcesso>() { };
+
+    //objeto do tipo obra para edições e adições
+    private OsusrN2pObra obraEdicaoCriacao = new OsusrN2pObra();
+
+    private List<FuncionarioObraAgendamento> listaAgendamentosDesdobrados = new();
+
+    private List<Turnos> listaTurnos = new();
+
+    //listas dos filtros e seus valores selecionados
+    private List<Funcionario> listaColaboradores = new List<Funcionario>() { };
+    private List<Contrato> listaContratos = new List<Contrato>() { };
+    private List<OsusrN2pEstado> estadosDaObra = new List<OsusrN2pEstado>() { };
+    private string estadoSelecionado = null;
+    private string textoProcuraFiltro = "";
+
+    //tabela de empreendimentos
+    private List<OsusrN2pObra> empreendimentos = new List<OsusrN2pObra>() { };
+    private List<EmpreendimentosNomesDto> empreendimentosCompleto = new List<EmpreendimentosNomesDto>() { };
+
+    private bool first = true;
+
+    private List<FuncionarioObraAgendamento> listaAgendamentos = new List<FuncionarioObraAgendamento>() { };
+    //botão apagar empreendimento (dentro da tabela, icone lixeira)
+    private OsusrN2pObra obraApagar = null;
+
+    //tipo da navegação da fração
+    public bool editarFracao = false;
+    @* private CrmEntidade clienteSelecionado;
+    private List<CrmEntidade> listaClientes = new List<CrmEntidade>() { }; *@
+
+    //session e instanciação da base
+    EmpresaUserSession who = null;
+    private DbContext dbContext { get; set; }
+    private BaseControleContext baseControle = new BaseControleContext();
+
+    private Funcionario colaboradorSelecionado;
+
+    private Task<IEnumerable<Funcionario>> BuscaColaborador(string val)
+    {
+        if (string.IsNullOrWhiteSpace(val))
+            return Task.FromResult(listaColaboradores.AsEnumerable());
+
+        return Task.FromResult(listaColaboradores
+            .Where(u => u.Nome.Contains(val, StringComparison.OrdinalIgnoreCase))
+            .AsEnumerable());
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        dbContext = dbContextFactoryService.GetDbContext(who.Empresa.BaseNome);
+        ExcelPackage.License.SetNonCommercialPersonal("Construlink");
+
+        // Carrega todos os dropdowns, incluindo listaClientes
+        await GetAll();
+        await GetEmpreendimentos();
+        await GetAusenciasEFeriados();
+        GetTurnos();
+
+
+        listaColaboradores = dbContext.Set<Funcionario>()
+            .Where(u => u.Isactive != false)
+            .ToList();
+
+        if (!string.IsNullOrEmpty(ObraCodigo))
+        {
+            verFormularios = true;
+            await VerObra(ObraCodigo);
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    private void GetTurnos()
+    {
+        listaTurnos = dbContext.Set<Turnos>().ToList();
+    }
+
+    private async Task GetAusenciasEFeriados()
+    {
+        listaAusencias = await dbContext.Set<CrmAusencia>()
+            .Where(a => a.IsDeleted != true)
+            .ToListAsync();
+
+        listaFeriados = await dbContext.Set<CrmFeriado>()
+            .ToListAsync();
+    }
+
+    private bool VerificarFeriado(DateTime data)
+    {
+        return listaFeriados.Any(f => f.Mes == data.Month && f.Dia == data.Day && f.Trabalha != true);
+    }
+
+    private bool VerificarAusencia(int colaboradorId, DateTime data)
+    {
+        return listaAusencias.Any(a =>
+            a.IdColaborador == colaboradorId &&
+            a.DataInicio.Date <= data.Date &&
+            a.IsDeleted != true &&
+            (a.DataFim == null || a.DataFim.Value.Date >= data.Date));
+    }
+
+    private (bool TemAusencia, bool EhTemporaria, CrmAusencia Ausencia) VerificarAusenciaDetalhada(int colaboradorId, DateTime data)
+    {
+        var ausenciasValidas = listaAusencias.Where(a =>
+            a.IdColaborador == colaboradorId &&
+            a.IsDeleted != true &&
+            // Verificação exata: a data deve estar DENTRO do período da ausência
+            a.DataInicio.Date <= data.Date &&
+            (a.DataFim?.Date ?? a.DataInicio.Date) >= data.Date)
+            .ToList();
+
+        if (!ausenciasValidas.Any())
+            return (false, false, null);
+
+        // Priorizar ausências por especificidade:
+        // 1º - Ausências que começam exatamente na data especificada
+        // 2º - Ausências com menor duração (mais específicas)
+        // 3º - Por ordem de criação/ID
+        var ausencia = ausenciasValidas
+            .OrderByDescending(a => a.DataInicio.Date == data.Date ? 1 : 0) // Prioriza início na data exata
+            .ThenBy(a => ((a.DataFim?.Date ?? a.DataInicio.Date) - a.DataInicio.Date).Days) // Menor duração primeiro
+            .ThenByDescending(a => a.Id)                                     // Mais recente primeiro
+            .First();
+
+        // Uma ausência é considerada temporária se tem HoraInicio e HoraFim definidas
+        bool ehTemporaria = ausencia.HoraInicio.HasValue && ausencia.HoraFim.HasValue;
+
+        return (true, ehTemporaria, ausencia);
+    }
+
+    private string GerarMensagemAusencia(CrmAusencia ausencia, string colaboradorNome, DateTime data)
+    {
+        string tipoAusencia = ausencia.TipoAusencia?.ToLower() ?? "ausência";
+
+        // Formatação das datas
+        string dataFormatada = data.ToString("dd/MM/yyyy");
+        string periodoCompleto = "";
+
+        if (ausencia.DataFim.HasValue && ausencia.DataFim.Value.Date != ausencia.DataInicio.Date)
+        {
+            periodoCompleto = $" (de {ausencia.DataInicio:dd/MM/yyyy} até {ausencia.DataFim.Value:dd/MM/yyyy})";
+        }
+
+        switch (tipoAusencia)
+        {
+            case "temporária":
+            case "temporaria":
+                if (ausencia.HoraInicio.HasValue && ausencia.HoraFim.HasValue)
+                {
+                    return $"⚠️ ATENÇÃO: {colaboradorNome} tem ausência temporária no dia {dataFormatada} das {ausencia.HoraInicio:hh\\:mm} às {ausencia.HoraFim:hh\\:mm}!";
+                }
+                else
+                {
+                    return $"⚠️ ERRO: {colaboradorNome} tem ausência temporária no dia {dataFormatada}{periodoCompleto}!";
+                }
+
+            case "falta":
+                if (ausencia.HoraInicio.HasValue && ausencia.HoraFim.HasValue)
+                {
+                    return $"⚠️ ATENÇÃO: {colaboradorNome} tem falta parcial no dia {dataFormatada} das {ausencia.HoraInicio:hh\\:mm} às {ausencia.HoraFim:hh\\:mm}!";
+                }
+                else
+                {
+                    return $"⚠️ ERRO: {colaboradorNome} tem falta no dia {dataFormatada}{periodoCompleto}!";
+                }
+
+            case "férias":
+            case "ferias":
+                return $"⚠️ ERRO: {colaboradorNome} está de férias{periodoCompleto}!";
+
+            case "folga":
+                return $"⚠️ ERRO: {colaboradorNome} está de folga no dia {dataFormatada}{periodoCompleto}!";
+
+            default:
+                if (ausencia.HoraInicio.HasValue && ausencia.HoraFim.HasValue)
+                {
+                    return $"⚠️ ATENÇÃO: {colaboradorNome} tem ausência no dia {dataFormatada} das {ausencia.HoraInicio:hh\\:mm} às {ausencia.HoraFim:hh\\:mm}!";
+                }
+                else
+                {
+                    return $"⚠️ ERRO: {colaboradorNome} está ausente no dia {dataFormatada}{periodoCompleto}!";
+                }
+        }
+    }
+
+    private string GerarMensagemAgendamento(CrmAusencia ausencia, string colaboradorNome, DateTime data)
+    {
+        string tipoAusencia = ausencia.TipoAusencia?.ToLower() ?? "ausência";
+
+        // Formatação das datas
+        string dataFormatada = data.ToString("dd/MM/yyyy");
+        string periodoCompleto = "";
+
+        if (ausencia.DataFim.HasValue && ausencia.DataFim.Value.Date != ausencia.DataInicio.Date)
+        {
+            periodoCompleto = $" (de {ausencia.DataInicio:dd/MM/yyyy} até {ausencia.DataFim.Value:dd/MM/yyyy})";
+        }
+
+        switch (tipoAusencia)
+        {
+            case "temporária":
+                return $"Não é possível agendar. {colaboradorNome} tem ausência temporária no dia {dataFormatada}{periodoCompleto}.";
+
+            case "falta":
+                return $"Não é possível agendar. {colaboradorNome} tem falta no dia {dataFormatada}{periodoCompleto}.";
+
+            case "férias":
+                return $"Não é possível agendar. {colaboradorNome} está de férias{periodoCompleto}.";
+
+            case "folga":
+                return $"Não é possível agendar. {colaboradorNome} está de folga no dia {dataFormatada}{periodoCompleto}.";
+
+            default:
+                return $"Não é possível agendar. {colaboradorNome} está ausente no dia {dataFormatada}{periodoCompleto}.";
+        }
+    }
+
+    private void GetAgendamentos()
+    {
+        var agendamentosOriginais = dbContext.Set<FuncionarioObraAgendamento>()
+            .Where(a => a.IdObra == obraEdicaoCriacao.Id)
+            .ToList();
+
+        listaAgendamentosDesdobrados.Clear();
+
+        foreach (var ag in agendamentosOriginais)
+        {
+            if (!ag.HoraEntrada.HasValue || !ag.HoraSaida.HasValue)
+                continue;
+
+            for (var dia = ag.DataInicio.Date; dia <= ag.DataFim.Date; dia = dia.AddDays(1))
+            {
+                listaAgendamentosDesdobrados.Add(new FuncionarioObraAgendamento
+                    {
+                        Id = ag.Id,
+                        IdFuncionario = ag.IdFuncionario,
+                        NomeFuncionario = ag.NomeFuncionario,
+                        IdObra = ag.IdObra,
+                        NomeObra = ag.NomeObra,
+                        DataInicio = dia,
+                        DataFim = dia,
+                        HoraEntrada = ag.HoraEntrada,
+                        HoraSaida = ag.HoraSaida
+                    });
+            }
+        }
+    }
+
+    // Versão mais específica - apenas para o dia exato selecionado
+    private void ValidarAgendamento()
+    {
+        alertaAgendamento = "";
+
+        if (novoAgendamento.IdFuncionario > 0)
+        {
+            // Verificar data de início
+            if (novoAgendamento.DataInicio != DateTime.MinValue)
+            {
+                var diaEscolhido = novoAgendamento.DataInicio.Date;
+
+                if (VerificarFeriado(diaEscolhido))
+                {
+                    alertaAgendamento = $"⚠️ ATENÇÃO: O dia {diaEscolhido:dd/MM/yyyy} é feriado!";
+                    return;
+                }
+
+                var (temAusencia, ehTemporaria, ausencia) = VerificarAusenciaDetalhada(novoAgendamento.IdFuncionario, diaEscolhido);
+                if (temAusencia)
+                {
+                    var colaboradorNome = listaColaboradores.FirstOrDefault(f => f.Id == novoAgendamento.IdFuncionario)?.Nome ?? "Colaborador";
+                    alertaAgendamento = GerarMensagemAusencia(ausencia, colaboradorNome, diaEscolhido);
+                    return;
+                }
+            }
+
+            // Verificar data de fim (apenas se for diferente da data de início)
+            if (novoAgendamento.DataFim != DateTime.MinValue &&
+                novoAgendamento.DataFim.Date != novoAgendamento.DataInicio.Date)
+            {
+                var diaEscolhido = novoAgendamento.DataFim.Date;
+
+                if (VerificarFeriado(diaEscolhido))
+                {
+                    alertaAgendamento = $"⚠️ ATENÇÃO: O dia {diaEscolhido:dd/MM/yyyy} é feriado!";
+                    return;
+                }
+
+                var (temAusencia, ehTemporaria, ausencia) = VerificarAusenciaDetalhada(novoAgendamento.IdFuncionario, diaEscolhido);
+                if (temAusencia)
+                {
+                    var colaboradorNome = listaColaboradores.FirstOrDefault(f => f.Id == novoAgendamento.IdFuncionario)?.Nome ?? "Colaborador";
+                    alertaAgendamento = GerarMensagemAusencia(ausencia, colaboradorNome, diaEscolhido);
+                    return;
+                }
+            }
+        }
+
+        alertaAgendamento = "";
+    }
+
+    private async Task RemoverAgendamento(FuncionarioObraAgendamento agendamento)
+    {
+        try
+        {
+            var agendamentoOriginal = await dbContext.Set<FuncionarioObraAgendamento>()
+                .FirstOrDefaultAsync(a =>
+                    a.IdFuncionario == agendamento.IdFuncionario &&
+                    a.IdObra == agendamento.IdObra &&
+                    a.DataInicio == agendamento.DataInicio &&
+                    a.DataFim == agendamento.DataFim);
+
+            if (agendamentoOriginal != null)
+            {
+                dbContext.Remove(agendamentoOriginal);
+                await dbContext.SaveChangesAsync();
+                Mensagem = "Agendamento removido com sucesso.";
+
+                // Remove da lista visível também
+                listaAgendamentosDesdobrados.Remove(agendamento);
+            }
+            else
+            {
+                Erro = "Agendamento não encontrado na base de dados.";
+            }
+        }
+        catch
+        {
+            Erro = "Erro ao remover o agendamento.";
+        }
+
+        if (!string.IsNullOrEmpty(Erro))
+            await JSRuntime.InvokeVoidAsync("showToast", Erro, "bg-danger");
+        else
+            await JSRuntime.InvokeVoidAsync("showToast", Mensagem, "bg-theme");
+
+        TimerMessages();
+        StateHasChanged();
+    }
+
+
+    private async Task EditarAgendamento(FuncionarioObraAgendamento agendamento)
+    {
+        FuncionarioObraAgendamento agendamentoArgumento = new FuncionarioObraAgendamento
+			{
+                IdFuncionario = agendamento.IdFuncionario,
+				DataInicio = agendamento.DataInicio,
+				HoraEntrada = agendamento.HoraEntrada,
+				HoraSaida = agendamento.HoraSaida,
+			};
+
+        var Parameters = new DialogParameters<ModalEditarAgendamento>
+        {
+            { x => x.Agendamento, agendamentoArgumento },
+            { x => x.listaAusencias, listaAusencias },
+            { x => x.listaFeriados, listaFeriados },
+            { x => x.listaColaboradores, listaColaboradores },
+        };
+
+        var options = new DialogOptions { BackdropClick = false };
+        var dialog = await DialogService.ShowAsync<ModalEditarAgendamento>("Correção de Anomalias", Parameters, options);
+
+        var res = await dialog.Result;
+
+        if (res is not null && res.Data is FuncionarioObraAgendamento retorno)
+        {
+            var agendamentoOriginal = await dbContext.Set<FuncionarioObraAgendamento>()
+                .FirstOrDefaultAsync(a => a.Id == agendamento.Id);
+
+            if (agendamentoOriginal != null)
+            {
+                agendamentoOriginal.DataInicio = retorno.DataInicio;
+                agendamentoOriginal.DataFim = retorno.DataFim;
+                agendamentoOriginal.HoraEntrada = retorno.HoraEntrada;
+                agendamentoOriginal.HoraSaida = retorno.HoraSaida;
+
+                agendamento.HoraSaida = retorno.HoraSaida;
+                agendamento.DataFim = retorno.DataFim;
+                agendamento.HoraEntrada = retorno.HoraEntrada;
+                agendamento.HoraSaida = retorno.HoraSaida;
+            }
+
+            try
+            {
+                dbContext.SaveChanges();
+                await JSRuntime.InvokeVoidAsync("showToast", "Edição bem sucedida.", "bg-success");
+            }
+            catch (Exception e)
+            {
+                await JSRuntime.InvokeVoidAsync("showToast", e.Message, "bg-danger");
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task GuardarAgendamento()
+    {
+        Mensagem = string.Empty;
+
+
+
+        if (novoAgendamento.IdFuncionario <= 0)
+        {
+            await JSRuntime.InvokeVoidAsync("showToast", "Tens de escolher um colaborador!", "bg-danger");
+            return;
+        }
+
+
+        for (var dia = novoAgendamento.DataInicio.Date; dia <= novoAgendamento.DataFim.Date; dia = dia.AddDays(1))
+        {
+            var (temAusencia, ehTemporaria, ausencia) = VerificarAusenciaDetalhada(novoAgendamento.IdFuncionario, dia);
+
+            // Só bloqueia se for ausência total (não temporária)
+            if (temAusencia && !ehTemporaria)
+            {
+                var colaboradorNome = listaColaboradores.FirstOrDefault(f => f.Id == novoAgendamento.IdFuncionario)?.Nome ?? "Colaborador";
+
+                // Gera mensagem específica para o tipo de ausência
+                string mensagemDetalhada = GerarMensagemAgendamento(ausencia, colaboradorNome, dia);
+
+                await JSRuntime.InvokeVoidAsync("showToast", mensagemDetalhada, "bg-danger");
+                return;
+            }
+        }
+
+
+        if (novoAgendamento.HoraEntrada == novoAgendamento.HoraSaida)
+        {
+            await JSRuntime.InvokeVoidAsync("showToast", "Hora de entrada e saída não podem ser iguais!", "bg-danger");
+            return;
+        }
+
+        if (novoAgendamento.DataFim < novoAgendamento.DataInicio)
+        {
+            await JSRuntime.InvokeVoidAsync("showToast", "Data de fim não pode ser antes da de início!", "bg-danger");
+            return;
+        }
+
+        if (novoAgendamento.HoraEntrada.HasValue && novoAgendamento.HoraSaida.HasValue &&
+        novoAgendamento.HoraEntrada >= novoAgendamento.HoraSaida)
+        {
+            await JSRuntime.InvokeVoidAsync("showToast", "Hora de entrada deve ser anterior à hora de saída!", "bg-danger");
+            return;
+        }
+
+        if (!novoAgendamento.HoraEntrada.HasValue || !novoAgendamento.HoraSaida.HasValue)
+        {
+            await JSRuntime.InvokeVoidAsync("showToast", "É obrigatório preencher a hora de entrada e saída!", "bg-danger");
+            return;
+        }
+
+        if (novoAgendamento.DataInicio.Date == novoAgendamento.DataFim.Date)
+        {
+            if (novoAgendamento.HoraEntrada >= novoAgendamento.HoraSaida)
+            {
+                await JSRuntime.InvokeVoidAsync("showToast", "Para o mesmo dia, a hora de entrada deve ser anterior à hora de saída!", "bg-danger");
+                return;
+            }
+        }
+
+        var colaborador = listaColaboradores.FirstOrDefault(u => u.Id == novoAgendamento.IdFuncionario);
+        novoAgendamento.NomeFuncionario = colaborador?.Nome ?? "Desconhecido";
+
+        novoAgendamento.IdObra = obraEdicaoCriacao.Id;
+        novoAgendamento.NomeObra = obraEdicaoCriacao.Nome;
+
+        try
+        {
+            // 🔁 MODO EDIÇÃO
+            if (novoAgendamento.Id > 0 && novoAgendamento.DataInicio == novoAgendamento.DataFim)
+            {
+                var agendamentoExistente = await dbContext.Set<FuncionarioObraAgendamento>()
+                    .FirstOrDefaultAsync(a => a.Id == novoAgendamento.Id);
+
+                if (agendamentoExistente != null)
+                {
+                    agendamentoExistente.DataInicio = novoAgendamento.DataInicio;
+                    agendamentoExistente.DataFim = novoAgendamento.DataFim;
+                    agendamentoExistente.HoraEntrada = novoAgendamento.HoraEntrada;
+                    agendamentoExistente.HoraSaida = novoAgendamento.HoraSaida;
+                    agendamentoExistente.HoraPausa = novoAgendamento.HoraPausa;
+                    agendamentoExistente.HoraRetorno = novoAgendamento.HoraRetorno;
+
+                    await dbContext.SaveChangesAsync();
+
+                    Mensagem = "Agendamento atualizado com sucesso!";
+                    await JSRuntime.InvokeVoidAsync("showToast", Mensagem, "bg-success");
+
+                    novoAgendamento = new FuncionarioObraAgendamento();
+                    colaboradorSelecionado = null;
+
+                    GetAgendamentos();
+                    StateHasChanged();
+                    TimerMessages();
+                    return;
+                }
+            }
+
+            // 🔁 MODO CRIAÇÃO NOVA
+            for (var dia = novoAgendamento.DataInicio.Date; dia <= novoAgendamento.DataFim.Date; dia = dia.AddDays(1))
+            {
+                var agendamentoDiario = new FuncionarioObraAgendamento
+                    {
+                        IdFuncionario = novoAgendamento.IdFuncionario,
+                        NomeFuncionario = novoAgendamento.NomeFuncionario,
+                        IdObra = novoAgendamento.IdObra,
+                        NomeObra = novoAgendamento.NomeObra,
+                        DataInicio = dia,
+                        DataFim = dia,
+                        HoraEntrada = novoAgendamento.HoraEntrada,
+                        HoraSaida = novoAgendamento.HoraSaida
+                    };
+
+                await dbContext.AddAsync(agendamentoDiario);
+            }
+
+            await dbContext.SaveChangesAsync();
+
+            Mensagem = "Agendamentos guardados com sucesso!";
+            await JSRuntime.InvokeVoidAsync("showToast", Mensagem, "bg-success");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Erro ao guardar agendamentos: " + ex.Message);
+            Mensagem = "Erro ao guardar agendamentos!";
+            await JSRuntime.InvokeVoidAsync("showToast", Mensagem, "bg-danger");
+        }
+
+        novoAgendamento = new FuncionarioObraAgendamento();
+
+        GetAgendamentos();
+        StateHasChanged();
+        TimerMessages();
+    }
+
+
+    private void OnDataInicioAgendamentoChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        if (DateTime.TryParse(val, out var date))
+        {
+            novoAgendamento.DataInicio = date;
+            ValidarAgendamento();
+            StateHasChanged();
+        }
+    }
+
+    private void OnDataFimAgendamentoChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        if (DateTime.TryParse(val, out var date))
+        {
+            novoAgendamento.DataFim = date;
+            ValidarAgendamento();
+            StateHasChanged();
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    private async Task<(string Mensagem, bool Sucesso)> ValidaMoradaAsync()
+    => await PostalCodeHelper.ValidarAsync(
+           dbContext,
+           JSRuntime,
+           obraEdicaoCriacao.CodigoPostal,
+           obraEdicaoCriacao.Localidade,
+           obraEdicaoCriacao.LocalPostal);
+
+    private async Task GetAll()
+    {
+        estadosDaObra = await dbContext.Set<OsusrN2pEstado>().ToListAsync();
+
+        // 👉 Carrega de uma vez os clientes
+        listaClientes = await dbContext.Set<CrmEntidade>()
+            .Where(i => i.TipoEntidade == "C")
+            .OrderBy(i => i.Nome)
+            .ToListAsync();
+    }
+
+    private string HoraEntradaStr => novoAgendamento.HoraEntrada?.ToString(@"hh\:mm") ?? "";
+
+    private void OnHoraEntradaChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        novoAgendamento.HoraEntrada = TimeSpan.TryParse(val, out var ts) ? ts : null;
+    }
+
+    private string HoraSaidaStr => novoAgendamento.HoraSaida?.ToString(@"hh\:mm") ?? "";
+
+    private void OnHoraSaidaChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        novoAgendamento.HoraSaida = TimeSpan.TryParse(val, out var ts) ? ts : null;
+    }
+
+    private async Task GetEmpreendimentos()
+    {
+        if (empreendimentos.Any() || empreendimentosCompleto != null)
+        {
+            empreendimentos.Clear();
+            empreendimentosCompleto.Clear();
+        }
+
+        try
+        {
+            empreendimentos = await dbContext.Set<OsusrN2pObra>().Where(i => i.Deleted != true && i.Isempreendimento == true).ToListAsync();
+            empreendimentos.OrderByDescending(i => i.DataCriacao);
+
+            int clienteId = 0;
+            string cliente = null;
+            string codigoCliente = "VD";
+
+            foreach (OsusrN2pObra empreendimento in empreendimentos)
+            {
+                cliente = null;
+                foreach (CrmEntidade clienteObra in listaClientes)
+                {
+                    if (clienteObra.Id.ToString() == empreendimento.Cliente)
+                    {
+                        cliente = clienteObra.Nome;
+                        clienteId = clienteObra.Id;
+                        break;
+                    }
+                }
+
+                EmpreendimentosNomesDto obra = new EmpreendimentosNomesDto()
+                    {
+                        Obra = empreendimento,
+                        NomeCliente = cliente,
+                        CodigoCliente = codigoCliente,
+                        Cliente = clienteId.ToString(),
+                    };
+
+                empreendimentosCompleto.Add(obra);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching empreendimentos: {ex.Message}");
+        }
+    }
+
+    public async Task SaveEmpreendimento()
+    {
+        var retorno = await ValidaMoradaAsync();
+
+        if (obraEdicaoCriacao == null)
+        {
+            await JSRuntime.InvokeVoidAsync("showToast", "Objeto da obra está nulo!", "bg-danger");
+            return;
+        }
+
+        bool codigoRepetido = await dbContext.Set<OsusrN2pObra>().AnyAsync(e =>e.Id != obraEdicaoCriacao.Id && e.Codigo == obraEdicaoCriacao.Codigo);                    
+
+        if (codigoRepetido)
+        {
+            Erro = $"Código duplicado";
+            await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+            return;
+        }
+
+        try
+        {
+            if (adicionarObra)
+            {
+                obraEdicaoCriacao.Isempreendimento = true;
+                dbContext.Set<OsusrN2pObra>().Add(obraEdicaoCriacao);
+                await dbContext.SaveChangesAsync();
+                Mensagem = retorno.Mensagem;
+            }
+            else if (editarObra)
+            {
+                var obraNovaEditar = await dbContext.Set<OsusrN2pObra>().FirstOrDefaultAsync(i => i.Id == obraEdicaoCriacao.Id);
+                if (obraNovaEditar != null)
+                {
+                    dbContext.Entry(obraNovaEditar).CurrentValues.SetValues(obraEdicaoCriacao);
+                    await dbContext.SaveChangesAsync();
+                    Mensagem = retorno.Mensagem;
+                }
+                else
+                {
+                    Erro = "Empreendimento não encontrado para edição.";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Erro = $"Erro ao guardar empreendimento: {ex.Message}";
+        }
+
+        if (!string.IsNullOrEmpty(Erro))
+        {
+            await JSRuntime.InvokeVoidAsync("showToast", Erro, "bg-danger");
+        }
+        else
+        {
+            if (retorno.Sucesso)
+            {
+                await JSRuntime.InvokeVoidAsync("showToast", Mensagem, "bg-success");
+            }
+            else
+            {
+                await JSRuntime.InvokeVoidAsync("showToast", retorno.Mensagem, "bg-warning");
+            }
+        }
+
+        editarObra = false;
+        adicionarObra = false;
+        verFormularios = false;
+        await GetEmpreendimentos();
+        StateHasChanged();
+        TimerMessages();
+    }
+
+
+    private async Task AdicionarEmpreendimento(string? entidadeId = null)
+    {
+
+        await GetAll();
+        CrmEntidade entidadeArgumento = new CrmEntidade();
+        obraEdicaoCriacao = new OsusrN2pObra();
+        obraEdicaoCriacao.CriadaPor = who.User.Id;
+        obraEdicaoCriacao.DataCriacao = DateTime.Now;
+
+        if (!string.IsNullOrEmpty(entidadeId))
+        {
+            entidadeArgumento = dbContext.Set<CrmEntidade>().FirstOrDefault(i => i.Id.ToString() == entidadeId);
+
+            if (entidadeArgumento is not null && entidadeArgumento.Id > 0)
+            {
+                obraEdicaoCriacao.Cliente = entidadeArgumento.Id.ToString();
+            }
+        }
+
+        var maxCodManual = dbContext.Set<OsusrN2pObra>()
+            .Where(o => o.Codigo != null && o.Codigo.StartsWith("VT_"))
+            .AsEnumerable()
+            .Select(o =>
+            {
+                var parts = o.Codigo.Split('_');
+                return parts.Length == 2 && int.TryParse(parts[1], out var num) ? num : (int?)null;
+            })
+            .Where(n => n.HasValue)
+            .Max();
+
+        maxCodManual = maxCodManual + 1;
+
+        obraEdicaoCriacao.Codigo = "VT_" + maxCodManual;
+
+        verFormularios = true;
+        adicionarObra = true;
+
+        StateHasChanged();
+    }
+
+    //função para abrir a obra selecionada no botão ficheiro da tabela
+    private async Task VerObra(string obraCodigo)
+    {
+        obraEdicaoCriacao = new OsusrN2pObra();
+        obraEdicaoCriacao = await dbContext.Set<OsusrN2pObra>().FirstOrDefaultAsync(i => i.Codigo == obraCodigo);
+
+        if (obraEdicaoCriacao != null)
+        {
+            GetTurnos();
+            GetAgendamentos();
+
+            clienteSelecionado = await dbContext.Set<CrmEntidade>().FirstOrDefaultAsync(i => i.Id.ToString() == obraEdicaoCriacao.Cliente);
+
+            verFormularios = true;
+            editarObra = true;
+
+            StateHasChanged();
+        }
+        else
+        {
+            Erro = "Algo correu mal. Empreendimento não encontrado.";
+            await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+        }
+
+    }
+
+    //função para apagar obras do botão lixeira da tabela
+    private async Task ApagarObra(int idObra)
+    {
+        obraApagar = await dbContext.Set<OsusrN2pObra>().FirstOrDefaultAsync(i => i.Id == idObra);
+
+        if (obraApagar != null)
+        {
+            try
+            {
+                obraApagar.Deleted = true;
+                await dbContext.SaveChangesAsync();
+                Mensagem = "Empreendimento removido com sucesso.";
+            }
+            catch (Exception)
+            {
+                Erro = "Algo correu mal. O empreendimento não pode ser removido.";
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(Erro))
+                {
+                    await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+                }
+                else
+                {
+                    await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+                }
+
+                await GetEmpreendimentos();
+            }
+        }
+        else
+        {
+            Erro = "Algo correu mal. Empreendimento não encontrado.";
+            await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+        }
+
+        StateHasChanged();
+        TimerMessages();
+    }
+
+    private async Task ConfirmarApagarObra(int idObra)
+    {
+        bool? confirmado = await DialogService.ShowMessageBox(
+            "⚠️ Confirmar remoção",
+            "Tens a certeza que queres apagar esta obra?",
+            yesText: "Apagar",
+            noText: "Cancelar",
+            options: new DialogOptions() { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true });
+
+        if (confirmado == true)
+        {
+            await ApagarObra(idObra);
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////
+
+    ////////////////////////////////NAVEGAÇÕES///////////////////////////////////////////
+
+    //ir para o cliente, no click do link da tabela
+    private async Task IrParaCliente(string codigoPrimavera)
+    {
+        await JSRuntime.InvokeVoidAsync("sessionStorage.setItem", "previousPage", NavigationManager.Uri);
+        dbContext.Dispose();
+        baseControle.Dispose();
+        NavigationManager.NavigateTo($"/Entidades/Clientes/{codigoPrimavera}");
+    }
+
+    //voltar  a pagina anterior
+    private async Task VoltarPagina()
+    {
+        if (!string.IsNullOrEmpty(previousPage))
+        {
+            NavigationManager.NavigateTo($"{previousPage}/{EntidadeId}");
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////
+
+    ///////////////////////////////////ALERTAS///////////////////////////////////////////
+
+    //temporizador para eliminar os alertas
+    private void TimerElapsed(object sender, ElapsedEventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            Erro = "";
+            Mensagem = "";
+            StateHasChanged();
+        });
+    }
+
+    //tempo de duração dos alertas
+    private void TimerMessages()
+    {
+        var timer = new System.Timers.Timer(5000); // 5 segundos
+        timer.Elapsed += TimerElapsed;
+        timer.AutoReset = false;
+        timer.Start();
+    }
+
+    //função para apagar obras do botão lixeira da tabela
+    private async Task ApagarFracao(OsusrN2pFraco fracao)
+    {
+        fracaoApagar = await dbContext.Set<OsusrN2pFraco>().FirstOrDefaultAsync(i => i.Id == fracao.Id);
+
+        if (fracaoApagar != null)
+        {
+            try
+            {
+                fracaoApagar.IsDeleted = true;
+                dbContext.SaveChangesAsync();
+                Mensagem = "Fração removida com sucesso.";
+            }
+            catch (Exception)
+            {
+                Erro = "Algo correu mal. A Fração não pode ser removida.";
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(Erro))
+                {
+                    await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+                }
+                else
+                {
+                    await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+
+                }
+            }
+        }
+        else
+        {
+            Erro = "Algo correu mal. Fração não encontrada.";
+            await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+        }
+
+        StateHasChanged();
+    }
+
+
+    private bool FuncaoFiltrar(EmpreendimentosNomesDto item)
+    {
+        if (string.IsNullOrWhiteSpace(filtro))
+            return true;
+        if (item.Obra.Nome is not null && item.Obra.Nome.Contains(filtro, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Obra.Codigo is not null && item.Obra.Codigo.Contains(filtro, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Cliente is not null && item.Cliente.Contains(filtro, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Obra.Estado is not null && item.Obra.Estado.Contains(filtro, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Gestor is not null && item.Gestor.Contains(filtro, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Obra.DataAdjudicacao is not null && item.Obra.DataAdjudicacao.ToString().Contains(filtro, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
+    }
+
+    private bool FuncaoFiltrarFracoes(OsusrN2pFraco item)
+    {
+        if (string.IsNullOrWhiteSpace(filtroFracoes))
+            return true;
+        if (item.Descricao is not null && item.Descricao.Contains(filtroFracoes, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Bloco is not null && item.Bloco.Contains(filtroFracoes, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Tipologia is not null && item.Tipologia.Contains(filtroFracoes, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Andar is not null && item.Andar.Contains(filtroFracoes, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Areabruta is not null && item.Areabruta.Contains(filtroFracoes, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Areautil is not null && item.Areautil.ToString().Contains(filtroFracoes, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Garagem is not null && item.Garagem.ToString().Contains(filtroFracoes, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.ValorTotal is not null && item.ValorTotal.ToString().Contains(filtroFracoes, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
+    }
+
+    private Task<IEnumerable<Funcionario>> BuscaColaborador(string value, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(listaColaboradores.AsEnumerable());
+
+        return Task.FromResult(listaColaboradores
+            .Where(i => i.Nome.Contains(value, StringComparison.OrdinalIgnoreCase))
+            .AsEnumerable());
+    }
+
+    private Task<IEnumerable<CrmEntidade>> BuscaCliente(string value, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(value))
+            return Task.FromResult(listaClientes.AsEnumerable());
+
+        return Task.FromResult(listaClientes
+       .Where(i => i.Nome.Contains(value, StringComparison.OrdinalIgnoreCase))
+       .AsEnumerable());
+    }
+
+    private void OnSelecaoColaborador(Funcionario colab)
+    {
+        colaboradorSelecionado = colab;
+
+        if (colab != null)
+        {
+            novoAgendamento.IdFuncionario = colab.Id;
+            novoAgendamento.NomeFuncionario = colab.Nome;
+
+            CrmUtilizador user = baseControle.Set<CrmUtilizador>()
+                .FirstOrDefault(u => u.Id == colab.IdUtilizador);
+
+            var turno = ObtemTurnoDoColaborador(user);
+            if (turno != null)
+            {
+                novoAgendamento.HoraEntrada = turno.Entrada;
+                novoAgendamento.HoraSaida = turno.Saida;
+            }
+
+            ValidarAgendamento();
+        }
+        else
+        {
+            novoAgendamento.IdFuncionario = 0;
+            novoAgendamento.NomeFuncionario = string.Empty;
+            alertaAgendamento = "";
+        }
+
+        StateHasChanged();
+    }
+
+    // Função para ir buscar o turno
+    private Turnos ObtemTurnoDoColaborador(CrmUtilizador colaborador)
+    {
+
+        return listaTurnos.FirstOrDefault(t => t.Id == colaborador.IdTurno);
+    }
+
+    private void OnSelecaoCliente(CrmEntidade cliente)
+    {
+        if (cliente != null)
+        {
+            clienteSelecionado = cliente;
+            obraEdicaoCriacao.Cliente = cliente.Id.ToString();
+        }
+
+        StateHasChanged();
+    }
+
+    private void GetContratos()
+    {
+		listaContratos = dbContext.Set<Contrato>().Where(i => i.ContratoAtivo == true).ToList();
+    }
+
+    private void GerarExcel()
+    {
+		List<FuncionarioObraAgendamento> listaAgendamentosExcel = new List<FuncionarioObraAgendamento>();
+
+        listaAgendamentosExcel = dbContext.Set<FuncionarioObraAgendamento>().Where(a => a.IdObra == obraEdicaoCriacao.Id).ToList();
+
+        GetContratos();
+
+        if (listaAgendamentosExcel.Count == 0)
+        {
+            DialogService.ShowMessageBox("Nenhum Resultado", "Não há agendamentos para exportar.");
+            return;
+        }
+
+        var fileName = GetExcelFileName();
+
+        var folderPath = Path.Combine(Env.WebRootPath, "excel");
+        if (!Directory.Exists(folderPath))
+            Directory.CreateDirectory(folderPath);
+
+        var excelPath = Path.Combine(folderPath, fileName);
+
+        using var package = new ExcelPackage();
+        var ws = package.Workbook.Worksheets.Add("Mão de Obra");
+
+        // cabeçalhos
+        string[] headers = { "Data", "Colaborador", "Hora de Entrada", "Hora de Saída", "Horas Normais", "Horas Extras", "Custo" };
+        for (int c = 0; c < headers.Length; c++)
+            ws.Cells[1, c + 1].Value = headers[c];
+
+        // linhas
+        int row = 2;
+        foreach (var p in listaAgendamentosExcel)
+        {
+            ws.Cells[row, 1].Value = p.DataInicio.ToString("yyyy-MM-dd");
+            ws.Cells[row, 2].Value = listaColaboradores.FirstOrDefault(c => c.Id == p.IdFuncionario)?.Nome ?? "Desconhecido";
+            ws.Cells[row, 3].Value = p.HoraEntrada?.ToString(@"hh\:mm") ?? "";
+            ws.Cells[row, 4].Value = p.HoraSaida?.ToString(@"hh\:mm") ?? "";
+            ws.Cells[row, 5].Value = p.HorasNormais.GetValueOrDefault(0);
+            ws.Cells[row, 6].Value = p.HorasExtras.GetValueOrDefault(0);
+            ws.Cells[row, 7].Value = GetCusto(p);
+            row++;
+        }
+
+        ws.Cells[ws.Dimension.Address].AutoFitColumns();
+
+        package.SaveAs(new FileInfo(excelPath));
+
+        NavigationManager.NavigateTo($"/excel/{fileName}", true);
+    }
+
+
+    private decimal GetCusto(FuncionarioObraAgendamento agendamento)
+    {
+        Funcionario colaborador = listaColaboradores.FirstOrDefault(c => c.Id == agendamento.IdFuncionario);
+		Contrato contrato = listaContratos.FirstOrDefault(c => c.IdFuncionario == colaborador?.Id);
+
+        if (colaborador == null || contrato == null)
+        {
+            return 0;
+        }
+
+        decimal custoPorHora = contrato.OrdenadoHora ?? 1000000;
+        decimal custoPorHoraEXtra = contrato.PrimeiraHoraExtra ?? 100000;
+        decimal retorno = ((decimal)(agendamento.HorasNormais ?? 0)) * custoPorHora;
+		retorno = retorno + ((decimal)(agendamento.HorasExtras ?? 0)) * custoPorHoraEXtra;
+
+        return retorno;
+	}
+
+    private string GetExcelFileName()
+    {
+        List<string> partes = new List<string> { "MaodeObra" };
+        string nomeObra = obraEdicaoCriacao.Nome;
+        string codigoObra = obraEdicaoCriacao.Codigo;
+        partes.Add(nomeObra);
+        partes.Add(codigoObra);
+
+        return $"{string.Join('_', partes)}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+    }
+
+}
+
+
+
+
+
+
+
+
+
+

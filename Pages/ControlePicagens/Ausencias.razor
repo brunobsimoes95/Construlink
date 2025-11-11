@@ -1,0 +1,796 @@
+﻿@page "/Ausencias"
+@page "/Ausencias/{AcaoEsperada}/{ColaboradorId}"
+@using System.Globalization
+@using System.Text
+@using System.Text.RegularExpressions
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Shared
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.JSInterop
+@using Newtonsoft.Json
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService dbContextFactoryService
+@inject IDialogService Dialog
+@inject IConfiguration _configuration
+@inject IDialogService DialogService
+
+<div class="row mt-2 mb-2">
+    <div class="col-md-6 mt-3">
+        <div class="row">
+            <div class="col-md-5" style="display: flex; align-items: center;">
+                <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                <MudText Typo="Typo.h5" Class="ms-1">Ausências</MudText>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mt-3 hide-on-mobile">
+        <ol class="breadcrumb" style="float:right;">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item active">Ausências</li>
+        </ol>
+    </div>
+</div>
+
+
+
+<MudCard Class=" mb-3" Elevation="4">
+    <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+        <CardHeaderContent>
+            <MudText Typo="Typo.button"><MudIcon Icon="fa-solid fa-filter" Class="me-2" Style="font-size: 1.0rem !important;" />Filtros</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <hr style="margin: 0; border: 0; border-top: 1px solid #000 !important;" />
+    <MudCardContent Class="pt-2">
+        <MudGrid>
+            <MudItem md="12" Class="d-flex align-items-center">
+                <MudItem md="3" Class="me-2">
+                    <div class="theme-bordered-select">
+                        <select name="colaborador" id="colaborador" class="form-select d-block no-spinner" style="height:37px;" @onchange="OnFiltroColaboradorChanged">
+                            <option value="">Todos</option>
+                            @foreach (var colaborador in listaColaboradores.Where(c => c.Isactive == true).GroupBy(c => c.Id).Select(g => g.First()).OrderBy(c => c.Nome))
+                            {
+                                <option value="@colaborador.Id">@colaborador.Nome</option>
+                            }
+                        </select>
+                    </div>
+                </MudItem>
+
+                <MudItem md="3" Class="me-2">
+                    <div class="theme-bordered-select">
+                        <select name="tipoausencia" id="tipoausencia" class="form-select d-block no-spinner" style="height:37px;" @onchange="OnFiltroTipoChanged">
+                            <option value="">Todos</option>
+                            <option value="Temporária">Temporária</option>
+                            <option value="Falta">Falta</option>
+                            <option value="Férias">Férias</option>
+                            <option value="Folga">Folga</option>
+                        </select>
+                    </div>
+                </MudItem>
+
+                <MudItem md="10">
+                    <MudButton Class="me-2 float-end" Style="background-color:black; color:white;"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               Variant="Variant.Filled"
+                               OnClick="@(() => AdicionarAusencia())">
+                        Adicionar
+                    </MudButton>
+                </MudItem>
+               
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+
+@if (!verFormularios)
+{
+    <!--CARD DA TABELA DE AUSÊNCIAS-->
+    <MudTable Items="listaAusencias" Striped="true" Bordered="true" Hover="true" Dense="true" Elevation="4" Filter="new Func<CrmAusencia, bool>(FuncaoFiltrar)">
+        <ToolBarContent>
+            <MudSpacer />
+            <MudSpacer />
+            <MudSpacer />
+            <MudTextField Immediate @bind-Value="filtro"
+                          Placeholder="Filtrar"
+                          Adornment="Adornment.Start"
+                          AdornmentColor="Color.Warning"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          IconSize="Size.Medium"
+                          Margin="Margin.Dense"
+                          Class="mt-0">
+            </MudTextField>
+        </ToolBarContent>
+        <HeaderContent>
+            <MudTh Style="width: 5%;">Editar</MudTh>
+            <MudTh Style="width: 20%;">Colaborador</MudTh>
+            <MudTh Style="width: 15%;">Tipo</MudTh>
+            <MudTh Style="width: 25%;">Descrição</MudTh>
+            <MudTh Style="width: 15%;">Data Início</MudTh>
+            <MudTh Style="width: 15%;">Data Fim</MudTh>
+            <MudTh Style="width: 5%;">Eliminar</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd Style="width: 5%;" Align="Align.Center">
+                <MudTooltip Text="Editar">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Warning" @onclick="() => EditarAusencia(context.Id)" />
+                </MudTooltip>
+            </MudTd>
+            <MudTd Style="width: 20%;" Align="Align.Left">@context.NomeColaborador</MudTd>
+            <MudTd Style="width: 15%;" Align="Align.Left">
+                <MudChip T="string" Color="@GetCorTipoAusencia(context.TipoAusencia)" Size="Size.Small">
+                    @context.TipoAusencia
+                </MudChip>
+            </MudTd>
+            <MudTd Style="width: 25%;" Align="Align.Left">@context.Descricao</MudTd>
+            <MudTd Style="width: 15%;" Align="Align.Left">
+                @if (context.TipoAusencia == "Temporária" || context.TipoAusencia == "Falta")
+                {
+                    <span>@context.DataInicio.ToString("dd/MM/yyyy")</span>
+                    @if (context.HoraInicio.HasValue)
+                    {
+                        <br />
+
+                        <small>@context.HoraInicio.Value.ToString(@"hh\:mm")</small>
+                    }
+                }
+                else
+                {
+                    <span>@context.DataInicio.ToString("dd/MM/yyyy")</span>
+                }
+            </MudTd>
+            <MudTd Style="width: 15%;" Align="Align.Left">
+                @if (context.TipoAusencia == "Temporária" || context.TipoAusencia == "Falta")
+                {
+                    @if (context.HoraFim.HasValue)
+                    {
+                        <small>@context.HoraFim.Value.ToString(@"hh\:mm")</small>
+                    }
+                }
+                else if (context.TipoAusencia == "Férias" && context.DataFim.HasValue)
+                {
+                    <span>@context.DataFim.Value.ToString("dd/MM/yyyy")</span>
+                }
+                else if (context.TipoAusencia == "Folga")
+                {
+                    <span>-</span>
+                }
+            </MudTd>
+            <MudTd Style="width: 5%;" Align="Align.Center">
+                <MudTooltip Text="Excluir">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" @onclick="() => ConfirmarApagarAusencia(context.Id)" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            Não existem dados a exibir.
+        </NoRecordsContent>
+        <PagerContent>
+            <MudTablePager />
+        </PagerContent>
+    </MudTable>
+}
+else
+{
+
+    <MudCard Class=" mb-3" Elevation="4">
+        <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+            <CardHeaderContent>
+                <MudText Typo="Typo.button"><MudIcon Icon="fa-solid fa-calendar" Class="me-2" Style="font-size: 1.0rem !important;" />
+                    @if (adicionarAusencia)
+                    {
+                        <span>Nova Ausência</span>
+                    }
+                    else
+                    {
+                        <span>Editar Ausência</span>
+                    }
+                    </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <hr style="margin: 0; border: 0; border-top: 1px solid #000 !important;" />
+        <MudCardContent Class="pt-2">
+            <MudGrid Spacing="0">
+                <div class="card-body">
+                    <div class="row">
+                        <!--campo dropdown colaborador-->
+                        <div class="form-check col-md-6">
+                            <label class="form-label mb-0">Colaborador</label>
+                            <MudAutocomplete T="Funcionario"
+                                             Value="colaboradorSelecionado"
+                                             SearchFunc="BuscaColaborador"
+                                             ToStringFunc="@(c => c?.Nome ?? string.Empty)"
+                                             ValueChanged="@(c => OnSelecaoColaborador(c))"
+                                             Clearable="true"
+                                             ResetValueOnEmptyText
+                                             Dense="true"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Placeholder="Selecionar Colaborador"
+                                             Style="min-height: 37px;" />
+                        </div>
+
+                        <!--campo dropdown tipo ausência-->
+                        <div class="col-md-6">
+                            <label>Tipo de Ausência</label>
+                            <select class="d-block w-100 mt-1" style="height:37px;" @bind="ausenciaEdicaoCriacao.TipoAusencia">
+                                <option value="" selected disabled>Selecionar tipo</option>
+                                <option value="Temporária">Temporária</option>
+                                <option value="Falta">Falta</option>
+                                <option value="Férias">Férias</option>
+                                <option value="Folga">Folga</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <!--campo texto descrição-->
+                        <div class="form-check col-md-12">
+                            <label class="form-label mb-0">Descrição</label>
+                            <input type="text" class="form-control" @bind="ausenciaEdicaoCriacao.Descricao" />
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(ausenciaEdicaoCriacao.TipoAusencia))
+                    {
+                        <div class="row mt-3">
+                            @if (ausenciaEdicaoCriacao.TipoAusencia == "Temporária" || ausenciaEdicaoCriacao.TipoAusencia == "Falta")
+                            {
+                                <!--Data-->
+                                <div class="col-md-3">
+                                    <label>Data</label>
+                                    <input type="date" class="form-control" value="@DataInicioStr" @onchange="OnDataInicioChanged" />
+                                </div>
+                                <!--Hora Início-->
+                                <div class="col-md-3">
+                                    <label>Hora Início</label>
+                                    <input type="time" class="form-control"
+                                           value="@HoraInicioStr"
+                                           @onchange="OnHoraInicioChanged" />
+                                </div>
+                                <!--Hora Fim-->
+                                <div class="col-md-3">
+                                    <label>Hora Fim</label>
+                                    <input type="time" class="form-control"
+                                           value="@HoraFimStr"
+                                           @onchange="OnHoraFimChanged" />
+                                </div>
+                            }
+                            else if (ausenciaEdicaoCriacao.TipoAusencia == "Férias")
+                            {
+                                <!--Data Início-->
+                                <div class="col-md-6">
+                                    <label>Data Início</label>
+                                    <input type="date" class="form-control" value="@DataInicioStr" @onchange="OnDataInicioChanged" />
+                                </div>
+                                <!--Data Fim-->
+                                <div class="col-md-6">
+                                    <label>Data Fim</label>
+                                    <input type="date" class="form-control" value="@DataFimStr" @onchange="OnDataFimChanged" />
+                                </div>
+                            }
+                            else if (ausenciaEdicaoCriacao.TipoAusencia == "Folga")
+                            {
+                                <!--Data-->
+                                <div class="col-md-6 ps-2">
+                                    <label>Data</label>
+                                    <input type="date" class="form-control" value="@DataInicioStr" @onchange="OnDataInicioChanged" />
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <div class="row mt-3">
+                        <!--campo texto observações-->
+                        <div class="form-check col-md-12">
+                            <label class="form-label mb-0">Observações</label>
+                            <textarea class="form-control" rows="3" @bind="ausenciaEdicaoCriacao.Observacoes"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+   
+
+    <div class="mt-4 mb-4">
+        <MudButton Class="me-2"
+                   Variant="Variant.Filled"
+                   Style="transition:0.2s;"
+                   onmouseout="this.style.backgroundColor=''; this.style.color='';"
+                   @onclick="@(() => { editarAusencia = false; adicionarAusencia = false; verFormularios = false; VoltarPagina(); })">
+            Cancelar
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled"
+                   Style="transition:0.2s;"
+                   onmouseover="this.style.backgroundColor='#28a745'; this.style.color='white';"
+                   onmouseout="this.style.backgroundColor=''; this.style.color='';"
+                   @onclick="SaveAusencia">
+            Guardar
+        </MudButton>
+    </div>
+}
+
+@code {
+    [Parameter] public string? AcaoEsperada { get; set; } = string.Empty;
+    [Parameter] public string? ColaboradorId { get; set; } = string.Empty;
+
+    // Estados do blazor
+    private string path = "";
+    private string Erro = "";
+    private string Mensagem = "";
+    private string filtroColaborador = "";
+    private string filtroTipo = "";
+    private string filtroData = "";
+    private string filtroDataInicio = "";
+    private string filtroDataFim = "";
+    private string filtro = string.Empty;
+    private bool isloading = false;
+    private bool editarAusencia = false;
+    private bool adicionarAusencia = false;
+    private bool verFormularios = false;
+    private string previousPage = null;
+
+    // Listas e objetos
+    private List<CrmAusencia> listaAusencias = new();
+    private List<Funcionario> listaColaboradores = new();
+    private Funcionario? colaboradorSelecionado;
+    private CrmAusencia ausenciaEdicaoCriacao = new();
+
+    // Session e instanciação da base
+    EmpresaUserSession who = null;
+    private DbContext dbContext { get; set; }
+    private BaseControleContext baseControle = new BaseControleContext();
+
+    // Propriedades para binding de datas e horas
+    private string DataInicioStr
+    {
+        get => ausenciaEdicaoCriacao.DataInicio.ToString("yyyy-MM-dd");
+        set
+        {
+            if (DateTime.TryParse(value, out var date))
+                ausenciaEdicaoCriacao.DataInicio = date;
+        }
+    }
+
+    private string DataFimStr
+    {
+        get => ausenciaEdicaoCriacao.DataFim?.ToString("yyyy-MM-dd") ?? "";
+        set
+        {
+            if (DateTime.TryParse(value, out var date))
+                ausenciaEdicaoCriacao.DataFim = date;
+            else if (string.IsNullOrEmpty(value))
+                ausenciaEdicaoCriacao.DataFim = null;
+        }
+    }
+
+
+    private string HoraInicioStr => ausenciaEdicaoCriacao.HoraInicio?.ToString(@"hh\:mm") ?? "";
+    private string HoraFimStr => ausenciaEdicaoCriacao.HoraFim?.ToString(@"hh\:mm") ?? "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        dbContext = dbContextFactoryService.GetDbContext(who.Empresa.BaseNome);
+
+        await GetColaboradores();
+        await GetAusencias();
+
+        if (AcaoEsperada == "Adicionar" && !string.IsNullOrEmpty(ColaboradorId))
+        {
+            AdicionarAusencia(ColaboradorId);
+        }
+
+        await base.OnInitializedAsync();
+    }
+
+    private async Task ApagarAusencia(int ausenciaId)
+    {
+        var ausencia = await dbContext.Set<CrmAusencia>().FirstOrDefaultAsync(a => a.Id == ausenciaId);
+
+        if (ausencia != null)
+        {
+            try
+            {
+                ausencia.IsDeleted = true;
+                await dbContext.SaveChangesAsync();
+                Mensagem = "Ausência removida com sucesso.";
+                await JSRuntime.InvokeVoidAsync("showToast", Mensagem, "bg-success");
+                await GetAusencias();
+            }
+            catch (Exception ex)
+            {
+                Erro = "Algo correu mal. A ausência não pode ser removida.";
+                await JSRuntime.InvokeVoidAsync("showToast", Erro, "bg-danger");
+            }
+        }
+        else
+        {
+            Erro = "Ausência não encontrada.";
+            await JSRuntime.InvokeVoidAsync("showToast", Erro, "bg-danger");
+        }
+
+        StateHasChanged();
+    }
+
+    private void VoltarPagina()
+    {
+        if (!string.IsNullOrEmpty(previousPage))
+        {
+            colaboradorSelecionado = null;
+            NavigationManager.NavigateTo(previousPage);
+
+        }
+        else
+        {
+            colaboradorSelecionado = null;
+            NavigationManager.NavigateTo("/Ausencias");
+        }
+    }
+
+    private void OnFiltroDataInicioChanged(ChangeEventArgs e)
+    {
+        filtroDataInicio = e.Value?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    private void OnFiltroDataFimChanged(ChangeEventArgs e)
+    {
+        filtroDataFim = e.Value?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    private bool FuncaoFiltrar(CrmAusencia item)
+    {
+        // Filtro por texto (campo de pesquisa do MudTable)
+        if (!string.IsNullOrWhiteSpace(filtro))
+        {
+            bool matchTexto = false;
+
+            if (item.NomeColaborador?.Contains(filtro, StringComparison.OrdinalIgnoreCase) == true)
+                matchTexto = true;
+            if (item.TipoAusencia?.Contains(filtro, StringComparison.OrdinalIgnoreCase) == true)
+                matchTexto = true;
+            if (item.Descricao?.Contains(filtro, StringComparison.OrdinalIgnoreCase) == true)
+                matchTexto = true;
+            if (item.DataInicio.ToString("dd/MM/yyyy").Contains(filtro, StringComparison.OrdinalIgnoreCase))
+                matchTexto = true;
+            if (item.DataFim?.ToString("dd/MM/yyyy").Contains(filtro, StringComparison.OrdinalIgnoreCase) == true)
+                matchTexto = true;
+
+            if (!matchTexto) return false;
+        }
+
+        // Filtro por colaborador
+        if (!string.IsNullOrEmpty(filtroColaborador) && item.IdColaborador.ToString() != filtroColaborador)
+            return false;
+
+        // Filtro por tipo
+        if (!string.IsNullOrEmpty(filtroTipo) && item.TipoAusencia != filtroTipo)
+            return false;
+
+        // Filtro por data início
+        if (!string.IsNullOrEmpty(filtroDataInicio))
+        {
+            if (DateTime.TryParse(filtroDataInicio, out var dataInicioFiltro))
+            {
+                if (item.DataInicio.Date < dataInicioFiltro.Date)
+                    return false;
+            }
+        }
+
+        // Filtro por data fim
+        if (!string.IsNullOrEmpty(filtroDataFim))
+        {
+            if (DateTime.TryParse(filtroDataFim, out var dataFimFiltro))
+            {
+                // Para ausências com data fim específica
+                if (item.DataFim.HasValue)
+                {
+                    if (item.DataFim.Value.Date > dataFimFiltro.Date)
+                        return false;
+                }
+                else
+                {
+                    // Para ausências sem data fim (Temporária, Falta, Folga), usar data início
+                    if (item.DataInicio.Date > dataFimFiltro.Date)
+                        return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private void OnDataInicioChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        if (DateTime.TryParse(val, out var date))
+            ausenciaEdicaoCriacao.DataInicio = date;
+    }
+
+    private void OnDataFimChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        if (DateTime.TryParse(val, out var date))
+            ausenciaEdicaoCriacao.DataFim = date;
+        else if (string.IsNullOrEmpty(val))
+            ausenciaEdicaoCriacao.DataFim = null;
+    }
+
+    private async Task AplicarFiltros(ChangeEventArgs e)
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+
+    private void OnFiltroColaboradorChanged(ChangeEventArgs e)
+    {
+        filtroColaborador = e.Value?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    private void OnFiltroTipoChanged(ChangeEventArgs e)
+    {
+        filtroTipo = e.Value?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    private void OnFiltroDataChanged(ChangeEventArgs e)
+    {
+        filtroData = e.Value?.ToString() ?? "";
+        StateHasChanged();
+    }
+
+    private async Task LimparFiltros()
+    {
+        filtroColaborador = "";
+        filtroTipo = "";
+        filtroData = "";
+        filtro = ""; // Limpa também o campo de pesquisa do MudTable
+
+        // Resetar os selects para "Todos"
+        await JSRuntime.InvokeVoidAsync("eval", "document.getElementById('colaborador').selectedIndex = 0;");
+        await JSRuntime.InvokeVoidAsync("eval", "document.getElementById('tipoausencia').selectedIndex = 0;");
+        await JSRuntime.InvokeVoidAsync("eval", "document.querySelector('input[type=month]').value = '';");
+
+        StateHasChanged();
+    }
+
+    private void TimerElapsed(object sender, ElapsedEventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            Erro = "";
+            Mensagem = "";
+            StateHasChanged();
+        });
+    }
+
+    private void TimerMessages()
+    {
+        var timer = new System.Timers.Timer(5000); // 5 segundos
+        timer.Elapsed += TimerElapsed;
+        timer.AutoReset = false;
+        timer.Start();
+    }
+
+    public void Dispose()
+    {
+        dbContext?.Dispose();
+        baseControle?.Dispose();
+    } 
+    
+    private async Task GetColaboradores()
+    {
+        listaColaboradores = await dbContext.Set<Funcionario>()
+            .Where(f => f.Inativo != 1)
+            .OrderBy(f => f.Nome)
+            .ToListAsync();
+    }
+
+    private async Task GetAusencias()
+    {
+        listaAusencias = await dbContext.Set<CrmAusencia>()
+            .Where(a => a.IsDeleted != true)
+            .OrderByDescending(a => a.DataInicio)
+            .ToListAsync();
+    }
+
+    private Color GetCorTipoAusencia(string tipo)
+    {
+        return tipo switch
+        {
+            "Temporária" => Color.Warning,
+            "Falta" => Color.Error,
+            "Férias" => Color.Success,
+            "Folga" => Color.Info,
+            _ => Color.Default
+        };
+    }
+
+    private async void OnTipoAusenciaChanged()
+    {
+        // Limpar campos quando mudar o tipo
+        ausenciaEdicaoCriacao.DataFim = null;
+        ausenciaEdicaoCriacao.HoraInicio = null;
+        ausenciaEdicaoCriacao.HoraFim = null;
+        
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnHoraInicioChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        ausenciaEdicaoCriacao.HoraInicio = TimeSpan.TryParse(val, out var ts) ? ts : null;
+    }
+
+    private void OnHoraFimChanged(ChangeEventArgs e)
+    {
+        var val = e.Value?.ToString();
+        ausenciaEdicaoCriacao.HoraFim = TimeSpan.TryParse(val, out var ts) ? ts : null;
+    }
+
+    private Task<IEnumerable<Funcionario>> BuscaColaborador(string value, CancellationToken ct)
+    {
+        var query = string.IsNullOrWhiteSpace(value)
+            ? listaColaboradores.Where(c => c.Isactive == true)
+            : listaColaboradores.Where(c => c.Isactive == true && c.Nome?.Contains(value, StringComparison.OrdinalIgnoreCase) == true);
+        return Task.FromResult(query.AsEnumerable());
+    }
+
+    private void OnSelecaoColaborador(Funcionario colaborador)
+    {
+        colaboradorSelecionado = colaborador;
+        if (colaborador != null)
+        {
+            ausenciaEdicaoCriacao.IdColaborador = colaborador.Id;
+            ausenciaEdicaoCriacao.NomeColaborador = colaborador.Nome;
+        }
+        StateHasChanged();
+    }
+
+    private async Task SaveAusencia()
+    {
+        // Validações básicas
+        if (ausenciaEdicaoCriacao.IdColaborador <= 0)
+        {
+            await JSRuntime.InvokeVoidAsync("showToast", "É obrigatório selecionar um colaborador!", "bg-danger");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(ausenciaEdicaoCriacao.TipoAusencia))
+        {
+            await JSRuntime.InvokeVoidAsync("showToast", "É obrigatório selecionar o tipo de ausência!", "bg-danger");
+            return;
+        }
+
+        // Validações específicas por tipo
+        if (ausenciaEdicaoCriacao.TipoAusencia == "Temporária" || ausenciaEdicaoCriacao.TipoAusencia == "Falta")
+        {
+            if (!ausenciaEdicaoCriacao.HoraInicio.HasValue || !ausenciaEdicaoCriacao.HoraFim.HasValue)
+            {
+                await JSRuntime.InvokeVoidAsync("showToast", "É obrigatório preencher hora de início e fim!", "bg-danger");
+                return;
+            }
+
+            if (ausenciaEdicaoCriacao.HoraInicio >= ausenciaEdicaoCriacao.HoraFim)
+            {
+                await JSRuntime.InvokeVoidAsync("showToast", "Hora de início deve ser anterior à hora fim!", "bg-danger");
+                return;
+            }
+        }
+        else if (ausenciaEdicaoCriacao.TipoAusencia == "Férias")
+        {
+            if (!ausenciaEdicaoCriacao.DataFim.HasValue)
+            {
+                await JSRuntime.InvokeVoidAsync("showToast", "É obrigatório preencher a data fim para férias!", "bg-danger");
+                return;
+            }
+
+            if (ausenciaEdicaoCriacao.DataInicio > ausenciaEdicaoCriacao.DataFim)
+            {
+                await JSRuntime.InvokeVoidAsync("showToast", "Data de início deve ser anterior à data fim!", "bg-danger");
+                return;
+            }
+        }
+
+        try
+        {
+            if (adicionarAusencia)
+            {
+                ausenciaEdicaoCriacao.CriadaPor = who.User.Id;
+                ausenciaEdicaoCriacao.DataCriacao = DateTime.Now;
+                ausenciaEdicaoCriacao.IsDeleted = false;
+                
+                dbContext.Set<CrmAusencia>().Add(ausenciaEdicaoCriacao);
+                await dbContext.SaveChangesAsync();
+                Mensagem = "Ausência criada com sucesso.";
+            }
+            else if (editarAusencia)
+            {
+                var ausenciaExistente = await dbContext.Set<CrmAusencia>().FirstOrDefaultAsync(a => a.Id == ausenciaEdicaoCriacao.Id);
+                if (ausenciaExistente != null)
+                {
+                    ausenciaEdicaoCriacao.EditadaPor = who.User.Id;
+                    ausenciaEdicaoCriacao.DataEdicao = DateTime.Now;
+                    dbContext.Entry(ausenciaExistente).CurrentValues.SetValues(ausenciaEdicaoCriacao);
+                    await dbContext.SaveChangesAsync();
+                    Mensagem = "Ausência editada com sucesso.";
+                }
+            }
+
+            await JSRuntime.InvokeVoidAsync("showToast", Mensagem, "bg-success");
+            
+            editarAusencia = false;
+            adicionarAusencia = false;
+            verFormularios = false;
+            await GetAusencias();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Erro = $"Erro ao guardar ausência: {ex.Message}";
+            await JSRuntime.InvokeVoidAsync("showToast", Erro, "bg-danger");
+        }
+    }
+
+    private void AdicionarAusencia(string? colaboradorId = null)
+    {
+        ausenciaEdicaoCriacao = new CrmAusencia
+        {
+            DataInicio = DateTime.Today
+        };
+
+        if (!string.IsNullOrEmpty(colaboradorId) && int.TryParse(colaboradorId, out var id))
+        {
+            var colaborador = listaColaboradores.FirstOrDefault(c => c.Id == id);
+            if (colaborador != null)
+            {
+                colaboradorSelecionado = colaborador;
+                ausenciaEdicaoCriacao.IdColaborador = colaborador.Id;
+                ausenciaEdicaoCriacao.NomeColaborador = colaborador.Nome;
+            }
+        }
+
+        verFormularios = true;
+        adicionarAusencia = true;
+        StateHasChanged();
+    }
+
+    private async Task EditarAusencia(int ausenciaId)
+    {
+        ausenciaEdicaoCriacao = await dbContext.Set<CrmAusencia>().FirstOrDefaultAsync(a => a.Id == ausenciaId);
+        
+        if (ausenciaEdicaoCriacao != null)
+        {
+            colaboradorSelecionado = listaColaboradores.FirstOrDefault(c => c.Id == ausenciaEdicaoCriacao.IdColaborador);
+            verFormularios = true;
+            editarAusencia = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ConfirmarApagarAusencia(int ausenciaId)
+    {
+        bool? confirmado = await DialogService.ShowMessageBox(
+            "⚠️ Confirmar remoção",
+            "Tens a certeza que queres apagar esta ausência?",
+            yesText: "Apagar",
+            noText: "Cancelar",
+            options: new DialogOptions() { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true, CloseButton = true });
+
+        if (confirmado == true)
+        {
+            await ApagarAusencia(ausenciaId);
+        }
+    }
+
+ }

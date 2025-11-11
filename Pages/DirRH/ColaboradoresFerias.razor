@@ -1,0 +1,229 @@
+﻿@page "/ColaboradoresFerias"
+
+@using System.ComponentModel.DataAnnotations
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactoryService DbFactory
+@inject IJSRuntime JSRuntime
+@inject NavigationManager Nav
+@inject Utils utils
+
+<PageTitle>Férias de Colaboradores</PageTitle>
+
+@if (isLoading)
+{
+    <div class="text-center mt-5"><span class="spinner-border"></span></div>
+}
+else
+{
+    <div class="row mb-4 border-bottom align-items-end">
+        <div class="col">
+            <h2 class="mb-0">Férias</h2>
+            <small class="text-muted">Atribuir período de férias aos colaboradores</small>
+        </div>
+        <div class="col text-end">
+            <button class="btn btn-secondary"
+                    @onclick='() => Nav.NavigateTo("/Colaboradores")'>
+                <i class="fa fa-arrow-left me-1"></i> Voltar
+            </button>
+
+        </div>
+    </div>
+
+    <!-- FORMULÁRIO NOVA FÉRIA -->
+    <EditForm Model="novaFerias" OnValidSubmit="GuardarFerias">
+        <DataAnnotationsValidator />
+        <div class="row gy-2 gx-3 align-items-end border rounded p-3 bg-light mb-4">
+            <div class="col-md-4">
+                <label class="form-label">Colaborador</label>
+                <select class="form-select" @bind="novaFerias.FuncionarioId">
+                    <option value="" disabled selected>-- Selecionar --</option>
+                    @foreach (var f in colaboradores)
+                    {
+                        <option value="@f.Id">@f.Nome</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Data início</label>
+                <InputDate class="form-control" @bind-Value="novaFerias.DataInicio" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Data fim</label>
+                <InputDate class="form-control" @bind-Value="novaFerias.DataFim" />
+            </div>
+            <div class="col-md-2 text-end">
+                <button class="btn btn-primary w-100" type="submit"><i class="fa fa-plus me-1"></i> Guardar</button>
+            </div>
+        </div>
+    </EditForm>
+
+    <!-- LISTA DE FÉRIAS EXISTENTES -->
+    <div class="card shadow-sm">
+        <div class="card-header"><i class="fa fa-table me-2"></i>Férias registadas</div>
+        <div class="card-body p-0">
+            @if (listaFerias.Any())
+            {
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Colaborador</th>
+                            <th>Início</th>
+                            <th>Fim</th>
+                            <th class="text-center" style="width:5%">&nbsp;</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var fer in listaFerias)
+                        {
+                            <tr>
+                                <td>@fer.NomeFuncionario</td>
+                                <td>@($"{fer.DataInicio:dd/MM/yyyy}")</td>
+                                <td>@($"{fer.DataFim:dd/MM/yyyy}")</td>
+
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-danger" title="Remover" @onclick="() => RemoverFerias(fer)"><i class="fa fa-trash"></i></button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="p-3">Nenhum período de férias registado.</div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    EmpresaUserSession who = null;
+    private List<Funcionario> colaboradores = new();
+    private List<FuncionarioFeriasDto> listaFerias = new();
+
+    // DTO simples para listar (join Funcionario + Ferias)
+    private class FuncionarioFeriasDto
+    {
+        public int Id { get; set; }
+        public int FuncionarioId { get; set; }
+        public string NomeFuncionario { get; set; } = string.Empty;
+        public DateTime DataInicio { get; set; }
+        public DateTime DataFim { get; set; }
+    }
+
+    // Modelo para o formulário
+    private NovaFeriasForm novaFerias = new();
+    private class NovaFeriasForm
+    {
+        [Required(ErrorMessage = "Escolhe um colaborador")]
+        public int? FuncionarioId { get; set; }
+
+        [Required]
+        public DateTime? DataInicio { get; set; } = DateTime.Today;
+
+        [Required]
+        public DateTime? DataFim { get; set; } = DateTime.Today.AddDays(5);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // pega a sessão actual
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        if (who == null)
+        {
+            Nav.NavigateTo("/");   // ou mostra erro
+            return;
+        }
+
+        await CarregarDadosAsync();
+        isLoading = false;
+    }
+
+
+    private async Task CarregarDadosAsync()
+    {
+        /* 1️⃣  BASE “GLOBAL” (utilizadores) */
+        await using var baseCtx = new BaseControleContext();   // usa o teu constructor
+        var idsFuncActivos = await baseCtx.CrmUtilizadors
+            .Where(u => u.IsFuncionario == true && u.IsDeleted != true)
+            .Select(u => u.Id)          // PK do utilizador
+            .ToListAsync();
+
+        /* 2️⃣  BASE DA EMPRESA (funcionários & férias) */
+        await using var ctx = DbFactory.GetDbContext(who.Empresa.BaseNome);
+
+        colaboradores = await ctx.Set<Funcionario>()
+            .Where(f => f.Isactive == true
+                     && f.IdUtilizador.HasValue                  // não é null
+                     && idsFuncActivos.Contains(f.IdUtilizador.Value))
+            .OrderBy(f => f.Nome)
+            .ToListAsync();
+
+
+        /* férias */
+        var feriasDb = await ctx.Set<FuncionarioFerias>().ToListAsync();
+
+        listaFerias = (from f in feriasDb
+                       join c in colaboradores on f.IdFuncionario equals c.Id
+                       select new FuncionarioFeriasDto
+                           {
+                               Id = f.Id,
+                               FuncionarioId = c.Id,
+                               NomeFuncionario = c.Nome,
+                               DataInicio = f.DataInicio,
+                               DataFim = f.DataFim
+                           }).ToList();
+    }
+
+
+    private async Task GuardarFerias()
+    {
+        if (novaFerias.FuncionarioId is null)
+            return;
+
+        if (novaFerias.DataFim < novaFerias.DataInicio)
+        {
+            await JSRuntime.InvokeVoidAsync("showToast", "Data fim não pode ser antes da de início!", "bg-danger");
+            return;
+        }
+
+        await using var ctx = DbFactory.GetDbContext(who.Empresa.BaseNome);
+
+        var reg = new FuncionarioFerias
+        {
+            IdFuncionario = novaFerias.FuncionarioId.Value,
+            DataInicio = novaFerias.DataInicio!.Value,
+            DataFim = novaFerias.DataFim!.Value
+        };
+
+        await ctx.AddAsync(reg);
+        await ctx.SaveChangesAsync();
+
+        await JSRuntime.InvokeVoidAsync("showToast", "Férias atribuídas com sucesso!", "bg-theme");
+
+        novaFerias = new NovaFeriasForm();
+        await CarregarDadosAsync();
+    }
+
+    private async Task RemoverFerias(FuncionarioFeriasDto fer)
+    {
+        bool confirma = await JSRuntime.InvokeAsync<bool>("confirm", $"Remover férias de {fer.NomeFuncionario}?");
+        if (!confirma) return;
+
+        await using var ctx = DbFactory.GetDbContext(who.Empresa.BaseNome);
+        var reg = await ctx.Set<FuncionarioFerias>().FirstOrDefaultAsync(x => x.Id == fer.Id);
+        if (reg != null)
+        {
+            ctx.Remove(reg);
+            await ctx.SaveChangesAsync();
+            await JSRuntime.InvokeVoidAsync("showToast", "Registo removido", "bg-theme");
+            await CarregarDadosAsync();
+        }
+    }
+}

@@ -1,0 +1,102 @@
+﻿@using Microsoft.AspNetCore.Components.Web
+@namespace Construlink.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="~/" />
+
+    @* MudBlazor *@
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" href="~/favicon-32x32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="~/favicon-16x16.png" sizes="16x16" />
+
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" /> @* Bootstrap 5 *@
+    <link href="css/site.css" rel="stylesheet" />
+    <link href="Construlink.styles.css" rel="stylesheet" />
+    <link href="css/styles.css" rel="stylesheet" />
+    <link rel="stylesheet" href="css/fontawesome/css/all.css" /> @* Fontawesome 6.5.2 *@
+    <link rel="stylesheet" href="js/plugins/driver/driver.min.css"> @* Driver Help *@
+    <link rel="stylesheet" href="js/plugins/zangdar/zangdar.css"> @* StepProgress Help *@
+   @*  <link rel="stylesheet" href="css/Mobiscroll/mobiscroll.javascript.min.css" /> *@ @* Mobiscroll css*@
+
+    <component type="typeof(HeadOutlet)" render-mode="ServerPrerendered" />
+</head>
+<body style="padding: 0 !important;">
+
+    @RenderBody()
+
+    <script>
+        let streamReference; //Myinfo (camara)
+        let processingIntervalId; //Myinfo (camara)
+    </script>
+
+    <script src="_framework/blazor.server.js"></script>
+
+    <script src="js/bootstrap.bundle.min.js"></script>
+    <script src="js/jquery-3.7.1.min.js"></script>
+
+    <link href="js/plugins/datatables/datatables.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="js/plugins/datatables/dataTables.bootstrap.css">
+    <link rel="stylesheet" href="js/plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
+    <link rel="stylesheet" href="js/plugins/datatables-buttons/css/buttons.bootstrap4.min.css">
+
+    <script src="js/plugins/datatables2/jquery.dataTables.min.js"></script>
+    <script src="js/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
+    <script src="js/plugins/datatables-responsive/js/dataTables.responsive.min.js"></script>
+    <script src="js/plugins/datatables-responsive/js/responsive.bootstrap4.min.js"></script>
+    <script src="js/plugins/datatables-buttons/js/dataTables.buttons.min.js"></script>
+    <script src="js/plugins/datatables-buttons/js/buttons.bootstrap4.min.js"></script>
+    <script src="js/plugins/jszip/jszip.min.js"></script>
+    <script src="js/plugins/pdfmake/pdfmake.min.js"></script>
+    <script src="js/plugins/pdfmake/vfs_fonts.js"></script>
+    <script src="js/plugins/datatables-buttons/js/buttons.html5.min.js"></script>
+    <script src="js/plugins/datatables-buttons/js/buttons.print.min.js"></script>
+    <script src="js/plugins/datatables/extensions/date-eu.js"></script>
+
+    <script src="js/plugins/chartjs/Chart_v2.js"></script>
+
+
+    <script src="js/scripts.js"></script>
+    <script src="js/fichaTecnicaPdf.js"></script>
+    <script src="js/mobiscroll.javascript.min.js"></script>  @* Mobiscroll js *@
+
+    @* Login Facial *@
+    <script defer src="js/face/face-api.min.js"></script>
+    <script defer src="js/face/script.js"></script>
+
+    @* Leaflet (mapa) *@
+    <link rel="stylesheet" href="js/plugins/leaflet/leaflet.css" />
+    <script src="js/plugins/leaflet/leaflet.js"></script>
+    
+    @* Driver Help *@
+    <script src="js/plugins/driver/driver.min.js"></script>
+    <script src="js/plugins/zangdar/zangdar.min.js"></script>
+
+    @* MudBlazor *@
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+
+    <script src="_content/BlazorInputFile/inputfile.js"></script>
+
+
+    @* Geolocalizacao *@
+    <script src="js/Geolocalizacao/geolocalizacao.js"></script>
+
+    <!-- CSS do Mobiscroll -->
+    <link href="css/mobiscroll.custom/css/mobiscroll.javascript.min.css" rel="stylesheet" />
+
+    <!-- JS do Mobiscroll -->
+    <script src="css/mobiscroll.custom/js/mobiscroll.javascript.min.js"></script>
+
+    <!-- O teu script de calendário -->
+    <script src="css/mobiscroll.custom/js/Calendario.js"></script>
+
+
+</body>
+</html>

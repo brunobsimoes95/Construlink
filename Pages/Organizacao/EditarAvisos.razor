@@ -1,0 +1,89 @@
+﻿@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.Data.SqlClient
+@using Microsoft.EntityFrameworkCore
+ng Microsoft.EntityFrameworkCore
+@inject IDialogService Dialog
+@inject IConfiguration _configuration
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService DbContextFactory
+
+<MudDialog Style="width: 450px">
+	<DialogContent>
+
+		@if (AVISO is not null && AVISO.Id > 0)
+		{
+            <MudTextField T="String" Label="Mensagem" Variant="Variant.Outlined" InputType="InputType.Text" Lines="5" FullWidth="true" @bind-Value="AVISO.Mensagem" />            
+			<MudTextField T="TimeSpan?" Label="Hora de Inico" Variant="Variant.Outlined" InputType="InputType.Time" FullWidth="false" @bind-Value="AVISO.HoraInicio" />
+			<MudTextField T="TimeSpan?" Label="Hora de Retorno" Variant="Variant.Outlined" InputType="InputType.Time" FullWidth="false" @bind-Value="AVISO.HoraFim" />
+			<MudTextField T="DateTime?" Format="yyyy-MM-dd" Label="Data" InputType="InputType.Date" Variant="Variant.Outlined" FullWidth="false" @bind-Value="AVISO.DataFim" />
+			<MudSelect T="int?" @bind-Value="AVISO.IdEmpresa" Label="Empresa" Placeholder="Empresa" Variant="Variant.Outlined" FullWidth="true">
+				<MudSelectItem Value="@( (int?)null )">Todas as Empresas</MudSelectItem>
+				@foreach (CrmEmpresa empresa in listaEmpresas)
+				{
+					<MudSelectItem Value="@((int?)empresa.Id )">@empresa.Empresa</MudSelectItem>
+				}
+			</MudSelect>
+		}
+
+	</DialogContent>
+	<DialogActions>
+		<MudButton OnClick="Cancel" Class="mt-2">Cancel</MudButton>
+		<MudButton Class="botaoGuardar" OnClick="Submit">Ok</MudButton>
+	</DialogActions>
+</MudDialog>
+
+<MudDialog>
+	<DialogContent>
+		<MudText Typo="Typo.subtitle1">@Message</MudText>
+	</DialogContent>
+
+	<DialogActions>
+		<MudButton Color="Color.Primary" OnClick="()=> MudDialog.Close(DialogResult.Ok(true))">
+			Sim
+		</MudButton>
+		<MudButton Color="Color.Secondary" OnClick="()=> MudDialog.Cancel()">
+			Não
+		</MudButton>
+	</DialogActions>
+</MudDialog>
+
+@code
+{
+	[CascadingParameter]
+	public MudDialogInstance MudDialog { get; set; } = null!;
+	[Parameter] public string Message { get; set; } = "";
+	[Parameter]
+	public Avisos AVISO { get; set; }
+
+	private BaseControleContext dbContext = new BaseControleContext();
+
+	List<CrmEmpresa> listaEmpresas = new List<CrmEmpresa>() { };
+
+	public string error = string.Empty;
+
+	protected override void OnInitialized()
+	{
+		GetEmpresas();
+
+		base.OnInitialized();
+	}
+
+	private void GetEmpresas()
+	{
+		listaEmpresas = dbContext.Set<CrmEmpresa>().ToList();
+	}
+
+	private async Task Submit()
+	{
+		MudDialog.Close(DialogResult.Ok(AVISO));
+	}
+
+	private void Cancel() => MudDialog.Cancel();
+}

@@ -1,0 +1,336 @@
+﻿@page "/ColaboradoresEdit/{Id:int}"
+
+@using System.Text.RegularExpressions
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IDbContextFactoryService dbFactory
+@inject ISnackbar Snackbar 
+
+<PageTitle>Editar Colaborador</PageTitle>
+
+@if (colaborador is null)
+{
+    <p class="text-muted">Colaborador não encontrado.</p>
+}
+else
+{
+
+    <div class="row mt-2 mb-4">
+        <div class="col-md-6 mt-3">
+            <div class="row">
+                <div class="col-md-8" style="display: flex; align-items: center;">
+                    <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                    <MudText Typo="Typo.h5" Class="ms-1">@colaborador.Nome</MudText>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mt-3 hide-on-mobile">
+            <ol class="breadcrumb" style="float:right;">
+                <li class="breadcrumb-item"><a href="/Dashboard">Home</a></li>
+                <li class="breadcrumb-item"><a href="/Colaboradores">Colaboradores</a></li>
+                <li class="breadcrumb-item active">Editar</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <MudTabs Elevation="2" Rounded="true" PanelClass="pa-6" ActiveTabClass="border-solid border-2 mud-border-primary">
+            <MudTabPanel Text="Editar">
+                <EditForm Model="colaborador" OnValidSubmit="SaveAsync">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="row g-4">
+                        <div class="col-12 col-lg-6">
+                            <h6 class="fw-bold mb-3"><i class="fa-regular fa-user me-1"></i> Dados Pessoais</h6>
+                            <div class="mb-3">
+                                <MudTextField T="string" Label="Nome" @bind-Value="colaborador.Nome" For="@(() => colaborador.Nome)" Required="true" RequiredError="O nome é obrigatório." />
+                            </div>
+                            <div class="mb-3">
+                                <MudDatePicker Label="Data de Nascimento" @bind-Date="colaborador.DataNascimento" For="@(() => colaborador.DataNascimento)" />
+                            </div>
+                            <div class="mb-3">
+                                <MudTextField T="string" Label="Estado Civil" @bind-Value="colaborador.EstadoCivil" For="@(() => colaborador.EstadoCivil)" />
+                            </div>
+                            <div class="mb-3">
+                                <MudDatePicker Label="Validade do Documento" @bind-Date="colaborador.Ccvalidade" For="@(() => colaborador.Ccvalidade)" />
+                            </div>
+
+                            <div class="p-3 border rounded mb-4 shadow-sm bg-white">
+                                <h6 class="fw-bold mb-3"><i class="fa-solid fa-piggy-bank me-1"></i> Dados Bancários</h6>
+                                <div class="mb-3">
+                                    <MudTextField T="string" Label="NIB" @bind-Value="colaborador.Nib" For="@(() => colaborador.Nib)"
+                                                  Validation="@((string value) => ValidateNib(value))"
+                                                  InputType="InputType.Text" InputMode="InputMode.numeric" />
+                                </div>
+                                <div class="mb-3">
+                                    <MudTextField T="string" Label="IBAN" @bind-Value="colaborador.Iban" For="@(() => colaborador.Iban)"
+                                                  Validation="@((string value) => ValidateIban(value))" />
+                                </div>
+                            </div>
+
+                            <div class="p-3 border rounded mb-4 shadow-sm bg-white">
+                                <h6 class="fw-bold mb-3"><i class="fa-solid fa-id-card me-1"></i> Identificação</h6>
+                                <div class="mb-3">
+                                    <MudTextField T="string" Label="Nº Segurança Social" @bind-Value="colaborador.SegSocial" For="@(() => colaborador.SegSocial)"
+                                                  Validation="@((string value) => ValidateSegSocial(value))"
+                                                  InputType="InputType.Number" InputMode="InputMode.numeric" HideSpinButtons="true" />
+                                </div>
+                                <div class="mb-3">
+                                    <MudTextField T="string" Label="NIF" @bind-Value="colaborador.Nif" For="@(() => colaborador.Nif)"
+                                                  Validation="@((string value) => ValidateNif(value))"
+                                                  InputType="InputType.Number" InputMode="InputMode.numeric" HideSpinButtons="true" />
+                                </div>
+                                <div class="mb-3">
+                                    <MudTextField T="string" Label="CC" @bind-Value="colaborador.Cc" For="@(() => colaborador.Cc)" />
+                                </div>
+                            </div>
+
+                            <MudButton ButtonType="ButtonType.Button" Variant="Variant.Filled" Color="Color.Secondary" OnClick="GoBack">
+                                <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Class="me-1" />
+                                Voltar
+                            </MudButton>
+
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Class="ms-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Save" Class="me-1" />
+                                Guardar
+                            </MudButton>
+                        </div>
+
+                        <div class="col-12 col-lg-6">
+                            <h6 class="fw-bold mb-3"><i class="fa-regular fa-user me-1"></i> Morada</h6>
+                            <div class="mb-3">
+                                <MudTextField T="string" Label="Morada" @bind-Value="colaborador.Morada" For="@(() => colaborador.Morada)" />
+                            </div>
+                            <div class="mb-3">
+                                <MudTextField T="string" Label="Código Postal" @bind-Value="colaborador.CodPostal" For="@(() => colaborador.CodPostal)" />
+                            </div>
+                            <div class="mb-3">
+                                <MudTextField T="string" Label="Localidade" @bind-Value="colaborador.Localidade" For="@(() => colaborador.Localidade)" />
+                            </div>
+                            <div class="mb-3">
+                                <MudTextField T="string" Label="Concelho" @bind-Value="colaborador.Concelho" For="@(() => colaborador.Concelho)" />
+                            </div>
+
+                            <div class="p-3 border rounded mb-4 shadow-sm bg-white">
+                                <h6 class="fw-bold mb-3"><i class="fa-regular fa-user me-1"></i> Contactos</h6>
+                                <div class="mb-3">
+                                    <MudTextField T="string" Label="Telefone" @bind-Value="colaborador.Telefone" For="@(() => colaborador.Telefone)"
+                                                  Validation="@((string value) => ValidateTelefone(value))"
+                                                  InputType="InputType.Number" InputMode="InputMode.numeric" HideSpinButtons="true" />
+                                </div>
+                                <div class="mb-3">
+                                    <MudTextField T="string" Label="Email" @bind-Value="colaborador.Email" For="@(() => colaborador.Email)"
+                                                  InputType="InputType.Email"
+                                                  Validation="@((string value) => ValidateEmail(value))" />
+                                </div>
+                            </div>
+
+                            <div class="p-3 border rounded mb-4 shadow-sm bg-white">
+                                <h6 class="fw-bold mb-3"><i class="fa-solid fa-id-card me-1"></i> Outros</h6>
+                                <div class="mb-4">
+                                    <MudTextField T="string" Label="Observações" @bind-Value="colaborador.Obs" For="@(() => colaborador.Obs)" />
+                                </div>
+
+                                <div class="form-check form-switch">
+                                    <InputCheckbox class="form-check-input" @bind-Value="IsActiveChecked" />
+                                    <label class="form-check-label">Ativo?</label>
+                                </div>
+                            </div>
+
+                           @*  <div class="p-3 border rounded shadow-sm bg-white">
+                               
+                            </div> *@
+                        </div>
+                    </div>
+                </EditForm>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Contratos">
+                <ColaboradoresContrato Id="Id" />
+            </MudTabPanel>
+
+            <MudTabPanel Text="Anexos">
+                @if (colaborador != null && session != null)
+                {
+                    <ColaboradoresAnexos ColaboradorId="colaborador.Id"
+                                         UserSession="session" />
+                }
+                else
+                {
+                    <p>A carregar anexos...</p>
+                }
+            </MudTabPanel>
+        </MudTabs>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private EmpresaUserSession session;
+    private Funcionario? colaborador;
+    private string path = ""; // Variável não utilizada no HTML, pode ser removida se não for necessária em outros lugares.
+
+    /* ---------- INIT ---------- */
+    protected override async Task OnInitializedAsync()
+    {
+        // Certifica-se de que utils.AgSession["user"] não é nulo antes de usá-lo.
+        if (utils.AgSession.ContainsKey("user") && utils.AgSession["user"] is EmpresaUserSession userSession)
+        {
+            session = userSession;
+            if (session.User.Isadmin != true)
+            {
+                NavigationManager.NavigateTo("/");
+                return;
+            }
+
+            await using var ctx = dbFactory.GetDbContext(session.Empresa.BaseNome);
+
+            colaborador = await ctx.Set<Funcionario>()
+                .FirstOrDefaultAsync(f =>
+                    f.Id == Id               // PK da tabela Funcionario
+                    || f.IdUtilizador == Id  // fallback se só existir como Utilizador
+                );
+        }
+        else
+        {
+            // Redireciona se a sessão não estiver disponível
+            NavigationManager.NavigateTo("/");
+        }
+    }
+
+    private bool IsActiveChecked
+    {
+        get => colaborador?.Isactive ?? false;
+        set { if (colaborador is not null) colaborador.Isactive = value; }
+    }
+
+    /* ---------- VALIDAÇÕES DE INPUTS (MUD-BLAZOR) ---------- */
+
+    // Valida o Telefone (apenas números, 9 ou mais dígitos)
+    private string ValidateTelefone(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        return Regex.IsMatch(value, @"^\d+$") ? null : "O Telefone deve conter apenas números.";
+    }
+
+    // Valida o NIF (9 dígitos numéricos)
+    private string ValidateNif(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        return Regex.IsMatch(value, @"^\d{9}$") ? null : "NIF tem de ter 9 dígitos.";
+    }
+
+    // Valida o NIB (21 dígitos numéricos)
+    private string ValidateNib(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        return Regex.IsMatch(value, @"^\d{21}$") ? null : "NIB tem de ter 21 dígitos.";
+    }
+
+    // Valida o IBAN (PT + 23 dígitos)
+    private string ValidateIban(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        return Regex.IsMatch(value, @"^PT\d{23}$") ? null : "IBAN deve começar com 'PT' seguido de 23 dígitos.";
+    }
+
+    // Valida o Nº de Segurança Social (11 dígitos numéricos)
+    private string ValidateSegSocial(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        return Regex.IsMatch(value, @"^\d{11}$") ? null : "N.º de Segurança Social tem de ter 11 dígitos.";
+    }
+
+    // Valida o Email
+    private string ValidateEmail(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(value);
+            return addr.Address == value ? null : "Email inválido.";
+        }
+        catch
+        {
+            return "Email inválido.";
+        }
+    }
+
+    /* ---------- SALVAR DADOS ---------- */
+    private async Task SaveAsync()
+    {
+        if (colaborador is null) return;
+
+        try
+        {
+            // ---------- 1) actualiza colaborador ----------
+            await using var ctx = dbFactory.GetDbContext(session.Empresa.BaseNome);
+            ctx.Attach(colaborador);
+            ctx.Entry(colaborador).State = EntityState.Modified;
+
+            if (!(colaborador.BancoHoras ?? false))
+            {
+                colaborador.BancoHorasData = new DateTime(1900, 1, 1);
+                colaborador.BancoHorasStart = 0;
+            }
+            else
+            {
+                colaborador.BancoHorasData = DateTime.Today;
+            }
+
+            await ctx.SaveChangesAsync();
+
+            // ---------- 2) sincroniza utilizador ----------
+            await using var baseCtx = new BaseControleContext();
+            var user = await baseCtx.CrmUtilizadors
+                        .FirstOrDefaultAsync(u => u.Id == colaborador.IdUtilizador);
+
+            if (user != null)
+            {
+                user.Email = colaborador.Email;
+                user.Name = colaborador.Nome;
+                await baseCtx.SaveChangesAsync();
+            }
+
+            // ---------- 3) logs & toast ok ----------
+            await utils.UserLogAsync(session.User.Id,
+                    $"Alterou colaborador {Id}");
+
+            // Exibe o toast de sucesso com 3 segundos de duração (3000ms)
+            Snackbar.Add("Alterações guardadas com sucesso!", Severity.Success, config => {
+                config.ShowCloseIcon = true;
+                config.VisibleStateDuration = 3000;
+            });
+
+            // Redireciona após um pequeno atraso para dar tempo ao toast de aparecer
+            NavigationManager.NavigateTo("/Colaboradores");
+        }
+        catch (Exception ex)
+        {
+            // Exibe o toast de erro
+            Snackbar.Add($"Erro ao guardar: {ex.Message}", Severity.Error, config => {
+                config.ShowCloseIcon = true;
+                config.VisibleStateDuration = 3000;
+            });
+        }
+        StateHasChanged();
+    }
+
+    private async Task GoBack()
+    {
+        NavigationManager.NavigateTo("/Colaboradores");
+    }
+}

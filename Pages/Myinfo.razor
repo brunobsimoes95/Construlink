@@ -1,0 +1,725 @@
+﻿@page "/Myinfo"
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@inject IConfiguration Configuration
+@using Construlink.Shared
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService DbContextFactory
+
+<PageTitle>Perfil</PageTitle>
+
+<ol class="breadcrumb" style="float:right;">
+    <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+    <li class="breadcrumb-item active">Perfil</li>
+</ol>
+
+<div style="display: flex; align-items: center;" class="mb-2 mt-2">
+    <span class="fa-regular fa-pen-to-square fa-lg"></span>
+    <h2 class="ms-2">Perfil</h2>
+</div>
+
+@if (Erro != "")
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>Erro!</strong> @Erro
+    </div>
+}
+@if (Mensagem != "")
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @Mensagem
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <div class="card mb-2 shadow" id="help_user_dados">
+            <div class="card-header vitro-cor-secundaria"><span class="fa-solid fa-user me-2"></span> Dados Pessoais</div>
+            <div class="card-body">
+                <div class="ms-0 mb-3 form-check">
+                    <label for="nome" class="form-label">Nome</label>
+                    <input type="text" name="nome" id="nome" class="form-control" @bind="@who.User.Name" />
+                </div>
+                <div class="ms-0 mb-3 form-check">
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" name="email" id="email" class="form-control" @bind="@who.User.Email" />
+                </div>
+                <div class="ms-0 form-check">
+                    @{
+                        var iconCurrentPass = VisibleCurrentPass ? "fa-regular fa-eye-slash" : "fa-regular fa-eye";
+                        var iconNewPass = VisibleNewPass ? "fa-regular fa-eye-slash" : "fa-regular fa-eye";
+                        var iconNewPassConf = VisibleNewPassConf ? "fa-regular fa-eye-slash" : "fa-regular fa-eye";
+
+                        var inputTypeCurrentPass = VisibleCurrentPass ? "text" : "password";
+                        var inputTypeNewPass = VisibleNewPass ? "text" : "password";
+                        var inputTypeNewPassConf = VisibleNewPassConf ? "text" : "password";
+                    }
+
+                    <label for="pass_atual" class="form-label">Palavra passe atual</label>
+
+                    <div class="d-flex align-items-baseline">
+                        <input type="@inputTypeCurrentPass" name="pass_atual" id="pass_atual" class="form-control mb-3" @bind="pass_atual" />
+                        <i class="@iconCurrentPass ms-2" @onclick="@(() => { VisibleCurrentPass = !VisibleCurrentPass; })"></i>
+                    </div>
+
+                    <label for="pass_nova" class="form-label">Nova palavra passe</label>
+                    <div class="d-flex align-items-baseline">
+                        <input type="@inputTypeNewPass" name="pass_nova" id="pass_nova" class="form-control mb-3" @bind="pass_nova" />
+                        <i class="@iconNewPass ms-2" @onclick="@(() => { VisibleNewPass = !VisibleNewPass; })"></i>
+                    </div>
+
+                    <label for="pass_confirma" class="form-label">Confirmar nova palavra passe</label>
+                    <div class="d-flex align-items-baseline">
+                        <input type="@inputTypeNewPassConf" name="pass_confirma" id="pass_confirma" class="form-control mb-3" @bind="pass_confirma" />
+                        <i class="@iconNewPassConf ms-2" @onclick="@(() => { VisibleNewPassConf = !VisibleNewPassConf; })"></i>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+
+        @if (loginPin)
+        {
+            <div class="card mb-4 shadow" id="help_pin">
+                <div class="card-header vitro-cor-secundaria"><span class="fas fa-hashtag me-2"></span> PIN</div>
+                <div class="card-body">
+                    <div class="ms-0 mb-3 form-check">
+                        <label for="pin" class="form-label">Pin para Login</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text fs-5" data-bs-toggle="tooltip"
+                                  data-bs-custom-class="vitro-tooltip" data-bs-html="true"
+                                  data-bs-original-title="<h5 class='text-light mb-2'>Atenção!</h5>O PIN é de uso exclusivo para este dispositivo.">
+                                <i class="fas fa-lock fa-xs"></i>
+                            </span>
+                            <input type="number" class="form-control no-spinner" id="pin" step="1" name="pin" @bind="@pin_novo">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (loginFacial)
+        {
+            <div class="card mb-4 shadow" id="help_facial">
+                <div class="card-header vitro-cor-secundaria"><span class="fas fa-users-viewfinder me-2"></span> Login Facial</div>
+                <div class="card-body">
+                    <div class="ms-0 form-check">
+                        @if (!ismonitoringface)
+                        {
+                            <button id="facebutton" class="btn btn-theme d-inline p-2" @onclick="@(()=> {JSRuntime.InvokeAsync<object>("visibilidadeModal", "#facialModal", "show"); GetFace();})">Inserir/Atualizar Dados</button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" id="facialModal" tabindex="-1" aria-labelledby="facialModalLabel" aria-hidden="true">
+        <div class="modal-dialog" style="max-width: 380px;">
+            <div class="modal-content">
+                <div class="modal-header d-flex justify-content-between  align-items-center vitro-cor-secundaria">
+                    <h5 class="modal-title d-flex align-items-center" id="facialModalLabel">
+                        <span class="fa-solid fa-camera me-2"></span> Login Facial
+                    </h5>
+
+                    @if (ismonitoringface)
+                    {
+                        <button id="facebutton" style="float:right;" class="btn btn-danger p-2" @onclick="@(() => { GetFace(); JSRuntime.InvokeAsync<object>("visibilidadeModal", "#facialModal", "toggle"); })">Cancelar</button>
+                    }
+
+                </div>
+                <div class="modal-body">
+                    <div class="ms-0 form-check">
+                        <div id="erro" class="ms-3 d-inline p-2"></div>
+
+                        <div id="login_face" class="mt-3" style="display:none">
+                            <video id="cam" width="316" height="240" autoplay muted></video>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ms-0 mb-3 form-check" id="help_guardar">
+        <button class="btn btn-theme" @onclick="@(()=> { SaveUser(); })">Guardar</button>
+    </div>
+
+</div>
+
+<section>
+    <script>
+
+        window.initializeTooltips = () => {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            })
+        }
+
+        function initializeDotNetReference(dotNetRef) {
+            dotNetReference = dotNetRef;
+        }
+
+        //usa variáveis globais que estão definidas no _Layout.cshtml
+        function GetFace() {
+            document.getElementById("login_face").setAttribute('style', 'display:block');
+
+            Promise.all([
+                faceapi.nets.tinyFaceDetector.loadFromUri("/js/face/models"),
+                //faceapi.nets.ssdMobilenetv1.loadFromUri("js/face/models"),
+                faceapi.nets.faceRecognitionNet.loadFromUri("js/face/models"),
+                faceapi.nets.faceLandmark68Net.loadFromUri("js/face/models"),
+                //faceapi.nets.faceExpressionNet.loadFromUri("js/face/models"),
+                //faceapi.nets.ageGenderNet.loadFromUri("js/face/models"),
+            ]);
+
+            if (navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function (stream) {
+                        streamReference = stream; // Store the stream reference
+                        var video = document.getElementById('cam');
+                        video.srcObject = stream;
+                        document.getElementById('erro').innerHTML = '<div class="spinner-grow spinner-grow-sm text-success"></div> A carregar dados, aguarde...';
+
+                        video.addEventListener('loadedmetadata', () => {
+                            const aspectRatio = video.videoWidth / video.videoHeight;
+                            let newWidth = video.clientWidth;
+                            let newHeight = newWidth / aspectRatio;
+
+                            if (newHeight > video.clientHeight) {
+                                newHeight = video.clientHeight;
+                                newWidth = newHeight * aspectRatio;
+                            }
+
+                            video.width = newWidth;
+                            video.height = newHeight;
+                        });
+
+                        video.addEventListener("play", () => {
+                            const canvas = faceapi.createCanvasFromMedia(video);
+                            canvas.setAttribute('style', 'left:2em;position:absolute');
+                            canvas.setAttribute('class', 'facialcanva');
+                            document.getElementById("login_face").prepend(canvas);
+
+                            const displaySize = { width: video.width, height: video.height };
+                            faceapi.matchDimensions(canvas, displaySize);
+
+                            let consecutiveKnownDetections = 0;
+
+                            // Before setting up the new interval, clear the previous one if exists
+                            if (processingIntervalId) {
+                                clearInterval(processingIntervalId);
+                            }
+
+                            processingIntervalId = setInterval(async () => {
+                                const detections = await faceapi
+                                    .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+                                    .withFaceLandmarks()
+                                    .withFaceDescriptors();
+                                // const detections = await faceapi
+                                //     .detectAllFaces(video, new faceapi.SsdMobilenetv1Options())
+                                //     .withFaceLandmarks()
+                                //     .withFaceDescriptors();
+
+                                const resizedDetections = faceapi.resizeResults(detections, displaySize);
+                                canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+
+                                const threshold = 0.5; // Limite inicial
+                                const dynamicThreshold = threshold + 0.2; // Ajuste dinâmico
+
+                                const descriptions = []; // Array para os descriptors da deteção
+
+                                resizedDetections.forEach(detection => {
+                                    descriptions.push(detection.descriptor); // Guarda cada descriptor
+                                });
+
+                                const results = resizedDetections.map((d) => {
+                                    const isAboveThreshold = d.detection._score > dynamicThreshold;
+                                    if (isAboveThreshold) {
+                                        return { label: "unknown" };
+                                    } else {
+                                        return { label: "Foto" };
+                                    }
+                                });
+
+                                results.forEach((result, i) => {
+                                    const box = resizedDetections[i].detection.box;
+                                    var drawBox = "";
+
+                                    if (result.label === "unknown") {
+                                        consecutiveKnownDetections++;
+                                        var newlabel = "";
+                                        const label = newlabel;
+                                        drawBox = new faceapi.draw.DrawBox(box, {
+                                            label: label.toString(),
+                                            boxColor: 'green',
+                                        });
+
+                                        faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+
+                                    } else {
+                                        consecutiveKnownDetections = 0;
+                                        const label = result.label;
+                                        drawBox = new faceapi.draw.DrawBox(box, {
+                                            label: "",
+                                            boxColor: 'transparent',
+                                        });
+                                    }
+
+                                    drawBox.draw(canvas);
+
+                                    if (consecutiveKnownDetections >= 10) {
+                                        shouldStopProcessing = true;
+                                        consecutiveKnownDetections = 0;
+
+                                        if (video != "" && video.srcObject) {
+                                            video.srcObject.getTracks().forEach(track => track.stop());
+                                        }
+
+                                        saveFace(descriptions);
+                                    }
+
+                                });
+
+                                document.getElementById('erro').innerHTML = 'A reconhecer faces...';
+
+
+                            }, 50);
+                        });
+
+                    })
+                    .catch(function (error) {
+                        document.getElementById('erro').textContent = 'Error accessing camera: ' + error;
+                    });
+            }
+        }
+
+        function StopFace() {
+            if (streamReference) {
+                // para a câmara
+                streamReference.getTracks().forEach(track => track.stop());
+            }
+            if (processingIntervalId) {
+                // limpa o intervalo
+                clearInterval(processingIntervalId);
+            }
+
+            const video = document.getElementById('cam');
+            if (video) {
+                video.srcObject = null;
+            }
+            const canvas = document.querySelector('.facialcanva');
+            if (canvas) {
+                canvas.remove();
+            }
+            document.getElementById('erro').innerHTML = "Parado...";
+            document.getElementById("login_face").setAttribute('style', 'display:none');
+
+            visibilidadeModal('#facialModal', 'hide');
+        }
+
+        function saveFace(descriptors) {
+            let flatDescriptors = {};
+            Object.keys(descriptors).forEach(key => {
+                Object.assign(flatDescriptors, descriptors[key]);
+            });
+
+            const descriptorsString = JSON.stringify(flatDescriptors);
+
+            dotNetReference.invokeMethodAsync("AxClock.Pages.Myinfo.SaveFace", descriptorsString);
+
+            StopFace();
+        }
+
+        //browser fingerprint
+        function bfingerprint() {
+            if (document.getElementById("myCanvas")) {
+                document.getElementById("myCanvas").remove();
+            }
+
+            var canvas = document.createElement('canvas');
+            canvas.id = "myCanvas";
+            canvas.width = 200;
+            canvas.height = 40;
+            canvas.style.display = "none";
+
+            var body = document.getElementsByTagName("body")[0];
+            body.appendChild(canvas);
+
+            var canvas = document.getElementById("myCanvas");
+            var ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "rgb(255,0,255)";
+            ctx.beginPath();
+            ctx.rect(20, 20, 150, 100);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+            ctx.beginPath();
+            ctx.fillStyle = "rgb(0,255,255)";
+            ctx.arc(50, 50, 50, 0, Math.PI * 2, true);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+
+            txt = "abz190#$%^£éú";
+            ctx.textBaseline = "top";
+            ctx.font = '17px "Arial 17"';
+            ctx.textBaseline = "alphabetic";
+            ctx.fillStyle = "rgb(255,5,5)";
+            ctx.rotate(.03);
+            ctx.fillText(txt, 4, 17);
+            ctx.fillStyle = "rgb(155,255,5)";
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "red";
+            ctx.fillRect(20, 12, 100, 5);
+
+            // hashing function
+            src = canvas.toDataURL();
+            hash = 0;
+            for (i = 0; i < src.length; i++) {
+                char = src.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+
+            return hash;
+        }
+
+        function visibilidadeModal(modalId, comportamento) {
+            jQuery(modalId).modal(comportamento);
+        }
+
+    </script>
+</section>
+
+<section>
+    @* Help button *@
+    <script>
+        jQuery('#help').off('click');
+        jQuery('#help').click(function () {
+            var steps = [
+                {
+                    element: "#help_user_dados",
+                    popover: {
+                        title: "Dados do utilizador",
+                        description: "Aqui pode alterar os seus dados de utilizador.",
+                        showButtons: true,
+                        closeBtnText: 'Fechar',
+                        nextBtnText: 'Próximo',
+                        prevBtnText: 'Anterior',
+                        side: "top",
+                        align: 'start'
+                    },
+                },
+                {
+                    element: "#help_pin",
+                    popover: {
+                        title: "PIN de acesso",
+                        description: "Aqui pode definir um PIN de acesso. O PIN fica vinculado ao dispositivo atual, não podendo ser utilizado noutro dispositivo.",
+                        showButtons: true,
+                        closeBtnText: 'Fechar',
+                        nextBtnText: 'Próximo',
+                        prevBtnText: 'Anterior',
+                        side: "top",
+                        align: 'start'
+                    },
+                },
+                {
+                    element: "#help_facial",
+                    popover: {
+                        title: "Login facial",
+                        description: "Aqui pode efetuar o seu registo facial de forma a permitir-lhe o acesso à aplicação através do reconhecimento facial. Em cumprimento com as normas RGPD, nenhuma foto é tirada ao utilizado, sendo apenas registados os valores calculados relativos aos marcadores faciais na base de dados.",
+                        showButtons: true,
+                        closeBtnText: 'Fechar',
+                        nextBtnText: 'Próximo',
+                        prevBtnText: 'Anterior',
+                        side: "top",
+                        align: 'start'
+                    },
+                },
+                {
+                    element: "#help_guardar",
+                    popover: {
+                        title: "Guardar dados",
+                        description: "Após efetuar as alterações pretendidas deve guardar os dados.",
+                        showButtons: true,
+                        closeBtnText: 'Fechar',
+                        nextBtnText: 'Próximo',
+                        prevBtnText: 'Anterior',
+                        doneBtnText: 'OK',
+                        side: "top",
+                        align: 'start'
+                    },
+                },
+            ];
+            var driver = new Driver({ allowClose: false, });
+            driver.defineSteps(steps);
+            driver.start();
+        });
+
+    </script>
+</section>
+
+@code {
+
+    private DotNetObjectReference<Myinfo> objRef_myinfo;
+
+    EmpresaUserSession who = null;
+    private List<CrmConfig> configs = new List<CrmConfig>();
+    private bool loginPin = false;
+    private bool loginFacial = false;
+    private string path = "";
+    private string pass_atual = "";
+    private string pass_nova = "";
+    private string pass_confirma = "";
+    private string pin_novo = "";
+    private string Erro = "";
+    private string Mensagem = "";
+    private bool ismonitoringface = false;
+    private BaseControleContext dbContext = new BaseControleContext();
+
+    private bool VisibleCurrentPass = false;
+    private bool VisibleNewPass = false;
+    private bool VisibleNewPassConf = false;
+
+    protected override void OnInitialized()
+    {
+        objRef_myinfo = DotNetObjectReference.Create(this);
+        who = (EmpresaUserSession)utils.AgSession["user"];
+
+        configs = dbContext.CrmConfigs.ToList();
+        foreach (CrmConfig config in configs)
+        {
+            if (config.Option.Trim().ToLower() == "loginpin")
+            {
+                loginPin = bool.Parse(config.Value.Trim().ToString());
+            }
+            if (config.Option.Trim().ToLower() == "loginfacial")
+            {
+                loginFacial = bool.Parse(config.Value.Trim().ToString());
+            }
+        }
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("initializeDotNetReference", objRef_myinfo);
+            await JSRuntime.InvokeVoidAsync("initializeTooltips");
+        }
+    }
+
+    //Dados faciais
+    public async void GetFace()
+    {
+        ismonitoringface = !ismonitoringface;
+        if (ismonitoringface)
+        {
+            await JSRuntime.InvokeVoidAsync("GetFace");
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("StopFace");
+        }
+        StateHasChanged();
+    }
+
+    [JSInvokable("Construlink.Pages.Myinfo.SaveFace")]
+    public async void SaveFace(string facedata)
+    {
+        Erro = "";
+        Mensagem = "";
+
+        try
+        {
+            CrmUtilizadorFacial facialuser = dbContext.CrmUtilizadorFacials.FirstOrDefault(u => u.IdUtilizador == who.User.Id);
+            if (facialuser != null)
+            {
+                facialuser.Biomarkers = facedata.Replace("{", "").Replace("}", "");
+            }
+            else
+            {
+                CrmUtilizadorFacial newuser = new CrmUtilizadorFacial() { };
+                newuser.IdUtilizador = who.User.Id;
+                newuser.Name = who.User.Name;
+                newuser.Biomarkers = facedata.Replace("{", "").Replace("}", "");
+                dbContext.CrmUtilizadorFacials.Add(newuser);
+            }
+
+            await dbContext.SaveChangesAsync();
+            Mensagem = "Os dados faciais foram guardados/alterados com sucesso!";
+            await utils.UserLogAsync(who.User.Id, $"Inseriu/Alterou dados de reconhecimento facial");
+            GetFace();
+        }
+        catch (Exception ex)
+        {
+            Erro = ex.Message;
+        }
+
+        var timer = new System.Timers.Timer(5000); // 5 segundos
+        timer.Elapsed += TimerElapsed;
+        timer.AutoReset = false;
+        timer.Start();
+        StateHasChanged();
+    }
+
+
+    //Guarda o utilizador
+    [JSInvokable]
+    private async void SaveUser()
+    {
+        Erro = "";
+        Mensagem = "";
+
+        // Verifica email
+        if (who.User.Email != null && who.User.Email != "")
+        {
+            // Nome
+            if (who.User.Name != null && who.User.Name != "")
+            {
+                if (!utils.isEmailValidoNaoRepetido(who.User.Email, who.User.Id))
+                {
+                    Erro = "O endereço de email submetido não é válido, ou já está registado";
+                    await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+                }
+
+                // Pin
+                if (pin_novo != "")
+                {
+                    if (pin_novo.Length != 4)
+                    {
+                        Erro = "O PIN deve ter 4 algarismos";
+                        await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+                    }
+                    else
+                    {
+                        var fprint = await JSRuntime.InvokeAsync<int>("bfingerprint");
+                        who.User.Macaddress = Utils.Hash(fprint.ToString(), Configuration);
+
+                        string hpin = Utils.Hash(pin_novo, Configuration);
+                        who.User.Pin = hpin;
+                    }
+                }
+
+                if (Erro == "")
+                {
+                    // Palavra passe
+                    if (pass_atual.Trim() != "" && (pass_nova.Trim() != "" && pass_confirma.Trim() != ""))
+                    {
+                        if (pass_nova.Trim() == pass_confirma.Trim())
+                        {
+                            string oldpass = Utils.Hash(pass_atual.Trim(), Configuration);
+                            if (oldpass == who.User.Agpassword)
+                            {
+                                string newpass = Utils.Hash(pass_nova.Trim(), Configuration);
+                                who.User.Agpassword = newpass;
+                            }
+                            else
+                            {
+                                Erro = "A palavra passe atual não corresponde à palavra passe correta";
+                                await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+                            }
+                        }
+                        else
+                        {
+                            Erro = "A nova palavra passe e a confirmação não coincidem";
+                            await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+                        }
+                    }
+                    else
+                    {
+                        if (pass_nova.Trim() != "" || pass_confirma.Trim() != "")
+                        {
+                            Erro = "Para alterar a senha deve preencher a Palavra passe atual, a Nova palavra passe e a Confirmação da nova palavra passe";
+                            await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+                        }
+                    }
+                }
+            }
+            else
+            {
+                Erro = "O utilizador deve ter um nome definido.";
+                await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+            }
+        }
+        else
+        {
+            Erro = "O endereço de email submetido não é válido.";
+            await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+        }
+
+        if (Erro == "")
+        {
+            // Altera o nome na tabela de registos faciais
+            var fuser = dbContext.CrmUtilizadorFacials.Where(w => w.IdUtilizador == who.User.Id).FirstOrDefault();
+            if (fuser != null)
+            {
+                fuser.Name = who.User.Name;
+            }
+
+            CrmUtilizador utilizadorfinal = dbContext.CrmUtilizadors.FirstOrDefault(f => f.Id == who.User.Id);
+            if (utilizadorfinal != null)
+            {
+                // Atualizar manualmente os valores
+                utilizadorfinal.Name = who.User.Name;
+                utilizadorfinal.Email = who.User.Email;
+                utilizadorfinal.Agpassword = who.User.Agpassword;
+                utilizadorfinal.Macaddress = who.User.Macaddress;
+                utilizadorfinal.Pin = who.User.Pin;
+
+                // Atualizar o campo Empresa
+                if (!string.IsNullOrEmpty(who.User.Empresa))
+                {
+                    utilizadorfinal.Empresa = who.User.Empresa;
+                }
+                else
+                {
+                    utilizadorfinal.Empresa = null;
+                }
+            }
+
+            await dbContext.SaveChangesAsync();
+            Mensagem = "Os dados foram alterados com sucesso!";
+            await utils.UserLogAsync(who.User.Id, $"Alterou dados do utilizador");
+        }
+
+        var timer = new System.Timers.Timer(5000); // 5 segundos
+        timer.Elapsed += TimerElapsed;
+        timer.AutoReset = false;
+        timer.Start();
+
+        StateHasChanged();
+    }
+
+
+    public void Dispose()
+    {
+        objRef_myinfo?.Dispose();
+    }
+
+    //temporizador para eliminar as mensagems
+    private void TimerElapsed(object sender, ElapsedEventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            Erro = "";
+            Mensagem = "";
+            StateHasChanged();
+        });
+    }
+}

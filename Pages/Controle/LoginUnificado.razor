@@ -1,0 +1,452 @@
+﻿@page "/Login"
+@layout NoLayout
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Shared
+@using Microsoft.EntityFrameworkCore
+@using Newtonsoft.Json
+@inherits ComponentBase
+@inject Utils utils
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject IWebHostEnvironment Env
+@inject IConfiguration Configuration
+@implements IDisposable
+
+<PageTitle>Login</PageTitle>
+
+<style>
+
+    canvas {
+    position: absolute;
+    }
+
+</style>
+
+<head>
+    @*  <link rel="icon" type="image/png" href="favicon-32x32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="favicon-16x16.png" sizes="16x16" /> *@
+</head>
+
+<div id="loader" class="app-loader">
+    <span class="spinner"></span>
+</div>
+
+<div style="display: flex; height: 100vh;">
+    <!-- Esquerda: Fundo preto ocupando 2/3 da largura -->
+    <div style="width: 100%; background: url('/images/fundo.png') no-repeat center center; background-size: cover;">
+        <!-- Main content -->
+        <div id="main" style="display: flex; align-items: center; height: 100vh; padding-left: 10vw;">
+            <div class="inner">
+                @if (ischecking == false)
+                {
+                    <div class="login col-md-4" id="loginModal" style="width: 100%; max-width: 400px;">
+                        <div class="modal-dialog login animated">
+                            <div class="modal-content">
+                                <div class="modal-body">
+                                    <div class="box">
+                                        <div class="content" style="padding-top:0 !important">
+                                            <div class="social">
+                                                <a id="pass_login" class="circle" href="javascript:void(0)" style="background-color: #484969;" @onclick="@(()=> { loginfacial = false; loginpin = false; })">
+                                                    <i class="oi oi-key"></i>
+                                                </a>
+                                                @if (hasPinOption)
+                                                {
+                                                    <a id="pin_login" class="circle" href="javascript:void(0)" style="background-color: #484969;" @onclick="@(()=> { loginfacial = false; loginpin = true; })">
+                                                        <i class="oi oi-grid-three-up"></i>
+                                                    </a>
+                                                }
+                                                <a id="face_login" class="circle" href="javascript:void(0)" style="background-color: #484969;"  @onclick="@(()=> { loginfacial = true; loginpin = false; })">
+                                                    <i class="oi oi-camera-slr"></i>
+                                                </a>
+                                            </div>
+                                            <div class="division">
+                                                <div class="line l"></div>
+                                                <span>Login</span>
+                                                <div class="line r"></div>
+                                            </div>
+                                            <div class="form loginBox">
+                                                @if (loginfacial)
+                                                {
+                                                    <div id="login_face">
+                                                        <div id='loading' class='lds-ring' style="left:38%;top:50%"><div></div><div></div><div></div><div></div></div>
+                                                        <video id="cam" width="316" height="240" autoplay muted></video>
+                                                    </div>
+                                                    <script>
+                                                        run_faciallogin();
+                                                    </script>
+                                                }
+                                                else
+                                                {
+                                                    if (resetpass)
+                                                    {
+                                                        <!-- Recuperar dados de acesso -->
+                                                        <div id="login_reset">
+                                                            <p>Insira o seu email para recuperar os dados de acesso</p>
+                                                            <input type="text" class="form-control" id="email" placeholder="Email" @bind="useremail">
+                                                            <input class="btn btn-default btn-login p-2 mt-2" type="button" value="Recuperar Acesso" @onclick="ResetPass">
+                                                            <input type="submit" value="CANCELAR" class="btn btn-dark w-100 p-2 mt-2" @onclick="@(()=> { resetpass = false; })">
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div id="login_pass">
+                                                            <input id="user" @bind="user" class="form-control" type="text" placeholder="Utilizador" name="user">
+                                                            <input id="pass" @bind="pass" class="form-control" type="password" placeholder="Password" name="password" @onkeyup="passkeyup">
+                                                            <input class="btn btn-default btn-login mt-2" type="button" value="Login" style="background-color: #484969;" @onclick="CheckUser">
+                                                            <div class="division mt-4">
+                                                                <a href="javascript:void(0)" class="text-decoration-none" style="color: black;" @onclick="@(()=> { resetpass = true; })">Esqueceu-se da password?</a>
+                                                            </div>
+                                                        </div>
+                                                    }
+
+                                                    <script>
+                                                        stop_faciallogin();
+                                                    </script>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <div class="error">
+                                        <p style="margin-top:5px;margin-bottom:0;color:red;font-size:15px">@Erro</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-2 mb-2 ms-5" style="display: flex; justify-content: center; gap: 5px; align-items: center;">
+                        <MudField Label="Implementado por:" Variant="Variant.Text" InnerPadding="false" Style="min-width: 160px;">
+                            <a href="" target="_blank">
+                                <img src="images/uploads/construlinkLogo.png" style="height:30px;width:auto;margin-top:0.8em;" />
+                            </a>
+                        </MudField>
+
+                        <MudField Label="Desenvolvido por:" Variant="Variant.Text" InnerPadding="false" Style="min-width: 160px;">
+                            <a href="" target="_blank">
+                                <img src="images/uploads/construlinkLogo.png" style="height:25px;width:auto;margin-top:1em;" />
+                            </a>
+                        </MudField>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<section>
+    <script>
+
+        //browser fingerprint
+        function bfingerprint() {
+        if (document.getElementById("myCanvas")) {
+        document.getElementById("myCanvas").remove();
+        }
+
+        var canvas = document.createElement('canvas');
+        canvas.id = "myCanvas";
+        canvas.width = 200;
+        canvas.height = 40;
+        canvas.style.display = "none";
+
+        var body = document.getElementsByTagName("body")[0];
+        body.appendChild(canvas);
+
+        var canvas = document.getElementById("myCanvas");
+        var ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "rgb(255,0,255)";
+        ctx.beginPath();
+        ctx.rect(20, 20, 150, 100);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+        ctx.beginPath();
+        ctx.fillStyle = "rgb(0,255,255)";
+        ctx.arc(50, 50, 50, 0, Math.PI * 2, true);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+
+        txt = "abz190#$%^£éú";
+        ctx.textBaseline = "top";
+        ctx.font = '17px "Arial 17"';
+        ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = "rgb(255,5,5)";
+        ctx.rotate(.03);
+        ctx.fillText(txt, 4, 17);
+        ctx.fillStyle = "rgb(155,255,5)";
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = "red";
+        ctx.fillRect(20, 12, 100, 5);
+
+        // hashing function
+        src = canvas.toDataURL();
+        hash = 0;
+        for (i = 0; i < src.length; i++) {
+        char = src.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+        }
+
+        return hash;
+        }
+
+    </script>
+</section>
+
+@code 
+{
+    private string Erro = "";
+    private string user = "";
+    private string pass = "";
+    private string pin = "";
+    private bool resetpass = false;
+    private string useremail = "";
+    private bool ischecking = false;
+    private bool loginfacial = false;
+    private bool loginpin = false; 
+    private bool isHttps = false;
+    private string facialmarks = "";
+    private bool hasPinOption = false;
+
+    private DotNetObjectReference<Construlink.Pages.Controle.LoginUnificado> objRef;
+    BaseControleContext dbContext = new BaseControleContext();
+
+    protected override void OnInitialized()
+    {
+
+        if (objRef == null)
+        {
+            objRef = DotNetObjectReference.Create(this);
+        }
+
+        try
+        {
+            //carrega os dados biométricos da base de dados
+            List<CrmUtilizadorFacial> facialm = dbContext.CrmUtilizadorFacials.ToList();
+            foreach (CrmUtilizadorFacial item in facialm)
+            {
+                //constrói o JSON para enviar para o JS
+                string biodata = @"
+                [
+                  {
+                    ""label"": """ + item.Name + "|" + item.IdUtilizador + @""",
+                    ""descriptions"": [
+                      {
+                        " + item.Biomarkers + @"
+                      }
+                    ]
+                  }
+                ]";
+
+                facialmarks += biodata + "###";
+            }
+
+            JSRuntime.InvokeVoidAsync("load_descriptors", facialmarks);
+
+            hasPinOption = dbContext.CrmConfigs.Where(opt => opt.Option.ToLower() == "loginpin").Select(opt => (opt.Value.ToLower() == "true")).FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            Erro = ex.Message;
+        }
+
+        base.OnInitialized();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            JSRuntime.InvokeVoidAsync("setDotNetReference", objRef);
+        }
+    }
+
+    [JSInvokable("Construlink.Pages.Controle.LoginUnificado.LogUser")]
+    public async void LogUser(int user)
+    {
+        if (user > 0)
+        {
+            BaseControleContext dbContext3 = new BaseControleContext();
+
+            CrmUtilizador utilizador = dbContext3.CrmUtilizadors.FirstOrDefault(u => u.Id == user);
+            if (utilizador != null)
+            {
+                if (utilizador.Isactive == true)
+                {
+                    EmpresaUserSession who = new EmpresaUserSession()
+                    {
+                        User = utilizador,
+                        Empresa = new CrmEmpresa()
+                    };
+
+                    if (utils.AgSession.ContainsKey("user"))
+                    {
+                        utils.AgSession.Remove("user");
+                    }
+
+                    utils.AgSession.Add("user", who);
+                    NavigationManager.NavigateTo("/");
+                }
+            }
+        }
+        else
+        {
+            Erro = "Utilizador não reconhecido";
+        }
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+
+    public class GeoResult
+    {
+        public double latitude { get; set; }
+        public double longitude { get; set; }
+    }
+
+    private double CalcularDistancia(double lat1, double lon1, double lat2, double lon2)
+    {
+        var R = 6371;
+        var dLat = Deg2Rad(lat2 - lat1);
+        var dLon = Deg2Rad(lon2 - lon1);
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(Deg2Rad(lat1)) * Math.Cos(Deg2Rad(lat2)) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return R * c * 1000;
+    }
+
+    private double Deg2Rad(double deg) => deg * (Math.PI / 180);
+
+
+    private async void CheckUser()
+    {
+        using var dbContext = new BaseControleContext();
+
+        ischecking = true;
+        Erro = "";
+
+        /* 1. hashes a testar */
+        string hashNovo = Utils.Hash(pass, Configuration); // salt novo
+        // salt antigo
+
+        Console.WriteLine($"USER        = {user}");
+        Console.WriteLine($"HASH-novo   = {hashNovo}");
+
+
+        /* 2. procura só pelo username (rápido) */
+        var utilizador = await dbContext.CrmUtilizadors
+                                        .FirstOrDefaultAsync(u => u.Username == user);
+
+        if (utilizador == null)
+        {
+            Erro = "Utilizador ou password inválidos";
+            goto Fim;
+        }
+
+        /* 3. valida um dos hashes */
+        bool passwordOk = utilizador.Agpassword == hashNovo;
+
+
+        if (!passwordOk)
+        {
+            Erro = "Utilizador ou password inválidos";
+            goto Fim;
+        }
+
+        /* 4. migra para hash novo caso ainda tenha o antigo */
+        if (utilizador.Agpassword != hashNovo)
+        {
+            utilizador.Agpassword = hashNovo;
+            await dbContext.SaveChangesAsync();
+        }
+
+        /* 5. está activo?  (Isactive é bool?) */
+        if (utilizador.Isactive != true)          // usa “!= true” por ser bool?
+        {
+            Erro = "O utilizador não se encontra activo!";
+            goto Fim;
+        }
+
+        /* 6. cria sessão e segue */
+        utils.AgSession["user"] = new EmpresaUserSession
+            {
+                User = utilizador,
+                Empresa = new CrmEmpresa()
+            };
+        await utils.UserLogAsync(utilizador.Id, "LOGIN");
+        NavigationManager.NavigateTo("/");
+
+    Fim:
+        ischecking = false;
+        StateHasChanged();
+    }
+
+
+    //Recuperar pass
+    private async void ResetPass()
+    {
+        BaseControleContext dbContext = new BaseControleContext();
+
+        Erro = "";
+        if (useremail == "")
+        {
+            Erro = "Deve inserir um email válido!";
+
+            return;
+        }
+        var trimmedEmail = useremail.Trim();
+        if (trimmedEmail.EndsWith("."))
+        {
+            Erro = "Deve inserir um email válido!";
+        }
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(useremail);
+            string newpassword = Utils.GeneratePassword(8);
+            string npass = Utils.Hash(newpassword.Trim(), Configuration);
+
+            CrmUtilizador resetpassuser = dbContext.CrmUtilizadors.Where(m => m.Email == addr.Address).FirstOrDefault();
+            if (resetpassuser != null)
+            {
+                resetpassuser.Agpassword = npass;
+                resetpassuser.Changepassword = true;
+                dbContext.SaveChanges();
+                await utils.UserLogAsync(resetpassuser.Id, $"Fez reset da password");
+                bool smail = await utils.SendEmailAsync(addr.Address, "Construlink - Reset de Password", $"<br/><br/>Olá {resetpassuser.Name},<br/><br/>Os seus dados de acesso foram repostos.<br/><br/>Para aceder à plataforma utilize os seguinte dados de acesso:<br/><br/>Username:<strong>{resetpassuser.Username}</strong><br/>Password:<strong>{newpassword.Trim()}</strong><br/><br/><br/>Por questões de segurança, no seu primeiro acesso ser-lhe-á pedido para alterar a sua palavra-passe para uma nova que será encriptada.<br/><br/><br/><br/>");
+                if (smail)
+                {
+                    resetpass = false;
+                    Erro = "Os novos dados de acesso foram enviados para o email designado.";
+                }
+            }
+            else
+            {
+                Erro = "O email inserido não consta da base de dados.";
+            }
+        }
+        catch
+        {
+            Erro = "Deve inserir um email válido!";
+        }
+        dbContext.Dispose();
+        StateHasChanged();
+    }
+
+    private void passkeyup(KeyboardEventArgs k)
+    {
+        if (k.Key == "Enter")
+        {
+            CheckUser();
+        }
+    }
+}
+

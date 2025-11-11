@@ -316,7 +316,6 @@ C:\Users\bfs-b\Desktop\Construlink\Construlink\obj\Debug\net8.0\Construlink.genr
 C:\Users\bfs-b\Desktop\Construlink\Construlink\obj\Debug\net8.0\ref\Construlink.dll
 C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\bin\Debug\net8.0\NuGet.config
 C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\bin\Debug\net8.0\appsettings.Development.json
-C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\bin\Debug\net8.0\Construlink.staticwebassets.endpoints.json
 C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\bin\Debug\net8.0\LatoFont\Lato-Black.ttf
 C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\bin\Debug\net8.0\LatoFont\Lato-BlackItalic.ttf
 C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\bin\Debug\net8.0\LatoFont\Lato-Bold.ttf
@@ -338,6 +337,7 @@ C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\bin\Debug\net8.0\LatoFont\
 C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\bin\Debug\net8.0\LatoFont\OFL.txt
 C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\bin\Debug\net8.0\appsettings.json
 C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\bin\Debug\net8.0\Construlink.staticwebassets.runtime.json
+C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\bin\Debug\net8.0\Construlink.staticwebassets.endpoints.json
 C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\bin\Debug\net8.0\Construlink.exe
 C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\bin\Debug\net8.0\Construlink.deps.json
 C:\Users\bfs-b\Desktop\Construlink\Construlink - Copy\bin\Debug\net8.0\Construlink.runtimeconfig.json

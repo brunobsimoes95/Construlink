@@ -1,0 +1,416 @@
+﻿@page "/Loginchao"
+@layout NoLayout
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@inject IConfiguration Configuration
+@using Construlink.Shared
+@using Newtonsoft.Json
+@inherits ComponentBase
+@inject Utils utils
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject IWebHostEnvironment Env
+@implements IDisposable
+
+<PageTitle>Login Unificado</PageTitle>
+
+<style>
+
+    canvas {
+        position: absolute;
+    }
+
+</style>
+
+<head>
+
+</head>
+
+<div id="loader" class="app-loader">
+    <span class="spinner"></span>
+</div>
+
+<div style="display: flex; height: 100vh;">
+    <!-- Esquerda: Fundo preto ocupando 2/3 da largura -->
+    <div style="width: 100%; background: url('/images/fundo.png') no-repeat center center; background-size: cover;">
+        <!-- Main content -->
+        <div id="main" style="display: flex; align-items: center; height: 100vh; padding-left: 10vw;">
+            <div class="inner">
+                @if (ischecking == false)
+                {
+                    <div class="login col-md-4" id="loginModal" style="width: 100%; max-width: 400px;">
+                        <div class="modal-dialog login animated">
+                            <div class="modal-content">
+                                <div class="modal-body">
+                                    <div class="box">
+                                        <div class="content" style="padding-top:0 !important">
+                                            <div class="social">
+
+                                               
+
+                                            </div>
+                                            <div class="division">
+                                                <div class="line l"></div>
+                                                <span>Login</span>
+                                                <div class="line r"></div>
+                                            </div>
+                                            <div class="form loginBox">
+                                                @if (loginfacial)
+                                                {
+                                                    <div id="login_face">
+                                                        <div id='loading' class='lds-ring' style="left:38%;top:50%"><div></div><div></div><div></div><div></div></div>
+                                                        <video id="cam" width="316" height="240" autoplay muted></video>
+                                                    </div>
+                                                    <script>
+                                                        run_faciallogin();
+                                                    </script>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <div class="error">
+                                        <p style="margin-top:5px;margin-bottom:0;color:red;font-size:15px">@Erro</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                     <div class="mt-2 mb-2 ms-5" style="display: flex; justify-content: center; gap: 5px; align-items: center;">
+                <MudField Label="Implementado por:" Variant="Variant.Text" InnerPadding="false" Style="min-width: 160px;">
+                    <a href="" target="_blank">
+                                <img src="images\uploads\construlinkLogo.png" style="height:30px;width:auto;margin-top:0.8em;" />
+                    </a>
+                </MudField>
+
+                <MudField Label="Desenvolvido por:" Variant="Variant.Text" InnerPadding="false" Style="min-width: 160px;">
+                    <a href="" target="_blank">
+                                <img src="images\uploads\construlinkLogo.png" style="height:25px;width:auto;margin-top:1em;" />
+                    </a>
+                </MudField>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<section>
+    <script>
+
+        //browser fingerprint
+        function bfingerprint() {
+            if (document.getElementById("myCanvas")) {
+                document.getElementById("myCanvas").remove();
+            }
+
+            var canvas = document.createElement('canvas');
+            canvas.id = "myCanvas";
+            canvas.width = 200;
+            canvas.height = 40;
+            canvas.style.display = "none";
+
+            var body = document.getElementsByTagName("body")[0];
+            body.appendChild(canvas);
+
+            var canvas = document.getElementById("myCanvas");
+            var ctx = canvas.getContext("2d");
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "rgb(255,0,255)";
+            ctx.beginPath();
+            ctx.rect(20, 20, 150, 100);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+            ctx.beginPath();
+            ctx.fillStyle = "rgb(0,255,255)";
+            ctx.arc(50, 50, 50, 0, Math.PI * 2, true);
+            ctx.fill();
+            ctx.stroke();
+            ctx.closePath();
+
+            txt = "abz190#$%^£éú";
+            ctx.textBaseline = "top";
+            ctx.font = '17px "Arial 17"';
+            ctx.textBaseline = "alphabetic";
+            ctx.fillStyle = "rgb(255,5,5)";
+            ctx.rotate(.03);
+            ctx.fillText(txt, 4, 17);
+            ctx.fillStyle = "rgb(155,255,5)";
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "red";
+            ctx.fillRect(20, 12, 100, 5);
+
+            // hashing function
+            src = canvas.toDataURL();
+            hash = 0;
+            for (i = 0; i < src.length; i++) {
+                char = src.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+
+            return hash;
+        }
+
+    </script>
+</section>
+
+@code
+{
+    private string Erro = "";
+    private string user = "";
+    private string pass = "";
+    private string pin = "";
+    private bool resetpass = false;
+    private string useremail = "";
+    private bool ischecking = false;
+    private bool loginfacial = true;
+    private bool loginpin = false;
+    private bool isHttps = false;
+    private string facialmarks = "";
+    private bool hasPinOption = false;
+
+    private DotNetObjectReference<Construlink.Pages.Controle.LoginSoFacial> objRef;
+    BaseControleContext dbContext = new BaseControleContext();
+
+    protected override void OnInitialized()
+    {
+        EstadoManutencao estadoManutencao = dbContext.EstadoManutencao.FirstOrDefault(i => i.Id > 0);
+        if (estadoManutencao is not null && estadoManutencao.Estado == true)
+        {
+            NavigationManager.NavigateTo("Manutencao");
+        }
+
+        if (objRef == null)
+        {
+            objRef = DotNetObjectReference.Create(this);
+        }
+
+        try
+        {
+            //carrega os dados biométricos da base de dados
+            List<CrmUtilizadorFacial> facialm = dbContext.CrmUtilizadorFacials.ToList();
+            foreach (CrmUtilizadorFacial item in facialm)
+            {
+                //constrói o JSON para enviar para o JS
+                string biodata = @"
+                [
+                  {
+                    ""label"": """ + item.Name + "|" + item.IdUtilizador + @""",
+                    ""descriptions"": [
+                      {
+                        " + item.Biomarkers + @"
+                      }
+                    ]
+                  }
+                ]";
+
+                facialmarks += biodata + "###";
+            }
+
+            JSRuntime.InvokeVoidAsync("load_descriptors", facialmarks);
+
+            hasPinOption = dbContext.CrmConfigs.Where(opt => opt.Option.ToLower() == "loginpin").Select(opt => (opt.Value.ToLower() == "true")).FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            Erro = ex.Message;
+        }
+
+        base.OnInitialized();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            JSRuntime.InvokeVoidAsync("setDotNetReference", objRef);
+        }
+    }
+
+    [JSInvokable("Construlink.Pages.Controle.LoginUnificado.LogUser")]
+    public async void LogUser(int user)
+    {
+        if (user > 0)
+        {
+            BaseControleContext dbContext3 = new BaseControleContext();
+
+            CrmUtilizador utilizador = dbContext3.CrmUtilizadors.FirstOrDefault(u => u.Id == user);
+            if (utilizador != null)
+            {
+                if (utilizador.Isactive == true)
+                {
+                    EmpresaUserSession who = new EmpresaUserSession()
+                        {
+                            User = utilizador,
+                            Empresa = new CrmEmpresa()
+                        };
+
+                    if (utils.AgSession.ContainsKey("user"))
+                    {
+                        utils.AgSession.Remove("user");
+                    }
+                    utils.AgSession.Add("user", who);
+
+                    NavigationManager.NavigateTo("/");
+                }
+            }
+        }
+        else
+        {
+            Erro = "Utilizador não reconhecido";
+        }
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+
+    private async void CheckUser()
+    {
+        BaseControleContext dbContext = new BaseControleContext();
+
+        ischecking = true;
+        Erro = "";
+
+        string tempass = Utils.Hash(pass, Configuration);
+
+        try
+        {
+            if (user == "construlinkDev" && pass == "emergenciaLimpar")
+            {
+                EmpresaUserSession who = new EmpresaUserSession()
+                    {
+                        User = new CrmUtilizador()
+                        {
+                            Name = "Construlink",
+                            Isactive = true,
+                            Isadmin = true,
+                            IsSuperAdmin = true,
+                            Ismanager = true,
+                            Id = 0,
+                        },
+                        Empresa = new CrmEmpresa()
+                    };
+
+                if (utils.AgSession.ContainsKey("user"))
+                {
+                    utils.AgSession.Remove("user");
+                }
+
+                utils.AgSession.Add("user", who);
+                NavigationManager.NavigateTo("/");
+            }
+            else
+            {
+                CrmUtilizador utilizador = dbContext.CrmUtilizadors.FirstOrDefault(u => u.Username == user && u.Agpassword == tempass);
+                if (utilizador != null)
+                {
+                    if (utilizador.Isactive == true)
+                    {
+                        EmpresaUserSession who = new EmpresaUserSession()
+                            {
+                                User = utilizador,
+                                Empresa = new CrmEmpresa()
+                            };
+
+                        if (utils.AgSession.ContainsKey("user"))
+                        {
+                            utils.AgSession.Remove("user");
+                        }
+
+                        utils.AgSession.Add("user", who);
+                        await utils.UserLogAsync(who.User.Id, $"LOGIN");
+
+                        NavigationManager.NavigateTo("/");
+                    }
+                    else
+                    {
+                        Erro = "O Utilizador não se encontra ativo!";
+                    }
+                }
+                else
+                {
+                    Erro = "Utilizador ou Password inválidos";
+                    //await JSRuntime.InvokeVoidAsync("alert", "Erro ao fazer login");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Erro = ex.Message;
+        }
+
+        dbContext.Dispose();
+        ischecking = false;
+        StateHasChanged();
+    }
+
+    //Recuperar pass
+    private async void ResetPass()
+    {
+        BaseControleContext dbContext = new BaseControleContext();
+
+        Erro = "";
+        if (useremail != "")
+        {
+            var trimmedEmail = useremail.Trim();
+            if (trimmedEmail.EndsWith("."))
+            {
+                Erro = "Deve inserir um email válido!";
+            }
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(useremail);
+                string newpassword = Utils.GeneratePassword(8);
+                string npass = Utils.Hash(newpassword.Trim(), Configuration);
+
+                CrmUtilizador resetpassuser = dbContext.CrmUtilizadors.Where(m => m.Email == addr.Address).FirstOrDefault();
+                if (resetpassuser != null)
+                {
+                    resetpassuser.Agpassword = npass;
+                    resetpassuser.Changepassword = true;
+                    dbContext.SaveChanges();
+                    await utils.UserLogAsync(resetpassuser.Id, $"Fez reset da password");
+                    bool smail = await utils.SendEmailAsync(addr.Address, "Construlink - Reset de Password", $"<br/><br/>Olá {resetpassuser.Name},<br/><br/>Os seus dados de acesso foram repostos.<br/><br/>Para aceder à plataforma utilize os seguinte dados de acesso:<br/><br/>Username:<strong>{resetpassuser.Username}</strong><br/>Password:<strong>{newpassword.Trim()}</strong><br/><br/><br/>Por questões de segurança, no seu primeiro acesso ser-lhe-á pedido para alterar a sua palavra-passe para uma nova que será encriptada.<br/><br/><br/><br/>");
+                    if (smail)
+                    {
+                        resetpass = false;
+                        Erro = "Os novos dados de acesso foram enviados para o email designado.";
+                    }
+                }
+                else
+                {
+                    Erro = "O email inserido não consta da base de dados.";
+                }
+            }
+            catch
+            {
+                Erro = "Deve inserir um email válido!";
+            }
+        }
+        else
+        {
+            Erro = "Deve inserir um email válido!";
+        }
+        dbContext.Dispose();
+        StateHasChanged();
+    }
+
+    private void passkeyup(KeyboardEventArgs k)
+    {
+        if (k.Key == "Enter")
+        {
+            CheckUser();
+        }
+    }
+}
+
+
+

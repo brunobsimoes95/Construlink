@@ -1,0 +1,350 @@
+﻿@page "/Auditoria"
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.EntityFrameworkCore
+@using MudBlazor
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService DbContextFactory
+
+<PageTitle>Auditoria</PageTitle>
+
+<div class="row mt-2 mb-2">
+    <div class="col-md-6 col-sm-12 col-12 mt-3">
+        <div class="mb-2" style="display: flex; align-items: center;">
+            <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+            <h4 class="ms-2 mt-2 hide-on-mobile">Auditoria</h4>
+        </div>
+    </div>
+    <div class="col-md-6 col-sm-12 col-12 mt-3 hide-on-mobile">
+        <ol class="breadcrumb" style="float:right;">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item">Administração</li>
+            <li class="breadcrumb-item active">Auditoria</li>
+        </ol>
+    </div>
+    <div class="col-md-6 col-sm-12 col-12 show-on-mobile">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item">Administração</li>
+            <li class="breadcrumb-item active">Auditoria</li>
+        </ol>
+    </div>
+</div>
+
+<MudCard Class="mb-2" Elevation="4">
+    <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+        <CardHeaderContent>
+            <MudText Typo="Typo.button"><MudIcon Icon="fa-solid fa-filter" Class="me-2" Style="font-size: 1.0rem !important;" />Filtros</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <hr style="margin: 0; border: 0; border-top: 1px solid #000 !important;" />
+    <MudCardContent Class="pt-2">
+        <MudGrid>
+            <MudItem md="12" Class="d-flex align-items-center">
+   
+    <MudItem md="4" Class="me-2">
+        <MudDatePicker Label="Data Início"
+                       Editable="true"
+                       Placeholder="Data Início"
+                       Culture="@Utils.GetCultureInfoForDatePicker()"
+                       Date="@selectedDataIni"
+                       MaxDate="@selectedDataFin"
+                       DateChanged="@(date => change_date_ini(date))" />
+    </MudItem>
+
+   
+    <MudItem md="4" Class="mx-2">
+        <MudDatePicker Label="Data Fim"
+                       Editable="true"
+                       Placeholder="Data Fim"
+                       Culture="@Utils.GetCultureInfoForDatePicker()"
+                       Date="@selectedDataFin"
+                       MinDate="@selectedDataIni"
+                       DateChanged="@(date => change_date_fin(date))" />
+    </MudItem>
+</MudItem>
+
+
+
+
+                <MudItem md="4" Class="mx-2">
+                    @if (who.User.Isadmin == true)
+                    {
+                        <div class="theme-bordered-select">
+                            <select name="user" id="user" class="form-select d-block no-spinner" @onchange="change_user">
+                                <option value="0">-Utilizadores-</option>
+                                @foreach (var item in UsersRows)
+                                {
+                                    <option value="@item.Id">@item.Name</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                </MudItem>
+          
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+<MudCard Class="mb-0 p-0 mt-4" Elevation="4">
+    <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+        <CardHeaderContent>
+            <MudText Typo="Typo.button" HtmlTag="h3"><MudIcon Icon="fas fa-sort-amount-down" Class="me-2" Style="font-size: 1.0rem !important;" />Detalhamento de ações</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <hr style="margin: 0; border: 0; border-top: 1px solid #000 !important;" />
+    <MudCardContent Class="p-0">
+        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" @bind-ActivePanelIndex="activeTab" Class="px-0">
+            <MudTabPanel Text="Timeline">
+                @if (AuditoriaRows != null && AuditoriaRows.Count > 0)
+                {
+                    <div class="row uniform" style="margin-top:20px">
+                        <div class="col-md-9 mb-3">
+                            <MudTimeline TimelinePosition="TimelinePosition.Start" Modifiers="true">
+                                @foreach (var item in AuditoriaRows)
+                                {
+                                    <MudTimelineItem Size="Size.Small" Color="@(item.Comportamento.ToUpper().Contains("LOGIN") || item.Comportamento.ToUpper().Contains("LOGOUT") ? Color.Info : Color.Default)" Elevation="25">
+                                        <MudCard Outlined="false" Elevation="25">
+                                            <MudCardContent>
+                                                <MudText Typo="Typo.body1"><i class="fas style1 fa-calendar"></i> @item.Data</MudText>
+                                                <MudText Typo="Typo.body2" Style="overflow-wrap: break-word;">@item.Comportamento</MudText>
+                                                <hr style="margin:1em 0 0 0" />
+                                                <MudText Typo="Typo.body2" class="mt-1"><i class="fas style1 fa-user"></i> @item.Utilizador</MudText>
+                                            </MudCardContent>
+                                        </MudCard>
+                                    </MudTimelineItem>
+                                }
+                            </MudTimeline>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            @*USER*@
+                            @foreach (var user in UsersRows)
+                            {
+                                if (user.Id.ToString() == selectedUser)
+                                {
+
+                                    <MudCard Class="mb-4 p-0 pb-2 mt-3 me-3" Elevation="4">
+                                        <img src="@picture(null)" class="card-img-top" alt="@user.Name">
+                                        <div class="card-body mb-1">
+                                            <h5 class="card-title ms-3">@user.Name</h5>
+                                        </div>
+                                        <hr style="margin: 0; border: 0; border-top: 1px solid #000 !important;" />
+
+                                        <ul class="list-group list-group-flush">
+                                            <li class="list-group-item">Ações: @AuditoriaRows.Count</li>
+                                        </ul>
+                                    </MudCard>
+
+                                }
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="card mb-4 mt-3">
+                        <div class="card-body">
+                            <p class="mb-0">
+                                Sem dados para apresentar relativamente ao período de tempo selecionado.
+                            </p>
+                        </div>
+                    </div>
+                }
+            </MudTabPanel>
+            <MudTabPanel Text="Tabela">
+                <div class="row">
+                    <div class="col-md-12 mb-0 mt-3">
+                        @if (AuditoriaRows != null && AuditoriaRows.Count > 0)
+                        {
+                            <MudTable Items="@AuditoriaRows" Hover="true" Dense="true" Breakpoint="Breakpoint.Sm" Elevation="2" LoadingProgressColor="Color.Primary" Class="mt-2" Filter="new Func<AuditoriaTratada, bool>(FilterFunc)">
+                                <ToolBarContent>
+                                    <MudText Typo="Typo.h6">Registros de Auditoria</MudText>
+                                    <MudSpacer />
+                                    <MudTextField @bind-Value="SearchString" Placeholder="Pesquisar" Adornment="Adornment.Start"  Immediate="true" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                                </ToolBarContent>
+                                <HeaderContent>
+                                    <MudTh>Data</MudTh>
+                                    <MudTh>Utilizador</MudTh>
+                                    <MudTh>Ação</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="Data">@context.Data</MudTd>
+                                    <MudTd DataLabel="Utilizador">@context.Utilizador</MudTd>
+                                    <MudTd DataLabel="Ação">@context.Comportamento</MudTd>
+                                </RowTemplate>
+                                <PagerContent>
+                                    <MudTablePager />
+                                </PagerContent>
+                            </MudTable>
+                        }
+                        else
+                        {
+                            <div class="card mb-4 mt-3">
+                                <div class="card-body">
+                                    <p class="mb-0">
+                                        Sem dados para apresentar relativamente ao período de tempo selecionado.
+                                    </p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </MudTabPanel>
+        </MudTabs>
+    </MudCardContent>
+</MudCard>
+
+
+@code {
+    EmpresaUserSession who = null;
+    private string path = "";
+    public List<AuditoriaTratada> AuditoriaRows = new List<AuditoriaTratada>() { };
+    public List<CrmUtilizador> UsersRows = new List<CrmUtilizador>() { };
+    public DateTime? selectedDataIni { get; set; } = DateTime.Today.AddDays(-7);
+    public DateTime? selectedDataFin { get; set; } = DateTime.Today;
+    public string selectedUser = "0";
+    private int activeTab = 0;
+    BaseControleContext dbContext = new BaseControleContext();
+    private string _searchString = "";
+    protected override void OnInitialized()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        base.OnInitialized();
+    }
+    protected override async void OnAfterRender(bool firstRender)
+    {
+        if (firstRender == true)
+        {
+            selectedUser = who.User.Id.ToString();
+            await GetAll();
+            await GetAuditoria(selectedDataIni, selectedDataFin, selectedUser);
+        }
+        base.OnAfterRender(firstRender);
+    }
+
+    //Obtem dados
+    private async Task GetAuditoria(DateTime? dataini, DateTime? datafin, string user)
+    {
+        if (AuditoriaRows.Count > 0)
+        {
+            AuditoriaRows.Clear();
+
+            StateHasChanged();
+            GetAuditoria(dataini, datafin, user);
+        }
+        else
+        {
+            DateTime datainiLocal = dataini.HasValue ? dataini.Value.Date.AddHours(0).AddMinutes(0).AddSeconds(0) : DateTime.MinValue;
+            DateTime datafinLocal = datafin.HasValue ? datafin.Value.Date.AddHours(23).AddMinutes(59).AddSeconds(59) : DateTime.MaxValue;
+
+            var query = dbContext.CrmAuditoria
+                            .Join(dbContext.CrmUtilizadors, s => s.Utilizadorid, r => r.Id, (s, r) => new { s, r })
+                            .Where(s => s.s.Data >= datainiLocal && s.s.Data <= datafinLocal);
+
+
+            if (user != "0")
+            {
+                query = query.Where(s => s.s.Utilizadorid.ToString() == user);
+            }
+
+
+            AuditoriaRows = query.OrderByDescending(o => o.s.Data).Select(s => new AuditoriaTratada
+                {
+                    Id = s.s.Id,
+                    Utilizadorid = s.s.Utilizadorid,
+                    Utilizador = s.r.Name,
+                    Data = s.s.Data,
+                    Comportamento = s.s.Comportamento
+                }).ToList();
+        }
+        StateHasChanged();
+    }
+
+    //Dropdowns
+    private async Task GetAll()
+    {
+        UsersRows = dbContext.CrmUtilizadors.OrderBy(o => o.Name).ToList();
+        StateHasChanged();
+    }
+
+    //Filtros
+    private void change_date_ini(DateTime? date)
+    {
+        selectedDataIni = date;
+        GetAuditoria(selectedDataIni, selectedDataFin, selectedUser);
+    }
+
+    private void change_date_fin(DateTime? date)
+    {
+        selectedDataFin = date;
+        GetAuditoria(selectedDataIni, selectedDataFin, selectedUser);
+    }
+
+    private void change_user(ChangeEventArgs e)
+    {
+        string selectedValue = e.Value?.ToString();
+        selectedUser = selectedValue;
+        GetAuditoria(selectedDataIni, selectedDataFin, selectedUser);
+    }
+
+
+
+    private string SearchString
+    {
+        get => _searchString;
+        set
+        {
+            _searchString = value;
+            StateHasChanged();
+
+        }
+    }
+
+    private bool FilterFunc(AuditoriaTratada item)
+    {
+        if (string.IsNullOrWhiteSpace(SearchString))
+            return true;
+
+        if (item.Data.HasValue && item.Data.Value.ToString("G", Utils.GetCultureInfoForDatePicker()).Contains(SearchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (item.Utilizador != null && item.Utilizador.Contains(SearchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (item.Comportamento != null && item.Comportamento.Contains(SearchString, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+
+        return false;
+    }
+
+    //imagem
+    private string picture(Byte[] pic)
+    {
+        if (pic != null)
+        {
+            return "data:image/png;base64," + Convert.ToBase64String(pic);
+        }
+        else
+        {
+            return "data:image/png;base64,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";
+        }
+    }
+    //Tipos de dados
+    public partial class AuditoriaTratada
+    {
+        public int Id { get; set; }
+        public int? Utilizadorid { get; set; }
+        public string? Utilizador { get; set; }
+        public DateTime? Data { get; set; }
+        public string? Comportamento { get; set; }
+    }
+}

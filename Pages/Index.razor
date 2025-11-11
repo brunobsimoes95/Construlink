@@ -1,0 +1,36 @@
+﻿@page "/Index"
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Models
+@using Construlink.Shared
+@inject Utils utils
+@inject NavigationManager NavigationManager
+
+<PageTitle>Construlink</PageTitle>
+
+@if (who != null && who.Empresa != null)
+{
+    <div style="background-image: url('@Utils.GetImgLocationFromName(who.Empresa.ImagemIndex)'); background-size: cover; background-position: center; height: 100vh; width: auto;"></div>
+}
+else
+{
+    <div>A carregar...</div>
+}
+
+@code 
+{
+    EmpresaUserSession who;
+
+    protected override void OnInitialized()
+    {
+        if (utils.AgSession.ContainsKey("user"))
+        {
+            who = (EmpresaUserSession)utils.AgSession["user"];
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/Login");
+        }
+    }
+}

@@ -1,0 +1,195 @@
+﻿@page "/TurnosHorarios"
+@using System.Globalization
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.EntityFrameworkCore
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject LayoutUpdateService LayoutUpdateService
+@inject IDbContextFactoryService DbContextFactory
+@inject IDialogService DialogService
+@inject IConfiguration _configuration
+
+
+<div class="row mt-2 mb-2">
+    <div class="col-md-6 mt-3">
+        <div class="row">
+            <div class="col-md-5" style="display: flex; align-items: center;">
+                <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+                <MudText Typo="Typo.h5" Class="ms-1">Turnos e Horários</MudText>
+
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-sm-12 col-12 mt-4 hide-on-mobile">
+        <ol class="breadcrumb" style="float:right;">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item active">Administração</li>
+            <li class="breadcrumb-item active">Organização</li>
+            <li class="breadcrumb-item active">Turnos e Horários</li>
+        </ol>
+    </div>
+    <div class="col-md-5 col-sm-12 col-12 show-on-mobile">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="@path/">Home</a></li>
+            <li class="breadcrumb-item active">Administração</li>
+            <li class="breadcrumb-item active">Organização</li>
+            <li class="breadcrumb-item active">Turnos e Horários</li>
+        </ol>
+    </div>
+</div>
+
+
+    <MudCard Class=" mb-3" Elevation="4">
+        <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+            <CardHeaderContent>
+                <MudText Typo="Typo.button"><MudIcon Icon="fa-solid fa-circle-dot" Class="me-2" Style="font-size: 1.0rem !important;" />Ações</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <hr style="margin: 0; border: 0; border-top: 1px solid #000 !important;" />
+        <MudCardContent Class="pt-2">
+            <MudGrid>
+                    <MudItem md="12">
+                         <MudButton StartIcon="@Icons.Material.Filled.Add"
+                       Variant="Variant.Filled"
+                       Class="shadow float-end"
+                       Style="background-color: #000; color: white;"
+                       OnClick="@(() => EditarItem())">
+                            Adicionar Turno
+                    </MudButton>
+
+                    </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+        @if (listaTurnos.Count > 0)
+        {
+            <MudTable Items="listaTurnos" Striped="true" Bordered="true" Hover="true" Dense="true" Elevation="4">
+                <HeaderContent>
+                    <MudTh Style="width: 5%;">Editar</MudTh>
+                    <MudTh Style="width: 20%;">Turno</MudTh>
+                    <MudTh Style="width: 15%;">Entrada</MudTh>
+                    <MudTh Style="width: 15%;">Pausa</MudTh>
+                    <MudTh Style="width: 15%;">Retorno</MudTh>
+                    <MudTh Style="width: 15%;">Saída</MudTh>
+                    <MudTh Style="width: 5%;">Eliminar</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd Align="Align.Center">
+                        <MudTooltip Text="Editar">
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Color="Color.Warning"
+                                           @onclick="() => EditarItem(context)" />
+                        </MudTooltip>
+                    </MudTd>
+                    <MudTd>@context.NomeTipo</MudTd>
+                    <MudTd>@context.Entrada</MudTd>
+                    <MudTd>@context.Pausa</MudTd>
+                    <MudTd>@context.Retorno</MudTd>
+                    <MudTd>@context.Saida</MudTd>
+                    <MudTd Align="Align.Center">
+                        <MudTooltip Text="Excluir">
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Color="Color.Error"
+                                           @onclick="() => ApagarItem(context)" />
+                        </MudTooltip>
+                    </MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager />
+                </PagerContent>
+            </MudTable>
+        }
+        else
+        {
+            <div class="alert alert-warning text-center mt-3">
+                Não existem dados a exibir. <i class="ti-pencil-alt me-2 fs-5"></i>
+            </div>
+        }
+
+
+@code 
+{
+    EmpresaUserSession who = null;
+    public List<Turnos> listaTurnos = new List<Turnos>() { };
+
+    private string path = "";
+    private DbContext dbContext;
+
+    protected override void OnInitialized()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        dbContext = DbContextFactory.GetDbContext(who.Empresa.BaseNome);
+
+        if (who.User.Isadmin != true)
+        {
+            NavigationManager.NavigateTo("/");
+        }
+        else
+        {
+            GetListaTurnos();
+        }
+
+        base.OnInitialized();
+    }
+
+    private void GetListaTurnos()
+    {
+        listaTurnos = dbContext.Set<Turnos>().ToList();
+    }
+
+    private async void ApagarItem(Turnos item)
+    {
+        var resultado = await DialogService.ShowMessageBox("Confirmação", "Tem certeza que deseja apagar este turno ?", yesText: "Confirmar", cancelText: "Cancelar");
+
+        if (resultado == true)
+        {
+            dbContext.Remove(item);
+            dbContext.SaveChanges();
+            GetListaTurnos();
+            StateHasChanged();
+        }
+    }
+
+    private async void EditarItem(Turnos? item = null)
+    {
+        bool novo = false;
+
+        if (item is null)
+        {
+            novo = true;
+        }
+
+        var Parameters = new DialogParameters<ModalTurnos>
+        {
+            { x => x.TurnoArgumento, item }
+        };
+
+        var options = new DialogOptions { BackdropClick = false };
+        var dialog = await DialogService.ShowAsync<ModalTurnos>("Definir turnos", Parameters, options);
+
+        var res = await dialog.Result;
+
+        if (res is not null && res.Data is Turnos turnoArgumento)
+        {
+            item = turnoArgumento;
+
+            if (novo == true)
+            {
+                dbContext.Add(item);
+            }
+
+            dbContext.SaveChanges();
+            GetListaTurnos();
+            StateHasChanged();
+        }
+    }
+}

@@ -1,53 +1,53 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\",
+  "WorkspaceRootPath": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\dashboard.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink - copy\\pages\\dashboard.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\dashboard.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\wwwroot\\css\\site.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}",
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink - copy\\wwwroot\\css\\site.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}",
       "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:wwwroot\\css\\site.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\configs.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink - copy\\pages\\configs.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\configs.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\controle\\loginunificado.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink - copy\\pages\\controle\\loginunificado.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\controle\\loginunificado.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\wwwroot\\css\\mobiscroll.custom\\js\\calendario.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink - copy\\wwwroot\\css\\mobiscroll.custom\\js\\calendario.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}",
       "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:wwwroot\\css\\mobiscroll.custom\\js\\calendario.js||{14D17961-FE51-464D-9111-C4AF11D7D99A}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\calendario\\calendarioobras.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink - copy\\pages\\calendario\\calendarioobras.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\calendario\\calendarioobras.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\_host.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink - copy\\pages\\_host.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\_host.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\controlepicagens\\picagens.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink - copy\\pages\\controlepicagens\\picagens.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\controlepicagens\\picagens.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\controle\\loginsofacial.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink - copy\\pages\\controle\\loginsofacial.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\controle\\loginsofacial.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\shared\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink - copy\\shared\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:shared\\mainlayout.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\data\\utils.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink - copy\\data\\utils.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:data\\utils.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink\\pages\\controle\\selecionarempresa.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "AbsoluteMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|c:\\users\\bfs-b\\desktop\\construlink\\construlink - copy\\pages\\controle\\selecionarempresa.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{9C935F6D-414D-4A96-8750-19C0DFA3D3DC}|Construlink.csproj|solutionrelative:pages\\controle\\selecionarempresa.razor||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     }
   ],
@@ -58,7 +58,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 2,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Bookmark",
@@ -69,12 +69,20 @@
               "Name": "ST:0:0:{004be353-6879-467c-9d1e-9ac23cdf6d49}"
             },
             {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
               "$type": "Document",
               "DocumentIndex": 0,
               "Title": "Dashboard.razor",
-              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Dashboard.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\Dashboard.razor",
               "RelativeDocumentMoniker": "Pages\\Dashboard.razor",
-              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Dashboard.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\Dashboard.razor",
               "RelativeToolTip": "Pages\\Dashboard.razor",
               "ViewState": "AgIAAAgGAAAAAAAAAAAkwH0FAAAGAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
@@ -85,9 +93,9 @@
               "$type": "Document",
               "DocumentIndex": 1,
               "Title": "site.css",
-              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\wwwroot\\css\\site.css",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\wwwroot\\css\\site.css",
               "RelativeDocumentMoniker": "wwwroot\\css\\site.css",
-              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\wwwroot\\css\\site.css",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\wwwroot\\css\\site.css",
               "RelativeToolTip": "wwwroot\\css\\site.css",
               "ViewState": "AgIAAFYBAAAAAAAAAAAgwGABAAAXAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
@@ -97,9 +105,9 @@
               "$type": "Document",
               "DocumentIndex": 2,
               "Title": "Configs.razor",
-              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Configs.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\Configs.razor",
               "RelativeDocumentMoniker": "Pages\\Configs.razor",
-              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Configs.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\Configs.razor",
               "RelativeToolTip": "Pages\\Configs.razor",
               "ViewState": "AgIAABMBAAAAAAAAAAAAABwBAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
@@ -109,9 +117,9 @@
               "$type": "Document",
               "DocumentIndex": 5,
               "Title": "CalendarioObras.razor",
-              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Calendario\\CalendarioObras.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\Calendario\\CalendarioObras.razor",
               "RelativeDocumentMoniker": "Pages\\Calendario\\CalendarioObras.razor",
-              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Calendario\\CalendarioObras.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\Calendario\\CalendarioObras.razor",
               "RelativeToolTip": "Pages\\Calendario\\CalendarioObras.razor",
               "ViewState": "AgIAALoAAAAAAAAAAAAEwMwAAAAzAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
@@ -121,9 +129,9 @@
               "$type": "Document",
               "DocumentIndex": 4,
               "Title": "Calendario.js",
-              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\wwwroot\\css\\mobiscroll.custom\\js\\Calendario.js",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\wwwroot\\css\\mobiscroll.custom\\js\\Calendario.js",
               "RelativeDocumentMoniker": "wwwroot\\css\\mobiscroll.custom\\js\\Calendario.js",
-              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\wwwroot\\css\\mobiscroll.custom\\js\\Calendario.js",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\wwwroot\\css\\mobiscroll.custom\\js\\Calendario.js",
               "RelativeToolTip": "wwwroot\\css\\mobiscroll.custom\\js\\Calendario.js",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAA1AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001646|",
@@ -133,9 +141,9 @@
               "$type": "Document",
               "DocumentIndex": 6,
               "Title": "_Host.cshtml",
-              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\_Host.cshtml",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\_Host.cshtml",
               "RelativeDocumentMoniker": "Pages\\_Host.cshtml",
-              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\_Host.cshtml",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\_Host.cshtml",
               "RelativeToolTip": "Pages\\_Host.cshtml",
               "ViewState": "AgIAADgAAAAAAAAAAAAIwFoAAAAKAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
@@ -145,9 +153,9 @@
               "$type": "Document",
               "DocumentIndex": 7,
               "Title": "Picagens.razor",
-              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\ControlePicagens\\Picagens.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\ControlePicagens\\Picagens.razor",
               "RelativeDocumentMoniker": "Pages\\ControlePicagens\\Picagens.razor",
-              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\ControlePicagens\\Picagens.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\ControlePicagens\\Picagens.razor",
               "RelativeToolTip": "Pages\\ControlePicagens\\Picagens.razor",
               "ViewState": "AgIAANsBAAAAAAAAAAAkwPIBAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
@@ -157,9 +165,9 @@
               "$type": "Document",
               "DocumentIndex": 9,
               "Title": "MainLayout.razor",
-              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Shared\\MainLayout.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Shared\\MainLayout.razor",
               "RelativeDocumentMoniker": "Shared\\MainLayout.razor",
-              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Shared\\MainLayout.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Shared\\MainLayout.razor",
               "RelativeToolTip": "Shared\\MainLayout.razor",
               "ViewState": "AgIAAMgAAAAAAAAAAAAkwOIAAAAkAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
@@ -169,9 +177,9 @@
               "$type": "Document",
               "DocumentIndex": 11,
               "Title": "SelecionarEmpresa.razor",
-              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Controle\\SelecionarEmpresa.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\Controle\\SelecionarEmpresa.razor",
               "RelativeDocumentMoniker": "Pages\\Controle\\SelecionarEmpresa.razor",
-              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Controle\\SelecionarEmpresa.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\Controle\\SelecionarEmpresa.razor",
               "RelativeToolTip": "Pages\\Controle\\SelecionarEmpresa.razor",
               "ViewState": "AgIAABMAAAAAAAAAAAAkwCUAAAAHAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
@@ -181,9 +189,9 @@
               "$type": "Document",
               "DocumentIndex": 8,
               "Title": "LoginSoFacial.razor",
-              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Controle\\LoginSoFacial.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\Controle\\LoginSoFacial.razor",
               "RelativeDocumentMoniker": "Pages\\Controle\\LoginSoFacial.razor",
-              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Controle\\LoginSoFacial.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\Controle\\LoginSoFacial.razor",
               "RelativeToolTip": "Pages\\Controle\\LoginSoFacial.razor",
               "ViewState": "AgIAAPwAAAAAAAAAAAAmwCQBAAAsAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
@@ -193,9 +201,9 @@
               "$type": "Document",
               "DocumentIndex": 3,
               "Title": "LoginUnificado.razor",
-              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Controle\\LoginUnificado.razor",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\Controle\\LoginUnificado.razor",
               "RelativeDocumentMoniker": "Pages\\Controle\\LoginUnificado.razor",
-              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Pages\\Controle\\LoginUnificado.razor",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Pages\\Controle\\LoginUnificado.razor",
               "RelativeToolTip": "Pages\\Controle\\LoginUnificado.razor",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAArAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
@@ -205,9 +213,9 @@
               "$type": "Document",
               "DocumentIndex": 10,
               "Title": "Utils.cs",
-              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Data\\Utils.cs",
+              "DocumentMoniker": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Data\\Utils.cs",
               "RelativeDocumentMoniker": "Data\\Utils.cs",
-              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink\\Data\\Utils.cs",
+              "ToolTip": "C:\\Users\\bfs-b\\Desktop\\Construlink\\Construlink - Copy\\Data\\Utils.cs",
               "RelativeToolTip": "Data\\Utils.cs",
               "ViewState": "AgIAAD0AAAAAAAAAAAAIwE0AAAAIAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",

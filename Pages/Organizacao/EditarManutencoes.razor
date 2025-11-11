@@ -1,0 +1,58 @@
+﻿@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Shared
+@using Microsoft.Data.SqlClient
+@using Microsoft.EntityFrameworkCore
+@inject IDialogService Dialog
+@inject IConfiguration _configuration
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService DbContextFactory
+
+<MudDialog Style="width: 450px">
+	<DialogContent>
+
+		@if (MANUTENCAO is not null && MANUTENCAO.Id > 0)
+		{
+			<MudTextField T="String" Label="Tipo" Variant="Variant.Outlined" InputType="InputType.Text" FullWidth="true" @bind-Value="MANUTENCAO.Titulo" />
+			<MudTextField T="String" Label="Mensagem" Variant="Variant.Outlined" InputType="InputType.Text" FullWidth="true" Lines="3" @bind-Value="MANUTENCAO.Mensagem" />
+			<MudTextField T="TimeSpan?" Label="Hora de Retorno" Variant="Variant.Outlined" InputType="InputType.Time" FullWidth="false" @bind-Value="MANUTENCAO.HoraRetorno" />
+
+		}
+
+	</DialogContent>
+	<DialogActions>
+		<MudButton OnClick="Cancel" Class="mt-2">Cancel</MudButton>
+		<MudButton Class="botaoGuardar" OnClick="Submit">Ok</MudButton>
+	</DialogActions>
+</MudDialog>
+
+@code
+{
+	[CascadingParameter]
+	public MudDialogInstance MudDialog { get; set; } = null!;
+
+	[Parameter]
+	public Manutencoes MANUTENCAO { get; set; }
+
+	private BaseControleContext dbContext = new BaseControleContext();
+
+	public string error = string.Empty;
+
+	protected override void OnInitialized()
+	{
+
+		base.OnInitialized();
+	}
+
+	private async Task Submit()
+	{
+		MudDialog.Close(DialogResult.Ok(MANUTENCAO));
+	}
+
+	private void Cancel() => MudDialog.Cancel();
+}

@@ -1,0 +1,2162 @@
+﻿@page "/Entidades/{Tipo}"
+@page "/Entidades/{Tipo}/{EntidadeId}"
+@using System.Globalization
+@using System.Text.RegularExpressions
+@using System.Timers
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink.Pages
+@using Construlink.Pages.Empreendimentos
+@using Construlink.Shared
+@using Microsoft.Data.SqlClient
+@using Microsoft.EntityFrameworkCore
+@using Newtonsoft.Json
+@using static System.Runtime.InteropServices.JavaScript.JSType
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@inject Utils utils
+@inject IWebHostEnvironment Env
+@inject IDbContextFactoryService DbContextFactory
+
+<PageTitle>Entidades</PageTitle>
+
+
+
+<!-- ===== CABEÇALHO ===== -->
+<div class="row mt-2 mb-2">
+    <div class="col-md-6 col-sm-12 col-12 mt-3">
+        <div class="d-flex align-items-center">
+            <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")"
+            Color="Color.Primary"
+            Style="font-size:1.1rem;" />
+
+            @* título muda consoante o modo *@
+            @if (VerEntidade)
+            {
+                <MudText Typo="Typo.h5" Class="ms-1">
+                    @selectedentidade?.Nome
+                </MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.h5" Class="ms-1">
+                    @Tipo
+                </MudText>
+            }
+        </div>
+    </div>
+
+    <div class="col-md-6 col-sm-12 col-12 mt-3 hide-on-mobile">
+        <ol class="breadcrumb float-end">
+            <li class="breadcrumb-item"><a href="@path/Dashboard">Home</a></li>
+            <li class="breadcrumb-item active">@Tipo</li>
+        </ol>
+    </div>
+</div>
+
+
+@if (selectedentidade == null)
+{
+  @*   <div class="card shadow">
+        <div class="card-header p-2 pt-2 vitro-cor-secundaria"><span class="fa-solid fa-filter me-2"></span>Filtros</div>
+        <div class="card-body pt-2">
+
+            <div class="row">
+                <div class="col-md-9">
+                    <label for="entidadesativas">@Tipo</label>
+                    <select name="entidadesativas" id="entidadesativas" class="d-block w-100" style="height:37px;" @onchange="filtrarativos">
+                        <option value="">Todos</option>
+                        <option value="1" selected >Ativos</option>
+                        <option value="0">Inativos</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3 mt-4 pt-0">
+                    <button class="btn btn-theme me-2" style="float: right; height:37px;" @onclick="@(()=> { selectedentidade = new CrmEntidade(){ Isactive = true }; Erro=""; Mensagem=""; })"><span class="fas fa-user-plus me-2"></span> Adicionar @Tipo</button>
+                </div>
+            </div>
+        </div>
+    </div> *@
+
+
+    <MudCard Class=" mb-3" Elevation="4">
+        <MudCardHeader Style="background-color: #f4f4f4; padding: 8px;">
+            <CardHeaderContent>
+                <MudText Typo="Typo.button"><MudIcon Icon="fa-solid fa-filter" Class="me-2" Style="font-size: 1.0rem !important;" />Filtros</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <hr style="margin: 0; border: 0; border-top: 1px solid #000 !important;" />
+        <MudCardContent Class="pt-2">
+            <MudGrid>
+                <MudItem md="12" Class="d-flex align-items-center">
+                    <MudItem md="3" Class="me-2">
+                        <div class="theme-bordered-select">
+                            <select name="utilizadores" id="utilizadores" class="form-select d-block no-spinner" style="height:37px;" @onchange="filtrarativos">
+                                <option value="">Todos</option>
+                                <option value="1" selected>Ativos</option>
+                                <option value="0">Inativos</option>
+                            </select>
+                        </div>
+                    </MudItem>
+                    <MudItem md="10">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="float-end" OnClick="@(()=> { selectedentidade = new CrmEntidade(){ Isactive = true }; Erro=""; Mensagem=""; })">
+                            <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "file-circle-plus")" Class="me-2" />
+                            Adicionar @Tipo
+                        </MudButton>
+                    </MudItem>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    <div class="row">
+        <div class="col-md-12 my-3">
+            @if (isloading)
+            {
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <MudTable Items="entidades" Striped="true" Bordered="true" Hover="true" Dense="true" Filter="new Func <CrmEntidade, bool> (FuncaoFiltrar)">
+                    <ToolBarContent>
+                        <MudTextField Immediate @bind-Value="filtro"
+                        Placeholder="Filtrar"
+                        Adornment="Adornment.Start"
+                        AdornmentColor="Color.Warning"
+                        AdornmentIcon="@Icons.Material.Filled.Search"
+                        IconSize="Size.Medium"
+                        Class="mt-0 mouse-apontar">
+                        </MudTextField>
+                    </ToolBarContent>
+                    <HeaderContent>
+                        <MudTh Style="width: 5%;">Editar</MudTh>
+                        <MudTh Style="width: 5%;">Código</MudTh>
+                        <MudTh Style="width: 15%;">Nome</MudTh>
+                        <MudTh Style="width: 10%;">NIF</MudTh>
+                        <MudTh Style="width: 10%;">Telemóvel</MudTh>
+                        <MudTh Style="width: 10%;">Telefone</MudTh>
+                        <MudTh Style="width: 10%;">Email</MudTh>
+                        <MudTh Style="width: 10%;">Localização</MudTh>
+                        <MudTh Style="width: 8%;">Estado</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd Style="width: 5%;" Align="Align.Center">
+                            <MudTooltip Text="Editar">
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Warning" @onclick="() => { VerEntidade = true; CloneItem(context); }" />
+                            </MudTooltip>
+                        </MudTd>
+                        <MudTd Style="width: 5%;" Align="Align.Left">@context.Codigo</MudTd>
+                        <MudTd Style="width: 15%;" Align="Align.Left">@context.Nome</MudTd>
+                        <MudTd Style="width: 10%;" Align="Align.Left">@context.Nif</MudTd>
+                        <MudTd Style="width: 10%;" Align="Align.Left">@context.Telemovel</MudTd>
+                        <MudTd Style="width: 10%;" Align="Align.Left">@context.Telefone</MudTd>
+                        <MudTd Style="width: 10%;" Align="Align.Left">@context.Email</MudTd>
+                        <MudTh Style="width: 10%;" Align="Align.Left">@context.Morada</MudTh>
+                        <MudTd>
+                            <MudSwitch Style="width: 8%;"
+                            T="bool"
+                            Value="@context.Isactive"
+                            Color="Color.Success"
+                            UncheckedColor="Color.Error"
+                            ValueChanged="@(val => EstadoMudou(val, context))" />
+                        </MudTd>
+                    </RowTemplate>
+                    <PagerContent>
+                        <MudTablePager />
+                    </PagerContent>
+                </MudTable>
+            }
+        </div>
+    </div>
+}
+else
+{
+    if (VerEntidade == true)
+    {
+        @* entidade info *@
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card shadow mb-2">
+                    <div class="card-header p-2 pt-2 vitro-cor-secundaria d-flex justify-content-between align-items-center">Dados do @Tipo</div>
+                    <div class="card-body pb-0">
+                        <div class="table-responsive" bis_skin_checked="1">
+                            <table class="table">
+                                <tbody>
+                                    <tr>
+                                        <th style="color: Black;" scope="row">Código</th>
+                                        <td>@selectedentidade.Codigo</td>
+                                    </tr>
+                                    @* <tr>
+                                        <th style="color: Black;" scope="row">Id Primavera</th>
+                                        <td>@selectedentidade.IdPrimavera</td>
+                                    </tr> *@
+                                    @* <tr>
+                                        <th style="color: Black;" scope="row">CC</th>
+                                        <td>@selectedentidade.Ccentidade</td>
+                                    </tr>
+                                    <tr>
+                                        <th style="color: Black;" scope="row">Validade CC</th>
+                                        <td>@selectedentidade.CcValidade?.ToString("dd/MM/yyyy")
+</td>
+                                    </tr> *@
+                                    <tr>
+                                        <th style="color: Black;" scope="row">NIF</th>
+                                        <td>@selectedentidade.Nif</td>
+                                    </tr>
+                                    <tr>
+                                        <th style="color: Black;" scope="row">Telefone</th>
+                                        <td>@selectedentidade.Telefone</td>
+                                    </tr>
+                                    <tr>
+                                        <th style="color: Black;" scope="row">Telemóvel</th>
+                                        <td>@selectedentidade.Telemovel</td>
+                                    </tr>
+
+                                    <tr>
+                                        <th style="color: Black;"  scope="row">Email</th>
+                                        <td>@selectedentidade.Email</td>
+                                    </tr>
+
+                                    <tr>
+                                        <th style="color: Black;" scope="row">Observações</th>
+                                        <td>@selectedentidade.Observacoes</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <!-- Tabs -->
+                <div class="container" style="max-width:100%">
+                    <div class="row">
+                        <div class="col">
+                            <ul class="nav nav-tabs" role="tablist">
+
+                                <li class="nav-item">
+                                    <a class="nav-link" data-bs-toggle="tab" href="#ex1-tabs-3"><i class="fas fa-building-columns"></i> Dados Bancários</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs content -->
+                <div class="tab-content" id="ex1-content">
+
+                    <div id="ex1-tabs-1" class="tab-pane active">
+                        <div class="container" bis_skin_checked="1">
+                            <table class="table">
+                                <tbody>
+                                    <tr>
+                                        <th style="color: black;" scope="row">Morada</th>
+                                        <td>@selectedentidade.Morada</td>
+                                    </tr>
+                                    <tr>
+                                        <th style="color: black;" scope="row">Cód Postal</th>
+                                        <td>@selectedentidade.CodigoPostal</td>
+                                    </tr>
+                                    <tr>
+                                        <th style="color: black;" scope="row">Localidade</th>
+                                        <td>@selectedentidade.Localidade</td>
+                                    </tr>
+                                    <tr>
+                                        <th style="color: black;" scope="row">País</th>
+                                        <td>
+                                            @foreach (CrmPaise item in paises)
+                                            {
+                                                @if (item.Id.ToString() == selectedentidade.Pais)
+                                                {
+                                                    @item.Descricao
+                                                    break;
+                                                }
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th style="color: black;" scope="row">Distrito</th>
+                                        <td>
+                                            @foreach (CrmDistrito item in distritos)
+                                            {
+                                                @if (item.Id == selectedentidade.Distrito)
+                                                {
+                                                    @item.Descricao
+                                                    break;
+                                                }
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th style="color: black;" scope="row">Concelho</th>
+                                        <td>
+                                            @foreach (CrmConcelho item in concelhos)
+                                            {
+                                                @if (item.Id == selectedentidade.Concelho)
+                                                {
+                                                    @item.Descricao
+                                                    break;
+                                                }
+                                            }
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="ex1-tabs-2" class="tab-pane fade">
+                        @if (selectedentidademorada.Morada != null)
+                        {
+                            <div class="container" bis_skin_checked="1">
+                                <table class="table">
+                                    <tbody>
+                                        <tr>
+                                            <th style="color: black;" scope="row">Empresa</th>
+                                            <td>@selectedentidademorada.Empresa</td>
+                                        </tr>
+                                        <tr>
+                                            <th style="color: black;" scope="row">Morada</th>
+                                            <td>@selectedentidademorada.Morada</td>
+                                        </tr>
+                                        <tr>
+                                            <th style="color: black;" scope="row">Cód Postal</th>
+                                            <td>@selectedentidademorada.CodigoPostal @selectedentidademorada.Localidade</td>
+                                        </tr>
+                                        <tr>
+                                            <th style="color: black;" scope="row">País</th>
+                                            <td>
+                                                @foreach (CrmPaise item in paises)
+                                                {
+                                                    @if (item.Id == selectedentidademorada.Pais)
+                                                    {
+                                                        @item.Descricao
+                                                        break;
+                                                    }
+                                                }
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th style="color: black;" scope="row">Distrito</th>
+                                            <td>
+                                                @foreach (CrmDistrito item in distritos)
+                                                {
+                                                    @if (item.Id == selectedentidademorada.Distrito)
+                                                    {
+                                                        @item.Descricao
+                                                        break;
+                                                    }
+                                                }
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th style="color: black;" scope="row">Concelho</th>
+                                            <td>
+                                                @foreach (CrmConcelho item in concelhos)
+                                                {
+                                                    @if (item.Id == selectedentidademorada.Concelho)
+                                                    {
+                                                        @item.Descricao
+                                                        break;
+                                                    }
+                                                }
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="container m-3" bis_skin_checked="1">
+                                <p>Sem morada de entrega definida.</p>
+                            </div>
+                        }
+                    </div>
+
+                    <div id="ex1-tabs-3" class="tab-pane fade">
+                        <div class="container" bis_skin_checked="1">
+                            <table class="table card-text">
+                                <tbody>
+                                    <tr>
+                                        <th style="color: white;" scope="row">NIB</th>
+                                        <td>@selectedentidade.Nib</td>
+                                    </tr>
+                                    <tr>
+                                        <th style="color: white;" scope="row">IBAN</th>
+                                        <td>@selectedentidade.Iban</td>
+                                    </tr>
+
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pasta Add/Edit Modal -->
+        @if (SelectedPasta != null && deletePasta == false)
+        {
+            <div class="modal fade" id="pastaModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="pastaModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header vitro-cor-secundaria">
+                            @if (newPasta == true)
+                            {
+                                <h5 class="modal-title" id="pastaModalLabel"><span><i class="far fa-folder"></i></span> Adicionar Pasta</h5>
+                            }
+                            else
+                            {
+                                <h5 class="modal-title" id="pastaModalLabel"><span><i class="far fa-folder"></i></span> Editar Pasta</h5>
+                            }
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @onclick="@(()=>{ newPasta = false; SelectedPath = null; SelectedPasta = null; })"></button>
+                        </div>
+                        <div class="modal-body">
+                            <label for="tpPasta" class="form-label">Nome da Pasta</label>
+                            <input type="text" name="tpPasta" id="tpPasta" class="form-control" @bind="SelectedPasta" />
+                        </div>
+                        <div class="modal-footer mt-1">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="@(()=>{ newPasta = false; SelectedPath = null; SelectedPasta = null; })">Cancelar</button>
+                            <button type="button" class="btn btn-theme" @onclick="@(()=>{SavePasta(); } )">Guardar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Pasta Delete Modal -->
+        @if (SelectedPasta != null && deletePasta == true)
+        {
+            <div class="modal fade" id="deletepastaModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deletepastaModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header vitro-cor-secundaria">
+                            <h5 class="modal-title" id="deletepastaModalLabel"><span><i class="far fa-folder"></i></span> Eliminar Pasta</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @onclick="@(()=>{ deletePasta = false; SelectedPath = null; SelectedPasta = null;})"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>A eliminação de pastas é permanente e irreversível.</p>
+                            <p>Se eliminar a pasta, todos os ficheiros no seu interior irão ser também eliminados.</p>
+                            <p>Pretende realmente eliminar a pasta '@SelectedPasta'?</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="@(()=>{ deletePasta = false; SelectedPath = null; SelectedPasta = null;})">Cancelar</button>
+                            <button type="button" class="btn btn-theme" @onclick="@(()=>{SavePasta();})">Confirmar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- File Delete Modal -->
+        @if (SelectedPasta != null && deleteFile == true)
+        {
+            <div class="modal fade" id="deletefileModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="deletefileModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header vitro-cor-secundaria">
+                            <h5 class="modal-title" id="deletepastaModalLabel"><span><i class="fas fa-file"></i></span> Eliminar Ficheiro</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @onclick="@(()=>{ deleteFile = false; SelectedPath = null; SelectedPasta = null;})"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>A eliminação de ficheiros é permanente e irreversível.</p>
+                            <p>Pretende realmente eliminar o ficheiro '@SelectedPasta'?</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="@(()=>{ deleteFile = false; SelectedPath = null; SelectedPasta = null;})">Cancelar</button>
+                            <button type="button" class="btn btn-theme" @onclick="@(()=>{SavePasta();})">Confirmar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- File Upload Modal -->
+        @if (SelectedPasta != null && insertFile == true)
+        {
+            <div class="modal fade" id="uploadModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header vitro-cor-secundaria">
+                            <h5 class="modal-title" id="uploadModalLabel"><span><i class="fas fa-file"></i></span> Inserir Ficheiro</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @onclick="@(()=>{ insertFile = false; SelectedPath = null; SelectedPasta = null;})"></button>
+                        </div>
+                        <div class="modal-body">
+
+                            <label>Anexar documentos com tamanho máximo de @maxSize MB </label>
+                            <InputFile single accept="*" OnChange="@(e => UploadFiles(e, SelectedPath))" class="btn btn-theme shadow" />
+
+                            @if (isdocLoading)
+                            {
+                                <p>Uploading...</p>
+                                <div id="loading" class="mt-4">
+                                    <div class="spinner-border ms-auto text-success" role="status" aria-hidden="true" style="width: 18px; height: 18px;"></div>
+                                    <span id="loading_msg" class="ms-2">A carregar...</span>
+                                </div>
+                            }
+
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="@(()=>{ insertFile = false; SelectedPath = null; SelectedPasta = null;})">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+
+        <!-- Contacto Add/Edit Modal -->
+        @if (selectedcontacto != null)
+        {
+            <div class="modal fade" id="contactoModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="contactoModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header vitro-cor-secundaria">
+                            @if (selectedcontacto.Id == 0)
+                            {
+                                <h5 class="modal-title" id="contactoModalLabel"><span><i class="fas fa-plus"></i></span> Adicionar Contacto</h5>
+                            }
+                            else
+                            {
+                                <h5 class="modal-title" id="contactoModalLabel"><span><i class="fas fa-pen-to-square"></i></span> Editar Contacto</h5>
+                            }
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @onclick="@(()=>{ selectedcontacto = null; })"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-check">
+                                <label for="tpNome" class="form-label">Nome</label>
+                                <input type="text" name="tpNome" id="tpNome" class="form-control" @bind="selectedcontacto.Nome" />
+                            </div>
+                            <div class="form-check">
+                                <label for="tpDesc" class="form-label">Cargo/Departamento</label>
+                                <input type="text" name="tpDesc" id="tpDesc" class="form-control" @bind="selectedcontacto.TipoContacto" />
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <label for="tpTel" class="form-label">Telefone</label>
+                                        <input type="text" name="tpTel" id="tpTel" class="form-control" @bind="selectedcontacto.Contacto" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <label for="tpMob" class="form-label">Telemóvel</label>
+                                        <input type="text" name="tpMob" id="tpMob" class="form-control" @bind="selectedcontacto.Telemovel" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-check">
+                                <label for="tpEmail" class="form-label">Email</label>
+                                <input type="text" name="tpEmail" id="tpEmail" class="form-control" @bind="selectedcontacto.Email" />
+                            </div>
+                            <div class="form-check my-3">
+                                <label for="tpBool" class="form-label">Recebe Email</label>
+                                <label id="tpBool" name="tpBool" class='cnk-switch'>
+                                    <input type="checkbox" @bind="@selectedcontacto.RecebeEmail" />
+                                    <span class='cnk-switch-slider round'></span>
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <label for="tpObs" class="form-label">Observações</label>
+                                <input type="text" name="tpObs" id="tpObs" class="form-control" @bind="selectedcontacto.Obs" />
+                            </div>
+                            <div class="form-check my-1">
+                                <p class="text-danger">@Erro</p>
+                            </div>
+                        </div>
+                        <div class="modal-footer mt-1">
+                            <button type="button" class="btn btn-theme" data-bs-dismiss="modal" @onclick="@(()=>{ selectedcontacto = null; })">Cancelar</button>
+                            <button type="button" class="btn btn-theme" @onclick="@(()=>{SaveContacto(); } )">Guardar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Delete Contacto -->
+        @if (deletedcontacto != null)
+        {
+            <div class="modal fade" id="contactoDelModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="contactoDeltModal" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header vitro-cor-secundaria">
+                            <h5 class="modal-title" id="contactoDeltModal"><span><i class="far fa-trash-can"></i></span> Eliminar Contacto</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" @onclick="@(()=>{ deletedcontacto = null;})"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>A eliminação de registos é permanente e irreversível.</p>
+                            <p>Pretende realmente eliminar o contacto '@deletedcontacto.Nome'?</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" @onclick="@(()=>{ deletedcontacto = null;})">Cancelar</button>
+                            <button type="button" class="btn btn-theme" @onclick="@(()=>{SaveContacto();})">Confirmar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+     
+
+        @if (botaoVoltar)
+        {
+            <MudButton OnClick="@(() => { VoltarPagina(); })"
+                       Color="Color.Default"
+                       Variant="Variant.Filled"
+                       Class="me-2 ms-1 mt-2 shadow">
+                Página anterior
+            </MudButton>
+        }
+        else
+        {
+            <MudButton StartIcon="fas fa-arrow-left"
+                       OnClick="@(() => { selectedentidade = null; VerEntidade = false; Erro=""; Mensagem=""; })"
+                       Color="Color.Default"
+                       Variant="Variant.Filled"
+                       Class="me-2 ms-1 mt-2 shadow">
+                Voltar
+            </MudButton>
+        }
+
+        <MudButton StartIcon="fas fa-pen-to-square"
+                   OnClick="@(() => { VerEntidade = false; })"
+                   Color="Color.Default"
+                   Variant="Variant.Filled"
+                   Class="me-3 ms-1 mt-2 shadow">
+            Editar
+        </MudButton>
+    }
+    else
+    {
+        <div class="row">
+            @if (selectedentidade.Id != 0)
+            {
+                <h3>Editar '@selectedentidade.Nome'</h3>
+            }
+            else
+            {
+                <h3>Adicionar @Tipo</h3>
+            }
+
+            <div class="row g-2">
+
+                <!-- =============== COLUNA ESQUERDA ============================= -->
+                <div class="col-lg-6 p-2">
+
+                    <!-- DADOS --------------------------------------------------- -->
+                    <div class="card mb-2">
+                        <div class="card-header p-2 vitro-cor-secundaria">
+                            <span class="fas fa-check-double"></span> Dados
+                        </div>
+
+                        <div class="card-body">
+                            <div class="row g-2">
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Código</label>
+                                    <input class="form-control"
+                                    @bind="selectedentidade.Codigo" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Nome</label>
+                                    <input class="form-control"
+                                    @bind="selectedentidade.Nome" />
+                                </div>
+
+                                @* <div class="col-md-6">
+                                    <label class="form-label">CC</label>
+                                    <input class="form-control"
+                                           @bind="selectedentidade.Ccentidade" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Validade CC</label>
+                                    <input type="date" class="form-control"
+                                           @bind="selectedentidade.CcValidade" />
+                                </div> *@
+
+                                <div class="col-md-6">
+                                    <label class="form-label">NIF</label>
+                                    <input class="form-control"
+                                    @bind="selectedentidade.Nif" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Observações</label>
+                                    <input class="form-control"
+                                    @bind="selectedentidade.Observacoes" />
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- MORADA FISCAL ------------------------------------------- -->
+                    <div class="card mb-2">
+                        <div class="card-header p-2 vitro-cor-secundaria">
+                            <span class="fas fa-check-double"></span> Morada Fiscal
+                        </div>
+
+                        <div class="card-body">
+                            <div class="row g-2">
+
+                                <div class="col-12">
+                                    <label class="form-label">Morada</label>
+                                    <input class="form-control"
+                                    @bind="selectedentidade.Morada" />
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">Cód-Postal</label>
+                                    <input class="form-control" maxlength="8"
+                                    @bind="selectedentidade.CodigoPostal"
+                                    @onblur="OnCpFiscalChanged" />
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">Localidade</label>
+                                    <input class="form-control"
+                                    @bind="selectedentidade.Localidade"
+                                    readonly="@_cpFiscalOk" />
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">País</label>
+                                    <select class="form-select"
+                                    @bind="selectedentidade.Pais">
+                                        <option value="">-</option>
+                                        @foreach (var p in paises)
+                                        {
+                                            <option value="@p.Id">@p.Descricao</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Distrito</label>
+                                    <select class="form-select"
+                                    @bind="selectedentidade.Distrito">
+                                        <option value="">-</option>
+                                        @foreach (var d in distritos)
+                                        {
+                                            <option value="@d.Id">@d.Descricao</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">Concelho</label>
+                                    <select class="form-select"
+                                    @bind="selectedentidade.Concelho">
+                                        <option value="">-</option>
+                                        @foreach (var c in concelhos.Where(c => c.Distritoid == selectedentidade.Distrito))
+                                        {
+                                            <option value="@c.Id">@c.Descricao</option>
+                                        }
+                                    </select>
+                                </div>
+
+                            </div>
+
+                            <input type="hidden" @bind="selectedentidade.CpLoc" />
+                        </div>
+                    </div>
+
+                </div> <!-- /col esquerda -->
+                <!-- =============== COLUNA DIREITA ============================== -->
+                <div class="col-lg-6 p-2">
+
+                    <!-- CONTACTOS ------------------------------------------------ -->
+                    <div class="card mb-2">
+                        <div class="card-header p-2 vitro-cor-secundaria">
+                            <span class="fas fa-address-book"></span> Contactos
+                        </div>
+
+                        <div class="card-body">
+                            <div class="row g-2">
+
+                                <div class="col-md-4">
+                                    <label class="form-label">Telefone</label>
+                                    <input class="form-control"
+                                    @bind="selectedentidade.Telefone" />
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">Telemóvel</label>
+                                    <input class="form-control"
+                                    @bind="selectedentidade.Telemovel" />
+                                </div>
+
+                                <div class="col-md-4">
+                                    <label class="form-label">Fax</label>
+                                    <input class="form-control"
+                                    @bind="selectedentidade.Fax" />
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label">Email</label>
+                                    <input class="form-control"
+                                    @bind="selectedentidade.Email" />
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label">Website</label>
+                                    <input class="form-control"
+                                    @bind="selectedentidade.Site" />
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- BANCÁRIOS ------------------------------------------------- -->
+                    <div class="card mb-2">
+                        <div class="card-header p-2 vitro-cor-secundaria">
+                            <span class="fas fa-building-columns"></span> Dados Bancários
+                        </div>
+
+                        <div class="card-body">
+                            <div class="row g-2">
+
+                                <div class="col-md-6">
+                                    <label class="form-label">NIB</label>
+                                    <input class="form-control"
+                                    @bind="selectedentidade.Nib" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label">IBAN</label>
+                                    <input class="form-control"
+                                    @bind="selectedentidade.Iban" />
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- OUTROS ---------------------------------------------------- -->
+                    <div class="card mb-2">
+                        <div class="card-header p-2 vitro-cor-secundaria">
+                            <span class="fas fa-check-double"></span> Outros
+                        </div>
+
+                        <div class="card-body">
+                            <label class="form-label">Nível Preço</label>
+                            <select class="form-select"
+                            @onchange="NivelMudou">
+                                <option value="" disabled selected></option>
+                                @foreach (var n in listaNiveisPreco)
+                                {
+                                    <option value="@n.Id"
+                                    selected="@(selectedentidade.NivelPreco == n.Id ? "selected" : null)">
+                                        @n.Descricao
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                </div> <!-- /col direita -->
+
+            </div> <!-- /row -->
+            <!-- BOTÕES ------------------------------------------------------------ -->
+            <div class="mt-3">
+                <button class="btn btn-theme-escuro me-1"
+                @onclick="SaveEntidade">
+                    <i class="far fa-floppy-disk"></i> Guardar
+                </button>
+
+                <button class="btn btn-theme-escuro"
+                @onclick="@(() =>
+                {
+                    selectedentidade = null;
+                    VerEntidade      = false;
+                    Erro             = "";
+                    Mensagem         = "";
+                    GetEntidades(Tipo, selectedTipo, selectedFiltro);
+                })">
+                    <i class="fas fa-arrow-left"></i> Voltar
+                </button>
+            </div>
+        </div>
+    }
+}
+
+<div class="modal fade" id="associarUtilizadorModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="associarUtilizadorModalLabel" aria-hidden="true">
+    <div class="modal-dialog" style="max-width: 380px;">
+        <div class="modal-content">
+            <div class="modal-header d-flex justify-content-between  align-items-center vitro-cor-secundaria">
+                <h5 class="modal-title d-flex align-items-center" id="associarUtilizadorModalLabel">
+                    <span class="fa-solid fa-user-plus me-2"></span> Associar Utilizador
+                </h5>
+            </div>
+            <div class="modal-body">
+                <div class="ms-0 form-check ps-0">
+                    <div class="ms-0 mb-3 form-check ps-0">
+                        <label class="form-label">Utilizadores</label>
+                        <select class="d-block w-100" @bind="idUtilizadorAssociar">
+                            <option value="">-</option>
+                            @foreach (CrmUtilizador user in associarLista)
+                            {
+                                <option value="@user.Id">@user.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="ms-0 form-check ps-0">
+                    <div class="ms-0 mb-3 form-check ps-0">
+                        <label class="form-label">@Tipo</label>
+                        <select class="d-block w-100" @bind="idEntidadeAssociar">
+                            <option value="">-</option>
+                            @foreach (CrmEntidade entidade in entidades)
+                            {
+                                <option value="@entidade.Id">@entidade.Nome</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <button type="button" class="btn btn-theme-escuro" @onclick="@(()=>{ @ConfirmarAssociar();})">Associar</button>
+                    <button type="button" class="btn bg-theme-escuro" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section>
+    <script>
+
+        function showModal(modalId, comportamento) {
+        jQuery(modalId).modal(comportamento);
+        }
+
+        function cleanTables_entidades() {
+        if (document.getElementById("tab_entidades_wrapper")) {
+        document.getElementById("tab_entidades_wrapper").remove();
+        }
+        }
+        function cleanTables_contactos() {
+        if (document.getElementById("tab_contactos_wrapper")) {
+        document.getElementById("tab_contactos_wrapper").remove();
+        }
+        }
+
+        function cleanTables_entidades_docs() {
+        if (document.getElementById("tab_ent_docs_wrapper")) {
+        document.getElementById("tab_ent_docs_wrapper").remove();
+        }
+        }
+
+        @* função para previsualização da imagem dos artigos *@
+        function showPreview(imageUrl, element) 
+        {
+        var previewContainer = element.querySelector('.preview-container');
+        var previewImage = previewContainer.querySelector('.preview-image');
+        previewImage.src = imageUrl;
+        previewContainer.style.display = 'block';
+        }
+
+        function hidePreview() {
+        var previewContainers = document.querySelectorAll('.preview-container');
+        previewContainers.forEach(function (container) {
+        container.style.display = 'none';
+        });
+        }
+
+    </script>
+</section>
+
+@code {
+
+    @* Consulte o FAQ, informações relevantes sobre esta página  (INFO 1)*@
+
+    [Parameter]
+    public string Tipo { get; set; } = "";
+    private string _previousTipo = "";
+
+    [Parameter]
+    public string? EntidadeId { get; set; } = null;
+
+    private List<CrmUtilizador> associarLista = new List<CrmUtilizador>() { };
+    private int idUtilizadorAssociar = 0;
+    private int idEntidadeAssociar = 0;
+    EmpresaUserSession who = null;
+    private string path = "";
+    CrmEntidade selectedentidade = null;
+    EntidadeMorada selectedentidademorada = new EntidadeMorada();
+    CrmEntidadeContacto selectedcontacto = null;
+    CrmEntidadeContacto deletedcontacto = null;
+    bool istipoA = false;
+    private List<CrmEntidade> entidades = new List<CrmEntidade>() { };
+    private List<CrmPaise> paises = new List<CrmPaise>();
+    private List<CrmDistrito> distritos = new List<CrmDistrito>();
+    private List<CrmConcelho> concelhos = new List<CrmConcelho>();
+    private List<CrmPrazoPagamento> condpagamentos = new List<CrmPrazoPagamento>();
+    private List<CrmTipoDocumento> tiposdocumento = new List<CrmTipoDocumento>();
+    private List<CrmSerieDocumento> seriesdocumento = new List<CrmSerieDocumento>();
+    private List<CrmEntidadeContacto> contactos = new List<CrmEntidadeContacto>();
+    private List<CrmArtigo> artigos = new List<CrmArtigo>();
+    private List<CrmMotivosisencao> motivosisencaos = new List<CrmMotivosisencao>();
+    private List<TopArtigo> topArtigos = new List<TopArtigo>();
+    private List<NiveisPreco> listaNiveisPreco = new List<NiveisPreco>();
+    private bool VerEntidade = false;
+    private List<EntidadeDocumentos> selectedentidadedocs = new List<EntidadeDocumentos>();
+    private string selectedTipo = "-";
+    private string selectedFiltro = "";
+    private string filtroObra = string.Empty;
+    private string Erro = "";
+    private string Mensagem = "";
+    public string tiposmall = "";
+    private List<FileSystemEntry> FileSystemEntries = new List<FileSystemEntry>();
+    private List<FileSystemEntry> FileSystemSubEntries = new List<FileSystemEntry>();
+    private List<FileSystemEntry> FileSystemSub2Entries = new List<FileSystemEntry>();
+    private string SelectedPath = null;
+    private string SelectedPasta = null;
+    private bool newPasta = false;
+    private bool deletePasta = false;
+    private bool deleteFile = false;
+    private bool insertFile = false;
+    private bool isloading = false;
+    private bool botaoVoltar = false;
+    private readonly object updateLock = new object();
+    private DbContext dbContext;
+    private string previousPage = null;
+    private string filtro = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        dbContext = DbContextFactory.GetDbContext(who.Empresa.BaseNome);
+
+        if (Tipo == "")
+        {
+            Tipo = "Entidades";
+        }
+        else
+        {
+            tiposmall = Tipo;
+            switch (Tipo)
+            {
+                case "Clientes":
+                    tiposmall = "C";
+                    break;
+                case "Fornecedores":
+                    tiposmall = "F";
+                    break;
+                case "Promotores":
+                    tiposmall = "P";
+                    break;
+                case "Construtores":
+                    tiposmall = "R";
+                    break;
+                default:
+                    tiposmall = Tipo;
+                    break;
+            }
+        }
+
+        GetAll();
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender == true)
+        {
+            previousPage = await JSRuntime.InvokeAsync<string>("sessionStorage.getItem", "previousPage");
+            await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "previousPage");
+            botaoVoltar = !string.IsNullOrEmpty(previousPage);
+
+            using (DbContext dbContext3 = DbContextFactory.GetDbContext(who.Empresa.BaseNome))
+            {
+                if (!string.IsNullOrEmpty(EntidadeId))
+                {
+                    selectedentidade = await dbContext3.Set<CrmEntidade>().FirstOrDefaultAsync(i => i.Id.ToString() == EntidadeId);
+                    listaNiveisPreco = await dbContext3.Set<NiveisPreco>().Where(i => i.IsDeleted != true).ToListAsync();
+                    VerEntidade = true;
+                    StateHasChanged();
+                }
+                else
+                {
+                    await GetEntidades(Tipo, "1", selectedFiltro);
+                    listaNiveisPreco = await dbContext3.Set<NiveisPreco>().Where(i => i.IsDeleted != true).ToListAsync();
+                    VerEntidade = false;
+                    StateHasChanged();
+                }
+            }
+
+            @* foreach (var entidade in entidades)
+            {
+                if (entidade.CcValidade.HasValue && entidade.CcValidade.Value.Date <= DateTime.Today.AddDays(30))
+                {
+                    JSRuntime.InvokeVoidAsync("showToast", $"⚠️ O CC de {entidade.Nome} expira a {entidade.CcValidade:dd/MM/yyyy}!", "bg-warning");
+                }
+            } *@
+        }
+        else
+        {
+            if (SelectedPasta != null)
+            {
+                if (deletePasta == true)
+                {
+                    await JSRuntime.InvokeAsync<object>("showModal", "#deletepastaModal", "show");
+                }
+                else
+                {
+                    if (deleteFile == true)
+                    {
+                        await JSRuntime.InvokeAsync<object>("showModal", "#deletefileModal", "show");
+                    }
+                    else
+                    {
+                        if (insertFile == true)
+                        {
+                            await JSRuntime.InvokeAsync<object>("showModal", "#uploadModal", "show");
+                        }
+                        else
+                        {
+                            await JSRuntime.InvokeAsync<object>("showModal", "#pastaModal", "show");
+                        }
+                    }
+                }
+            }
+
+            if (selectedcontacto != null)
+            {
+                await JSRuntime.InvokeAsync<object>("showModal", "#contactoModal", "show");
+            }
+            if (deletedcontacto != null)
+            {
+                await JSRuntime.InvokeAsync<object>("showModal", "#contactoDelModal", "show");
+            }
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    // Flag para tornar Localidade readonly depois de preenchido
+    private bool _cpFiscalOk = false;
+
+    /// <summary>Dispara quando o utilizador sai do campo C.P.</summary>
+    private async Task OnCpFiscalChanged(FocusEventArgs _)
+    {
+        var cpTxt = selectedentidade.CodigoPostal?.Trim();
+
+        if (string.IsNullOrWhiteSpace(cpTxt) ||
+            !Regex.IsMatch(cpTxt, @"^\d{4}-\d{3}$"))
+            return;   // formato inválido → nada a fazer
+
+        var parts = cpTxt.Split('-');
+        short num = short.Parse(parts[0]);
+        short ext = short.Parse(parts[1]);
+
+        var cp = await dbContext.Set<CodigoPostal>()
+                                .AsNoTracking()
+                                .FirstOrDefaultAsync(c =>
+                                    c.NumCodPostal == num &&
+                                    c.ExtCodPostal == ext);
+
+        if (cp is null) return;   // C.P. não existe
+
+        // Preenche campos
+        selectedentidade.Localidade = cp.NomeLocalidade;
+        selectedentidade.CpLoc = cp.DesigPostal;
+        selectedentidade.Distrito = cp.CodDistrito;
+        selectedentidade.Concelho = cp.CodConcelho;
+
+        _cpFiscalOk = true;       // bloqueia edição manual
+        StateHasChanged();
+    }
+
+
+    private async Task AbrirModalAssociar()
+    {
+        BaseControleContext baseControleContext = new BaseControleContext();
+
+        var listaUtilizadoresIds = baseControleContext.UtilizadorEmpresas
+                    .Where(i => i.EmpresaId == who.Empresa.Id)
+                    .Select(i => i.UtilizadorId)
+                    .Distinct()
+                    .ToList();
+
+        var listaUtilizadores = baseControleContext.CrmUtilizadors
+            .Where(u => listaUtilizadoresIds.Contains(u.Id) && u.IsDeleted != true && u.Isactive == true)
+            .ToList();
+
+        associarLista = listaUtilizadores;
+        JSRuntime.InvokeAsync<object>("showModal", "#associarUtilizadorModal", "show");
+
+        baseControleContext.Dispose();
+    }
+
+    private async Task ConfirmarAssociar()
+    {
+        if (idEntidadeAssociar > 0 && idUtilizadorAssociar > 0)
+        {
+            BaseControleContext baseControleContext = new BaseControleContext();
+
+            try
+            {
+                UtilizadorEntidade novoRegisto = new UtilizadorEntidade()
+                    {
+                        EntidadeId = idEntidadeAssociar,
+                        UtilizadorId = idUtilizadorAssociar,
+                    };
+
+                CrmUtilizador userAssociado = await baseControleContext.CrmUtilizadors.FirstOrDefaultAsync(i =>i.Id == idUtilizadorAssociar);
+
+                if (userAssociado != null)
+                {
+                    if(Tipo == "Clientes")
+                    {
+                        userAssociado.IsCliente = true;
+                    }
+                    if(Tipo == "Fornecedores")
+                    {
+                        userAssociado.IsVendedor = true;
+                    }
+                    if(Tipo == "Promotores")
+                    {
+                        userAssociado.IsPromotor = true;
+                    }
+                    if(Tipo == "Construtores")
+                    {
+                        userAssociado.IsConstrutor = true;
+                    }
+                }
+
+                await baseControleContext.UtilizadorEntidades.AddAsync(novoRegisto);
+                await baseControleContext.SaveChangesAsync();
+                Mensagem = "Associação realizada com sucesso";
+            }
+            catch (Exception)
+            {
+                Erro = "Algo correu mal. A associação falhou.";
+            }
+            finally
+            {
+                baseControleContext.Dispose();
+                JSRuntime.InvokeAsync<object>("showModal", "#associarUtilizadorModal", "hide");
+                if (!string.IsNullOrEmpty(Erro))
+                {
+                    await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+                }
+                else
+                {
+                    await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+                }
+            }
+        }
+        else
+        {
+            Erro = "Selecione um Utilizador e uma Entidade ao tentar associar.";
+            JSRuntime.InvokeAsync<object>("showModal", "#associarUtilizadorModal", "hide");
+            await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+        }
+
+        StateHasChanged();
+    }
+
+    //filtro
+    private async Task filtrarativos(ChangeEventArgs e)
+    {
+        string selectedValue = e.Value?.ToString();
+        selectedTipo = selectedValue;
+        GetEntidades(Tipo, selectedTipo, selectedFiltro);
+    }
+
+    //carrega dados
+    private void GetAll()
+    {
+        paises = dbContext.Set<CrmPaise>().OrderBy(o => o.Descricao).ToList();
+        distritos = dbContext.Set<CrmDistrito>().OrderBy(o => o.Descricao).ToList();
+        concelhos = dbContext.Set<CrmConcelho>().OrderBy(o => o.Descricao).ToList();
+        condpagamentos = dbContext.Set<CrmPrazoPagamento>().OrderBy(o => o.Descricao).ToList();
+        tiposdocumento = dbContext.Set<CrmTipoDocumento>().OrderBy(o => o.Nome).ToList();
+        seriesdocumento = dbContext.Set<CrmSerieDocumento>().ToList();
+        motivosisencaos = dbContext.Set<CrmMotivosisencao>().OrderBy(o => o.Codigoerp).ToList();
+
+    }
+
+    private async Task GetEntidades(string tipo, string ativo, string filtro)
+    {
+        if (entidades.Any())
+        {
+            entidades.Clear();
+        }
+
+        isloading = true;
+        StateHasChanged();
+
+        try
+        {
+            //filtro
+            if (filtro != "")
+            {
+                entidades = await dbContext.Set<CrmEntidade>().Where(w => w.Codigo.ToLower().Contains(filtro.ToLower())
+                    || w.Nome.ToLower().Contains(filtro.ToLower())
+                    || w.Nif.ToLower().Contains(filtro.ToLower())
+                    || w.Telefone.ToLower().Contains(filtro.ToLower())
+                    || w.Telemovel.ToLower().Contains(filtro.ToLower())
+                    || w.Email.ToLower().Contains(filtro.ToLower())
+                ).ToListAsync();
+            }
+            else
+            {
+                using (DbContext dbContext4 = DbContextFactory.GetDbContext(who.Empresa.BaseNome))
+                {
+                    List<CrmEntidadeMetum> entidadesmeta = await dbContext.Set<CrmEntidadeMetum>().ToListAsync();
+                    if (Tipo == "Clientes")
+                    {
+                        entidades = await dbContext.Set<CrmEntidade>().Where(w => w.TipoEntidade == tiposmall || w.TipoEntidade == "A" || w.TipoEntidade == "Z").Take(100).ToListAsync();
+                    }
+                    else
+                    {
+                        entidades = await dbContext.Set<CrmEntidade>().Where(w => w.TipoEntidade == tiposmall || w.TipoEntidade == "A").Take(100).ToListAsync();
+                    }
+
+                    if (ativo != "-")
+                    {
+                        switch (ativo)
+                        {
+                            case "0":
+                                entidades = entidades.Where(f => f.Isactive == false).ToList();
+                                break;
+                            case "1":
+                                entidades = entidades.Where(f => f.Isactive == true).ToList();
+                                break;
+                        }
+                    }
+                }
+            }
+
+            //higienização da base de dados
+            entidades = entidades.OrderByDescending(o => o.Id).ToList();
+
+            if (entidades.Count == 0)
+            {
+                await JSRuntime.InvokeAsync<object>("cleanTables_entidades");
+            }
+        }
+        catch (Exception)
+        {
+        }
+        finally
+        {
+            isloading = false;
+            StateHasChanged();
+        }
+
+    }
+
+    //Validaçoes para criaçao de cliente/entidade nova
+
+    // 1. Validação completa -----------------------------------------------
+    private async Task<bool> ValidaEntidadeAsync()
+    {
+        var erros = new List<string>();
+        var e = selectedentidade;      // alias
+
+        /* ---------- OBRIGATÓRIO ---------- */
+        if (string.IsNullOrWhiteSpace(e.Nome))
+            erros.Add("‣ Nome é obrigatório.");
+
+
+
+        if (string.IsNullOrWhiteSpace(e.Nif))
+            erros.Add("‣ NIF é obrigatório.");
+
+        if (string.IsNullOrEmpty(e.Morada))
+            erros.Add("‣ Morada é obrigatória.");
+
+        if (string.IsNullOrWhiteSpace(e.CodigoPostal))
+            erros.Add("‣ Código Postal é obrigatório.");
+
+        if (string.IsNullOrWhiteSpace(e.Localidade))
+            erros.Add("‣ Localidade é obrigatória.");
+
+        @*  if (string.IsNullOrEmpty(e.Telemovel))
+            erros.Add("‣ Telemóvel é obrigatório.") *@
+        ;
+
+
+        /* ---------- UNICIDADE ------------ */
+        // Fazemos as 5 verificações num único SELECT para performance.
+        var dup = await dbContext.Set<CrmEntidade>()
+            .AsNoTracking()
+            .Where(x => x.Id != e.Id)                     // ignora o próprio registo em edição
+            .Select(x => new
+            {
+                NomeDup = x.Nome == e.Nome,
+                NifDup = x.Nif == e.Nif,
+                NibDup = !string.IsNullOrEmpty(e.Nib) && x.Nib == e.Nib,
+                IbanDup = !string.IsNullOrEmpty(e.Iban) && x.Iban == e.Iban
+            })
+            .FirstOrDefaultAsync(x =>
+                   x.NomeDup || x.NifDup || x.NibDup || x.IbanDup);
+
+        if (dup is not null)
+        {
+            if (dup.NomeDup) erros.Add("‣ Já existe uma entidade com esse Nome.");
+            if (dup.NifDup) erros.Add("‣ NIF duplicado.");
+            if (dup.NibDup) erros.Add("‣ NIB duplicado.");
+            if (dup.IbanDup) erros.Add("‣ IBAN duplicado.");
+        }
+
+        /* ---------- RESULT --------------- */
+        if (erros.Any())
+        {
+            await JSRuntime.InvokeVoidAsync("showToast",
+                string.Join("<br/>", erros), "bg-danger");
+            return false;
+        }
+        return true;
+    }
+
+
+
+    //Guarda a entidade
+    private async Task SaveEntidade()
+    {
+        if (!await ValidaEntidadeAsync())
+            return;
+
+        var retorno = await ValidaFiscalAsync();
+
+        try
+        {
+            Erro = "";
+            Mensagem = "";
+            string comportamento = "";
+
+            // verifica site
+            if (!string.IsNullOrWhiteSpace(selectedentidade.Site))
+            {
+                if (!selectedentidade.Site.ToLower().StartsWith("http"))
+                    selectedentidade.Site = "http://" + selectedentidade.Site;
+
+                if (!utils.IsValidUrl(selectedentidade.Site))
+                {
+                    Erro = $"Erro! O website '{selectedentidade.Site}' não é um endereço válido";
+                    await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+                }
+
+            }
+            var erros = new List<string>();
+            if (string.IsNullOrWhiteSpace(selectedentidade.Nif) ||
+                !Regex.IsMatch(selectedentidade.Nif, @"^\d{9}$"))
+                erros.Add("NIF tem de ter 9 dígitos.");
+
+            if (!string.IsNullOrWhiteSpace(selectedentidade.Nib) &&
+                !Regex.IsMatch(selectedentidade.Nib, @"^\d{21}$"))
+                erros.Add("NIB tem de ter 21 dígitos.");
+
+            if (!string.IsNullOrWhiteSpace(selectedentidade.Iban) &&
+                !Regex.IsMatch(selectedentidade.Iban, @"^PT\d{23}$"))
+                erros.Add("IBAN = PT + 23 dígitos.");
+
+            if (erros.Any())
+            {
+                await JSRuntime.InvokeVoidAsync("showToast",
+                       string.Join("<br>", erros), "bg-danger");
+                return;
+            }
+
+            // tipo de entidade
+            selectedentidade.TipoEntidade = istipoA ? "A" : tiposmall;
+
+            if (Erro == "")
+            {
+                bool codigoRepetido = await dbContext.Set<CrmEntidade>()
+                    .AnyAsync(e =>
+                        e.Id != selectedentidade.Id                 
+                        && e.Codigo == selectedentidade.Codigo      
+                        && e.TipoEntidade == selectedentidade.TipoEntidade);  
+
+
+
+                if (codigoRepetido)
+                {
+                    Erro = $"Código duplicado";
+                    await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+                    return;
+                }
+                if (selectedentidade.Id == 0)
+                {
+                    // nova entidade
+                    selectedentidade.DataUpd = DateTime.Now;
+
+                    await dbContext.Set<CrmEntidade>().AddAsync(selectedentidade);
+                    await dbContext.SaveChangesAsync();
+
+                    utils.CreateFolders(selectedentidade.Id.ToString(), "entidades");
+                    comportamento = $"Criou entidade {selectedentidade.Nome}";
+                }
+                else
+                {
+                    // update entidade
+                    var entidadefinal = dbContext.Set<CrmEntidade>().FirstOrDefault(f => f.Id == selectedentidade.Id);
+                    if (entidadefinal != null)
+                    {
+                        selectedentidade.DataUpd = DateTime.Now;
+                        dbContext.Entry(entidadefinal).CurrentValues.SetValues(selectedentidade);
+                    }
+
+                    comportamento = $"Alterou entidade {selectedentidade.Nome}";
+                }
+
+                await dbContext.SaveChangesAsync();
+
+                // guardar morada no meta
+                if (selectedentidademorada != null)
+                {
+                    var insertjson = JsonConvert.SerializeObject(selectedentidademorada);
+
+                    var metamorada = dbContext.Set<CrmEntidadeMetum>()
+                        .FirstOrDefault(f => f.EntidadeId == selectedentidade.Id && f.MetaKey == "MoradaEntrega");
+
+                    if (metamorada != null)
+                    {
+                        metamorada.MetaValue = insertjson;
+                    }
+                    else
+                    {
+                        var nmorada = new CrmEntidadeMetum
+                            {
+                                EntidadeId = selectedentidade.Id,
+                                MetaKey = "MoradaEntrega",
+                                MetaValue = insertjson
+                            };
+                        dbContext.Set<CrmEntidadeMetum>().Add(nmorada);
+                    }
+
+                    await dbContext.SaveChangesAsync();
+                }
+
+                await utils.UserLogAsync(who.User.Id, comportamento);
+                Mensagem = retorno.Mensagem;
+
+                if (retorno.Sucesso)
+                {
+                    await JSRuntime.InvokeVoidAsync("showToast", Mensagem, "bg-success");
+                }
+                else
+                {
+                    await JSRuntime.InvokeVoidAsync("showToast", retorno.Mensagem, "bg-warning");
+                }
+
+                VerEntidade = true;
+            }
+        }
+        catch (DbUpdateException dbEx)
+        {
+            var innerMessage = dbEx.InnerException?.Message ?? dbEx.Message;
+            Erro = $"Erro ao guardar entidade: {innerMessage}";
+            await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+        }
+        catch (Exception ex)
+        {
+            Erro = $"Erro inesperado: {ex.Message}";
+            await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+        }
+
+        StateHasChanged();
+        TimerMessages();
+    }
+
+    //Validar morada
+
+    private async Task<(string Mensagem, bool Sucesso)> ValidaFiscalAsync()
+    => await PostalCodeHelper.ValidarAsync(
+           dbContext,
+           JSRuntime,
+           selectedentidade.CodigoPostal, 
+           selectedentidade.Localidade,   
+           selectedentidade.CpLoc);       
+
+    //copiar a morada
+    private async Task CopyMorada()
+    {
+        selectedentidademorada.Empresa = selectedentidade.Nome;
+        selectedentidademorada.Morada = selectedentidade.Morada;
+        selectedentidademorada.CodigoPostal = selectedentidade.CodigoPostal;
+        selectedentidademorada.Localidade = selectedentidade.Localidade;
+        selectedentidademorada.Pais = int.Parse(selectedentidade.Pais);
+        selectedentidademorada.Distrito = selectedentidade.Distrito;
+        selectedentidademorada.Concelho = selectedentidade.Concelho;
+
+    }
+
+
+
+    //obter documentos
+    private async Task FiltraDocs(ChangeEventArgs e)
+    {
+        int selectedValue = int.Parse(e.Value?.ToString());
+        GetDocs(selectedValue);
+    }
+    private async Task GetDocs(int tipo)
+    {
+        if (selectedentidadedocs.Count > 0)
+        {
+            selectedentidadedocs.Clear();
+            await JSRuntime.InvokeAsync<object>("cleanTables_entidades_docs");
+        }
+        lock (updateLock)
+        {
+            selectedentidadedocs.Clear();
+            List<CrmDocumento> listadocs = new List<CrmDocumento>();
+            if (tipo == 0)
+            {
+                listadocs = dbContext.Set<CrmDocumento>().Where(w => w.Entidadeid == selectedentidade.Id).ToList();
+            }
+            else
+            {
+                listadocs = dbContext.Set<CrmDocumento>().Where(w => w.Entidadeid == selectedentidade.Id && w.Tipodocumentoid == tipo).ToList();
+            }
+            foreach (CrmDocumento item in listadocs)
+            {
+                EntidadeDocumentos docf = new EntidadeDocumentos()
+                    {
+                        Data = item.Data,
+                        Documento = tiposdocumento.FirstOrDefault(w => w.Id == item.Tipodocumentoid).Codigoerp + "/" + seriesdocumento.FirstOrDefault(f => f.Id == item.Serieid).Serie + "/" + item.Numero,
+                        Entidade = selectedentidade.Nome,
+                        Id = item.Id,
+                        Tipo = tipo,
+                        Total = item.TLiquido,
+                        Objecto = item,
+                    };
+                selectedentidadedocs.Add(docf);
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    #region Pastas e Ficheiros
+
+    static int maxSize = 200;
+    private long maxFileSize = 1024 * 1024 * maxSize; // 3MB
+    private int maxAllowedFiles = 1;
+    private bool isdocLoading;
+
+    //obter pastas e ficheiros
+    private async void GetFiles(string entry, string subentry)
+    {
+        if (entry != "")
+        {
+            if (subentry != "")
+            {
+                FileSystemSub2Entries = utils.GetFoldersAndFiles(selectedentidade.Id.ToString(), "entidades", entry, subentry);
+            }
+            else
+            {
+                FileSystemSubEntries = utils.GetFoldersAndFiles(selectedentidade.Id.ToString(), "entidades", entry, subentry);
+            }
+        }
+        else
+        {
+            FileSystemSubEntries.Clear();
+            FileSystemSub2Entries.Clear();
+            FileSystemEntries = utils.GetFoldersAndFiles(selectedentidade.Id.ToString(), "entidades", "", "");
+        }
+        StateHasChanged();
+    }
+
+    //fazer download de um ficheiro
+    private async Task DownloadFileFromStream(string file, string name)
+    {
+        var fileStream = File.OpenRead(file);
+        using var streamRef = new DotNetStreamReference(stream: fileStream);
+        await JSRuntime.InvokeVoidAsync("downloadFileFromStream", name, streamRef);
+    }
+
+    //upload de ficheiro
+    private async Task UploadFiles(InputFileChangeEventArgs e, string folder)
+    {
+        isdocLoading = true;
+        var file = e.File;
+
+        if (await utils.SaveFile(folder, file) == true)
+        {
+            Mensagem = "Documento inserido com sucesso.";
+            await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+            await utils.UserLogAsync(who.User.Id, Mensagem);
+        }
+        else
+        {
+            Erro = "Erro ao enviar o ficheiro";
+            await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+        }
+
+        await JSRuntime.InvokeAsync<object>("showModal", "#uploadModal", "toggle");
+        SelectedPath = null;
+        SelectedPasta = null;
+        insertFile = false;
+        GetFiles("", "");
+
+        TimerMessages();
+        isdocLoading = false;
+    }
+
+    //guardar pasta
+    private async Task SavePasta()
+    {
+        try
+        {
+            Erro = "";
+            Mensagem = "";
+            string comportamento = "";
+
+            if (SelectedPasta != null && SelectedPasta != "")
+            {
+                if (newPasta == true)
+                {
+                    //nova
+                    if (SelectedPath == "")
+                    {
+                        SelectedPath = Path.Combine(utils.Parametros["folderPath"], "entidades", selectedentidade.Id.ToString());
+                    }
+                    if (utils.CreateFolder(SelectedPath, SelectedPasta))
+                    {
+                        Mensagem = $"Pasta criada com sucesso!";
+                        await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+                        await JSRuntime.InvokeAsync<object>("showModal", "#pastaModal", "toggle");
+
+                        SelectedPath = null;
+                        SelectedPasta = null;
+                        newPasta = false;
+                    }
+                }
+                else
+                {
+                    if (deletePasta == false)
+                    {
+                        if (deleteFile == false)
+                        {
+                            //edit
+                            if (utils.RenameFolder(SelectedPath, SelectedPasta))
+                            {
+                                Mensagem = $"Pasta alterada com sucesso!";
+                                await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+                                await JSRuntime.InvokeAsync<object>("showModal", "#pastaModal", "toggle");
+
+                                SelectedPath = null;
+                                SelectedPasta = null;
+                            }
+                        }
+                        else
+                        {
+                            //delete file
+                            if (utils.DeleteFile(SelectedPath))
+                            {
+                                Mensagem = $"Ficheiro eliminado com sucesso!";
+                                await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+                                await JSRuntime.InvokeAsync<object>("showModal", "#deletefileModal", "toggle");
+
+                                SelectedPath = null;
+                                SelectedPasta = null;
+                                deleteFile = false;
+                            }
+                        }
+
+                    }
+                    else
+                    {
+                        //delete
+                        if (utils.DeleteFolder(SelectedPath))
+                        {
+                            Mensagem = $"Pasta eliminada com sucesso!";
+                            await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+                            await JSRuntime.InvokeAsync<object>("showModal", "#deletepastaModal", "toggle");
+
+                            SelectedPath = null;
+                            SelectedPasta = null;
+                            deletePasta = false;
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Erro = ex.Message;
+        }
+
+        GetFiles("", "");
+
+        var timer = new System.Timers.Timer(5000); // 5 segundos
+        timer.Elapsed += TimerElapsed;
+        timer.AutoReset = false;
+        timer.Start();
+    }
+
+    #endregion
+
+    #region Contactos
+    private async Task SaveContacto()
+    {
+        try
+        {
+            Erro = "";
+
+            if (selectedcontacto != null)
+            {
+                //verifica o email
+                if (selectedcontacto.Email != "" && selectedcontacto.Email != null)
+                {
+                    if (!utils.IsValidEmail(selectedcontacto.Email))
+                    {
+                        Erro = "Deve colocar um email válido no contacto";
+                        await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+                    }
+                }
+                else
+                {
+                    //verifica o recebe email
+                    if (selectedcontacto.RecebeEmail == true)
+                    {
+                        Erro = "Deve colocar um email válido no contacto";
+                        await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+                    }
+                }
+
+                if (Erro == "")
+                {
+                    if (selectedcontacto.Id == 0)
+                    {
+                        dbContext.Set<CrmEntidadeContacto>().Add(selectedcontacto);
+                    }
+                    else
+                    {
+                        CrmEntidadeContacto nent = dbContext.Set<CrmEntidadeContacto>().FirstOrDefault(f => f.Id == selectedcontacto.Id);
+                        if (nent != null)
+                        {
+                            dbContext.Entry(nent).CurrentValues.SetValues(selectedcontacto);
+                        }
+                    }
+
+                    dbContext.SaveChanges();
+
+                    Mensagem = "Contacto guardado com sucesso";
+                    await utils.UserLogAsync(who.User.Id, $"Adicionou contato a ent. {selectedentidade.Id}");
+                    await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+
+                    selectedcontacto = null;
+                    await JSRuntime.InvokeAsync<object>("showModal", "#contactoModal", "toggle");
+
+                    //get contactos
+                    contactos.Clear();
+                    contactos = await dbContext.Set<CrmEntidadeContacto>().Where(w => w.Entidadeid == selectedentidade.Id).ToListAsync();
+                }
+            }
+            else
+            {
+                //elimina contacto
+                if (deletedcontacto != null)
+                {
+                    contactos.Remove(deletedcontacto);
+                    dbContext.Set<CrmEntidadeContacto>().Remove(deletedcontacto);
+
+                    dbContext.SaveChanges();
+
+                    Mensagem = "Contato eliminado com sucesso";
+                    await utils.UserLogAsync(who.User.Id, $"Eliminou contato ent. {selectedentidade.Id}");
+                    await JSRuntime.InvokeAsync<object>("showToast", Mensagem, "bg-theme");
+                }
+            }
+
+            if (Erro == "")
+            {
+                selectedcontacto = null;
+                deletedcontacto = null;
+                await JSRuntime.InvokeAsync<object>("showModal", "#contactoDelModal", "toggle");
+                GetContactos();
+            }
+        }
+        catch (Exception ex)
+        {
+            Erro = ex.Message;
+            await JSRuntime.InvokeAsync<object>("showToast", Erro, "bg-danger");
+        }
+
+        TimerMessages();
+        StateHasChanged();
+    }
+
+    private async Task GetContactos()
+    {
+        if (contactos.Count > 0)
+        {
+            contactos.Clear();
+            await JSRuntime.InvokeAsync<object>("cleanTables_contactos");
+            StateHasChanged();
+        }
+        lock (updateLock)
+        {
+            try
+            {
+                contactos = dbContext.Set<CrmEntidadeContacto>().Where(w => w.Entidadeid == selectedentidade.Id).ToList();
+            }
+            catch (Exception)
+            {
+            }
+            finally
+            {
+                StateHasChanged();
+            }
+        }
+    }
+    public void CloneContact(object item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        selectedcontacto = System.Text.Json.JsonSerializer.Deserialize<CrmEntidadeContacto>(json);
+
+        StateHasChanged();
+    }
+    #endregion
+
+
+    //obtem artigos
+    private async Task GetArtigos()
+    {
+        if (artigos.Count > 0)
+        {
+            artigos.Clear();
+            await JSRuntime.InvokeAsync<object>("cleanTables_artigos");
+        }
+        lock (updateLock)
+        {
+            try
+            {
+                artigos = dbContext.Set<CrmArtigo>().Join(dbContext.Set<CrmArtigoFornecedor>(), s => s.Id, r => r.Artigoid, (s, r) => new { s, r }).Where(w => w.r.Fornecedor == selectedentidade.Id).Select(s => s.s).ToList();
+            }
+            catch (Exception)
+            {
+            }
+            finally
+            {
+                StateHasChanged();
+            }
+        }
+    }
+
+    //TOP 50 Artigos
+    private async Task CheckTop50(int EntidadeId)
+    {
+        topArtigos.Clear();
+
+        var sql = "SELECT * FROM dbo.fn_ArtigoTop50ByEntidade(@p0)";
+        var parameters = new object[] { EntidadeId };
+
+        var connection = dbContext.Database.GetDbConnection();
+        connection.Open();
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = sql;
+            command.Parameters.Add(new SqlParameter("@p0", EntidadeId));
+
+            using (var reader = command.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    var topArtigo = new TopArtigo
+                        {
+                            artigo = reader.GetInt32(reader.GetOrdinal("ARTIGO_ID")),
+                            artigoPunit = reader.GetDecimal(reader.GetOrdinal("PRECOUNITARIO")),
+                            artigoQtd = reader.GetDecimal(reader.GetOrdinal("QUANTIDADE")),
+                            artigoData = reader.GetDateTime(reader.GetOrdinal("DATA")),
+                            punit = reader.GetDecimal(reader.GetOrdinal("PRECOUNITARIO")),
+                            qtd = 0
+                        };
+
+                    topArtigos.Add(topArtigo);
+                }
+            }
+        }
+
+        foreach (TopArtigo item in topArtigos)
+        {
+            item.artigofull = dbContext.Set<CrmArtigo>().FirstOrDefault(f => f.Id == item.artigo);
+        }
+
+        StateHasChanged();
+    }
+
+    //Clonar os dados
+    public async Task CloneItem(object item)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(item);
+        selectedentidade = System.Text.Json.JsonSerializer.Deserialize<CrmEntidade>(json);
+
+        //obter dados da morada da entidadesmeta
+        string jsonmorada = await dbContext.Set<CrmEntidadeMetum>().Where(f => f.EntidadeId == selectedentidade.Id && f.MetaKey == "MoradaEntrega").Select(u => u.MetaValue).FirstOrDefaultAsync();
+        if (jsonmorada != null)
+        {
+            selectedentidademorada = JsonConvert.DeserializeObject<EntidadeMorada>(jsonmorada);
+        }
+        else
+        {
+            selectedentidademorada = new EntidadeMorada();
+        }
+
+        //verifica o tipo de entidade (se for A é cliente e fornecedor)
+        if (selectedentidade.TipoEntidade == "A")
+        {
+            istipoA = true;
+        }
+        else
+        {
+            istipoA = false;
+        }
+
+        if (VerEntidade == true)
+        {
+            //get documentos
+            GetDocs(0);
+            //get pastas e ficheiros
+            GetFiles("", "");
+            //get contactos
+            GetContactos();
+            //get artugis
+            GetArtigos();
+            //get top artigos
+            CheckTop50(selectedentidade.Id);
+        }
+    }
+
+    private async Task NivelMudou(ChangeEventArgs e)
+    {
+        string idSelecionadoString = e.Value?.ToString();
+        if (!string.IsNullOrEmpty(idSelecionadoString) && int.TryParse(idSelecionadoString, out int idSelecionado))
+        {
+            NiveisPreco nivelPreco = listaNiveisPreco.FirstOrDefault(i => i.Id == idSelecionado && i.IsDeleted != true);
+
+            if (nivelPreco.Id > 0)
+            {
+                selectedentidade.NivelPreco = nivelPreco.Id;
+                selectedentidade.NomeNivelPreco = nivelPreco.Descricao;
+            }
+        }
+    }
+
+    ////////////////////////////////NAVEGAÇÕES///////////////////////////////////////////
+
+    //voltar  a pagina anterior
+    private async Task VoltarPagina()
+    {
+        if (!string.IsNullOrEmpty(previousPage))
+        {
+            NavigationManager.NavigateTo(previousPage);
+        }
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////
+
+    //temporizador para eliminar as mensagems
+    private void TimerElapsed(object sender, ElapsedEventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            Erro = "";
+            Mensagem = "";
+            StateHasChanged();
+        });
+    }
+
+    private void TimerMessages()
+    {
+        var timer = new System.Timers.Timer(5000); // 5 segundos
+        timer.Elapsed += TimerElapsed;
+        timer.AutoReset = false;
+        timer.Start();
+    }
+
+    //tipo de dados
+    public class TopArtigo
+    {
+        public int artigo { get; set; }
+        public CrmArtigo artigofull { get; set; }
+        public decimal artigoPunit { get; set; }
+        public decimal artigoQtd { get; set; }
+        public DateTime artigoData { get; set; }
+        public decimal punit { get; set; }
+        public decimal qtd { get; set; }
+    }
+
+    private bool FuncaoFiltrar(CrmEntidade item)
+    {
+        if (string.IsNullOrWhiteSpace(filtro))
+            return true;
+        if (item.Codigo is not null && item.Codigo.Contains(filtro, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Nome is not null && item.Nome.Contains(filtro, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Nif is not null && item.Nif.Contains(filtro, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Telemovel is not null && item.Telemovel.Contains(filtro, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Telefone is not null && item.Telefone.Contains(filtro, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Email is not null && item.Email.ToString().Contains(filtro, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
+    }
+
+    private bool FuncaoFiltrarObra(EmpreendimentosNomesDto item)
+    {
+        if (string.IsNullOrWhiteSpace(filtroObra))
+            return true;
+        if (item.Obra.Nome is not null && item.Obra.Nome.Contains(filtroObra, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Obra.Codigo is not null && item.Obra.Codigo.Contains(filtroObra, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Cliente is not null && item.Cliente.Contains(filtroObra, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Obra.Estado is not null && item.Obra.Estado.Contains(filtroObra, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Gestor is not null && item.Gestor.Contains(filtroObra, StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (item.Obra.DataAdjudicacao is not null && item.Obra.DataAdjudicacao.ToString().Contains(filtroObra, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
+    }
+
+    private void EstadoMudou(bool valor, CrmEntidade item)
+    {
+        using (DbContext dbContext = DbContextFactory.GetDbContext(who.Empresa.BaseNome))
+        {
+            CrmEntidade? entidadeEditar = new();
+
+            entidadeEditar = dbContext.Set<CrmEntidade>().FirstOrDefault(i => i.Id == item.Id);
+
+            if (entidadeEditar is not null && entidadeEditar.Id > 0)
+            {
+                entidadeEditar.Isactive = valor;
+                item.Isactive = valor;
+            }
+
+            dbContext.SaveChanges();
+        }
+    }
+}
+

@@ -1,0 +1,498 @@
+﻿@page "/loginAntigo"
+@layout NoLayout
+@* @using Vitroglass.Models
+@using Vitroglass.ModelosControle
+@using Newtonsoft.Json
+@inherits ComponentBase
+@inject Utils utils
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+@inject IWebHostEnvironment Env
+@implements IDisposable
+ *@
+<PageTitle>Vitroglass - Login</PageTitle>
+
+@* <style>
+    canvas {
+        position: absolute;
+    }
+</style> *@
+
+@* <div style="background-image: linear-gradient(90deg, #160975 0%, #160975 70%); height: 100vh; display: flex; align-items: center; justify-content: center; min-height:50em;">
+    <!-- Main -->
+    <div id="main">
+        <div class="inner">
+
+            @if (ischecking == false)
+            {
+                <div class="login" id="loginModal">
+                    <div class="text-center mb-3">
+                        <img src="images/Vitroglass.png" alt="" style="width:50%;height:auto;margin-left: auto;margin-right: auto;">
+                    </div>
+                    <div class="modal-dialog login animated">
+                        <div class="modal-content">
+                            <div class="modal-body">
+                                <div class="box">
+                                    <div class="content" style="padding-top:0 !important">
+                                        <div class="social">
+                                            <a id="pass_login" class="circle" href="javascript:void(0)" @onclick="@(()=> { loginfacial = false; loginpin = false; })">
+                                                <i class="oi oi-key"></i>
+                                            </a>
+                                            @foreach (CrmConfig config in configs)
+                                            {
+                                                if (config.Option.Trim().ToLower() == "loginpin" && config.Value.Trim().ToLower() == "true")
+                                                {
+                                                    <a id="pin_login" class="circle" href="javascript:void(0)" @onclick="@(()=> { loginfacial = false; loginpin = true; })">
+                                                        <i class="oi oi-grid-three-up"></i>
+                                                    </a>
+                                                }
+                                                if (config.Option.Trim().ToLower() == "loginfacial" && config.Value.Trim().ToLower() == "true")
+                                                {
+                                                    <a id="face_login" class="circle" href="javascript:void(0)" @onclick="@(()=> { loginfacial = true; loginpin = false; })">
+                                                        <i class="oi oi-camera-slr"></i>
+                                                    </a>
+                                                }
+                                            }
+                                        </div>
+                                        <div class="division">
+                                            <div class="line l"></div>
+                                            <span>Login</span>
+                                            <div class="line r"></div>
+                                        </div>
+                                        <div class="form loginBox">
+                                            @if (loginfacial)
+                                            {
+                                                <div id="login_face">
+                                                    <div id='loading' class='lds-ring' style="left:38%;top:50%"><div></div><div></div><div></div><div></div></div>
+                                                    <video id="cam" width="316" height="240" autoplay muted></video>
+                                                </div>
+
+                                                <script>
+                                                    run_faciallogin();
+                                                </script>
+                                            }
+                                            else
+                                            {
+                                                if (loginpin)
+                                                {
+                                                    <div id="login_pin">
+                                                        <input id="pin" @bind="pin" class="form-control" type="password" pattern="[0-9]*" inputmode="numeric" placeholder="PIN" name="pin" @onkeyup="pinkeyup">
+                                                        <input class="btn btn-default btn-login" type="button" value="Login" @onclick="CheckPIN">
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    if (resetpass)
+                                                    {
+                                                        @* recuperar dados de acesso *@
+@*                                                         <div id="login_reset">
+                                                            <p>Insira o seu email para recuperar os dados de acesso</p>
+                                                            <input type="text" class="form-control" id="email" placeholder="Email" @bind="useremail">
+
+                                                            <input class="btn btn-default btn-login p-2 mt-2" type="button" value="Recuperar Acesso" @onclick="ResetPass">
+                                                            <input type="submit" value="CANCELAR" class="btn btn-dark w-100 p-2 mt-2" @onclick="@(()=> { resetpass = false; })">
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div id="login_pass">
+                                                            <input id="user" @bind="user" class="form-control" type="text" placeholder="Utilizador" name="user">
+                                                            <input id="pass" @bind="pass" class="form-control" type="password" placeholder="Password" name="password" @onkeyup="passkeyup">
+
+                                                            <input class="btn btn-default btn-login" type="button" value="Login" @onclick="CheckUser">
+
+                                                            <div class="division mt-4">
+                                                                <span><a href="javascript:void(0)" class="text-decoration-none" @onclick="@(()=> { resetpass = true; })">Esqueceu-se da password?</a></span>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                }
+
+                                                <script>
+                                                    stop_faciallogin();
+                                                </script>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <div class="error">
+                                    <p style="margin-top:5px;margin-bottom:0;color:red;font-size:15px">@Erro</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <p style="margin-left:auto;margin-right:auto;margin-top:10px;font-size: 12px;text-align:center"><a href="https://www.agileincloud.com" target="_blank"><img src="images/agile.png" style="height:30px;width:auto;margin-top:1em;" /></a></p>
+            }
+
+        </div>
+    </div>
+
+</div>
+ *@
+ 
+@* <script>
+    //browser fingerprint
+    function bfingerprint() {
+        if (document.getElementById("myCanvas")) {
+            document.getElementById("myCanvas").remove();
+        }
+
+        var canvas = document.createElement('canvas');
+        canvas.id = "myCanvas";
+        canvas.width = 200;
+        canvas.height = 40;
+        canvas.style.display = "none";
+
+        var body = document.getElementsByTagName("body")[0];
+        body.appendChild(canvas);
+
+        var canvas = document.getElementById("myCanvas");
+        var ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "rgb(255,0,255)";
+        ctx.beginPath();
+        ctx.rect(20, 20, 150, 100);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+        ctx.beginPath();
+        ctx.fillStyle = "rgb(0,255,255)";
+        ctx.arc(50, 50, 50, 0, Math.PI * 2, true);
+        ctx.fill();
+        ctx.stroke();
+        ctx.closePath();
+
+        txt = "abz190#$%^£éú";
+        ctx.textBaseline = "top";
+        ctx.font = '17px "Arial 17"';
+        ctx.textBaseline = "alphabetic";
+        ctx.fillStyle = "rgb(255,5,5)";
+        ctx.rotate(.03);
+        ctx.fillText(txt, 4, 17);
+        ctx.fillStyle = "rgb(155,255,5)";
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = "red";
+        ctx.fillRect(20, 12, 100, 5);
+
+        // hashing function
+        src = canvas.toDataURL();
+        hash = 0;
+        for (i = 0; i < src.length; i++) {
+            char = src.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+
+        return hash;
+    }
+</script> *@
+
+
+@* @code {
+    private string Erro = "";
+    private string user = "";
+    private string pass = "";
+    private string pin = "";
+    private bool resetpass = false;
+    private string useremail = "";
+    private bool ischecking = false;
+    private bool loginfacial = false;
+    private bool loginpin = false;
+    private static Utils face_utils = new Utils();
+    private List<CrmConfig> configs = new List<CrmConfig>();
+    private bool isHttps = false;
+    private string facialmarks = "";
+    private DotNetObjectReference<Vitroglass.Pages.Login> objRef;
+
+    protected override void OnInitialized()
+    {
+        objRef = DotNetObjectReference.Create(this);
+        JSRuntime.InvokeVoidAsync("setDotNetReference", objRef);
+
+        BaseControleContext dbContext = new BaseControleContext();
+        VitroglassContext dbContext2 = new VitroglassContext();
+
+        //carrega as configs para verificar que tipos de login podem ser feitos
+        try
+        {
+            configs = dbContext2.CrmConfigs.ToList();
+        }
+        catch (Exception ex)
+        {
+            Erro = ex.Message;
+        }
+
+        try
+        {
+            foreach (CrmConfig config in configs)
+            {
+
+                if (config.Option.Trim().ToLower() == "loginfacial" && config.Value.Trim().ToLower() == "true")
+                {
+                    //verifica o protocolo
+                    isHttps = Utils.CheckProtocol(NavigationManager.Uri);
+                    if (!isHttps)
+                    {
+                        Erro = $"O protocolo atual da plataforma (HTTP) não permite utilizar as funções de reconhecimento facial";
+                    }
+                    else
+                    {
+                        Erro = "";
+                    }
+
+                    //carrega os dados biométricos da base de dados
+                    List<ModelosControle.CrmUtilizadorFacial> facialm = dbContext.CrmUtilizadorFacials.ToList();
+                    foreach (ModelosControle.CrmUtilizadorFacial item in facialm)
+                    {
+                        //constrói o JSON para enviar para o JS
+                        string biodata = @"
+                        [
+                          {
+                            ""label"": """ + item.Name + "|" + item.IdUtilizador + @""",
+                            ""descriptions"": [
+                              {
+                                " + item.Biomarkers + @"
+                              }
+                            ]
+                          }
+                        ]";
+
+                        facialmarks += biodata + "###";
+                    }
+                    JSRuntime.InvokeVoidAsync("load_descriptors", facialmarks);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Erro = ex.Message;
+        }
+
+        dbContext.Dispose();
+        base.OnInitialized();
+    }
+
+    //[JSInvokableAttribute("Vitroglass.Pages.Login.LogUser")]
+    [JSInvokable("Vitroglass.Pages.Login.LogUser")]
+    public async void LogUser(int user)
+    {
+        if (user > 0)
+        {
+            BaseControleContext dbContext = new BaseControleContext();
+
+            ModelosControle.CrmUtilizador who = dbContext.CrmUtilizadors.FirstOrDefault(u => u.Id == user);
+            if (who != null)
+            {
+                if (who.Isactive == true)
+                {
+                    if (utils.AgSession.ContainsKey("user"))
+                    {
+                        utils.AgSession.Remove("user");
+                    }
+                    utils.AgSession.Add("user", who);
+                    await utils.UserLogAsync(who.Id, $"LOGIN");
+
+                    NavigationManager.NavigateTo("/");
+                }
+            }
+
+            dbContext.Dispose();
+        }
+        else
+        {
+            Erro = "Utilizador não reconhecido";
+        }
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        objRef?.Dispose();
+    }
+
+    private async void CheckUser()
+    {
+        BaseControleContext dbContext = new BaseControleContext();
+
+        ischecking = true;
+        Erro = "";
+
+        string tempass = Utils.Hash(pass);
+        try
+        {
+            if (user == "agile" && pass == "@gile2024")
+            {
+                ModelosControle.CrmUtilizador who = new ModelosControle.CrmUtilizador()
+                {
+                    Name = "Agile",
+                    Isactive = true,
+                    Isadmin = true,
+                    Ismanager = true,
+                    Id = 0,
+                };
+
+                if (utils.AgSession.ContainsKey("user"))
+                {
+                    utils.AgSession.Remove("user");
+                }
+
+                utils.AgSession.Add("user", who);
+                NavigationManager.NavigateTo("/");
+            }
+            else
+            {
+                ModelosControle.CrmUtilizador who = dbContext.CrmUtilizadors.FirstOrDefault(u => u.Username == user && u.Agpassword == tempass);
+                if (who != null)
+                {
+                    if (who.Isactive == true)
+                    {
+                        if (utils.AgSession.ContainsKey("user"))
+                        {
+                            utils.AgSession.Remove("user");
+                        }
+                        utils.AgSession.Add("user", who);
+                        await utils.UserLogAsync(who.Id, $"LOGIN");
+
+                        NavigationManager.NavigateTo("/");
+                    }
+                    else
+                    {
+                        Erro = "O Utilizador não se encontra ativo!";
+                    }
+                }
+                else
+                {
+                    Erro = "Utilizador ou Password inválidos";
+                    //await JSRuntime.InvokeVoidAsync("alert", "Erro ao fazer login");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Erro = ex.Message;
+        }
+
+        dbContext.Dispose();
+        ischecking = false;
+        StateHasChanged();
+    }
+
+    private async void CheckPIN()
+    {
+        BaseControleContext dbContext = new BaseControleContext();
+
+        ischecking = true;
+        Erro = "";
+
+        var fprint = await JSRuntime.InvokeAsync<int>("bfingerprint");
+        string temmac = Utils.Hash(fprint.ToString());
+        string tempin = Utils.Hash(pin);
+
+        try
+        {
+            ModelosControle.CrmUtilizador who = dbContext.CrmUtilizadors.FirstOrDefault(u => u.Macaddress == temmac && u.Pin == tempin);
+            if (who != null)
+            {
+                if (who.Isactive == true)
+                {
+                    utils.AgSession.Add("user", who);
+                    await utils.UserLogAsync(who.Id, $"LOGIN");
+
+                    NavigationManager.NavigateTo("/");
+                }
+                else
+                {
+                    Erro = "O Utilizador não se encontra ativo!";
+                }
+            }
+            else
+            {
+                pin = "";
+                Erro = "PIN inválido ou não associado a este dispositivo.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Erro = ex.Message;
+        }
+
+        dbContext.Dispose();
+        ischecking = false;
+        StateHasChanged();
+    }
+
+
+    //Recuperar pass
+    private async void ResetPass()
+    {
+        BaseControleContext dbContext = new BaseControleContext();
+
+        Erro = "";
+        if (useremail != "")
+        {
+            var trimmedEmail = useremail.Trim();
+            if (trimmedEmail.EndsWith("."))
+            {
+                Erro = "Deve inserir um email válido!";
+            }
+            try
+            {
+                var addr = new System.Net.Mail.MailAddress(useremail);
+                string newpassword = Utils.GeneratePassword(8);
+                string npass = Utils.Hash(newpassword.Trim());
+
+                ModelosControle.CrmUtilizador resetpassuser = dbContext.CrmUtilizadors.Where(m => m.Email == addr.Address).FirstOrDefault();
+                if (resetpassuser != null)
+                {
+                    resetpassuser.Agpassword = npass;
+                    resetpassuser.Changepassword = true;
+                    dbContext.SaveChanges();
+                    await utils.UserLogAsync(resetpassuser.Id, $"Fez reset da password");
+                    bool smail = await utils.SendEmailAsync(addr.Address, "Vitroglass - Reset de Password", $"<br/><br/>Olá {resetpassuser.Name},<br/><br/>Os seus dados de acesso foram repostos.<br/><br/>Para aceder à plataforma utilize os seguinte dados de acesso:<br/><br/>Username:<strong>{resetpassuser.Username}</strong><br/>Password:<strong>{newpassword.Trim()}</strong><br/><br/><br/>Por questões de segurança, no seu primeiro acesso ser-lhe-á pedido para alterar a sua palavra-passe para uma nova que será encriptada.<br/><br/><br/><br/>");
+                    if (smail)
+                    {
+                        resetpass = false;
+                        Erro = "Os novos dados de acesso foram enviados para o email designado.";
+                    }
+                }
+                else
+                {
+                    Erro = "O email inserido não consta da base de dados.";
+                }
+            }
+            catch
+            {
+                Erro = "Deve inserir um email válido!";
+            }
+        }
+        else
+        {
+            Erro = "Deve inserir um email válido!";
+        }
+        dbContext.Dispose();
+        StateHasChanged();
+    }
+
+
+    private async void passkeyup(KeyboardEventArgs k)
+    {
+        if (k.Key == "Enter")
+        {
+            CheckUser();
+        }
+    }
+
+    private async void pinkeyup(KeyboardEventArgs k)
+    {
+        if (k.Key == "Enter")
+        {
+            CheckPIN();
+        }
+    }
+
+} *@

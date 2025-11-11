@@ -1,0 +1,555 @@
+﻿@page "/EditaEmpresa/{companyId}"
+
+@using Microsoft.AspNetCore.Components.Forms
+@using Construlink.Data
+@using Construlink.Models
+@using Construlink
+@using Construlink.Shared
+@inject NavigationManager NavigationManager
+@inject Utils utils
+@inject IJSRuntime jsRuntime
+
+<style>
+    .dropzone {
+        border: 3px dashed #000000;
+        padding: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #444;
+        font-size: 1.5rem;
+        cursor: pointer;
+        position: relative;
+    }
+
+        .dropzone:hover {
+            background-color: #c9c9c9;
+            color: #333;
+        }
+
+        .dropzone input[type=file] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+    .dropzone-drag {
+        background-color: #c9c9c9;
+    }
+</style>
+
+
+<div class="row mt-2 mb-2">
+
+    <div class="col-md-6 col-sm-12 col-12 mt-3">
+        <div class="mb-2" style="display: flex; align-items: center;">
+            <MudIcon Icon="@Utils.GetSvgPathData("web", "light", "arrow-right")" Color="Color.Primary" Style="font-size: 1.1rem;" />
+            <h4 class="ms-2 mt-2 hide-on-mobile">
+                <text>Editar Empresa</text>
+            </h4>
+
+        </div>
+    </div>
+
+    <div class="row mt-2">
+        <div class="col-md-6 pe-2">
+            <MudTextField @bind-Value="company.Empresa" Label="Nome" Variant="Variant.Outlined" Required="true" />
+        </div>
+
+        <div class="col-md-6 ps-2">
+            <MudTextField @bind-Value="company.Descricao" Label="Descrição" Variant="Variant.Outlined" Required="false" />
+        </div>
+    </div>
+
+    <div class="row mt-2">
+        <div class="col-md-6 pe-2 d-flex justify-content-between">
+            <div class="col-md-5">
+                <div class="w-100">
+                    <label for="comanyColor1">Cor 1</label>
+                    <input class="form-control" type="color" id="comanyColor1" name="comanyColor1" @bind="company.Cor1" />
+                </div>
+
+                <div class="w-100">
+                    <label for="comanyColor2">Cor 2</label>
+                    <input class="form-control" type="color" id="comanyColor2" name="comanyColor2" @bind="company.Cor2" />
+                </div>
+
+                <div class="w-100">
+                    <label for="comanyColor3">Cor 3</label>
+                    <input class="form-control" type="color" id="comanyColor3" name="comanyColor3" @bind="company.Cor3" />
+                </div>
+            </div>
+
+            <div class="col-md-1"></div>
+
+            <div class="col-md-6 px-1">
+                <div class="row">
+                    <div class="w-100">
+                        <label> Imagem de Perfil </label>
+
+                        @{
+                            //"\u00A0" is just the unicode for a blank charcter
+                            var upldImg = (uploadedImageBase64 != null) ? "\u00A0" : "Carregar Imagem";
+
+                            var upldImgCss = (uploadedImageBase64 != null) ?
+                            $"background-image: url('{uploadedImageBase64}'); background-size: contain; background-position: center; background-repeat: no-repeat;" :
+                            "background-color: #eee; box-shadow: inset 0 0 8px rgba(0,0,0,0.2);";
+                        }
+                        <div class="dropzone @dropClass rounded" style="@upldImgCss">
+                            <InputFile OnChange="HandleFileInputChange"
+                                       accept="image/png,image/jpg,image/jpeg"
+                                       @ondragenter="HandleDragEnter"
+                                       @ondragleave="HandleDragLeave" />
+
+                            @upldImg
+                        </div>
+                        @if ((fileTypeError || fileSizeError))
+                        {
+                            <ul class="validation-errors mb-0">
+                                @if (fileTypeError)
+                                {
+                                    <li class="validation-message">Only image files are accepted.</li>
+                                }
+                                @if (fileSizeError)
+                                {
+                                    <li class="validation-message">The max file size is @MaxFileSizeMB MB.</li>
+                                }
+                            </ul>
+                        }
+                        @if (selectedFiles != null && uploadedImageBase64 != null)
+                        {
+                            <div class="col-12">
+                                @if (uploadedImageBase64 != null)
+                                {
+                                    var file = selectedFiles.FirstOrDefault();
+                                    <ul class="p-0 m-0">
+                                        <li class="d-flex align-items-start justify-content-between">
+                                            <p class="p-0 m-0"> @fileName </p>
+                                            <button class="btn btn-link p-0 pl-1" type="button"
+                                                    @onclick="@(e => RemoveFile(file))">
+                                                <small class="align-text-bottom">Remove</small>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 ps-2 d-flex">
+            <div class="col-md-6 px-1">
+                <div class="row">
+                    <div class="w-100">
+                        <label> Logo </label>
+
+                        @{
+                            var upldImgLogo = (uploadedImageBase64Logo != null) ? "\u00A0" : "Carregar Imagem";
+
+                            var upldImgCssLogo = (uploadedImageBase64Logo != null) ?
+                            $"background-image: url('{uploadedImageBase64Logo}'); background-size: contain; background-position: center; background-repeat: no-repeat;" :
+                            "background-color: #eee; box-shadow: inset 0 0 8px rgba(0,0,0,0.2);";
+                        }
+                        <div class="dropzone @dropClassLogo rounded" style="@upldImgCssLogo">
+                            <InputFile OnChange="HandleFileInputChangeLogo"
+                                       accept="image/png,image/jpg,image/jpeg"
+                                       @ondragenter="HandleDragEnterLogo"
+                                       @ondragleave="HandleDragLeaveLogo" />
+
+                            @upldImgLogo
+                        </div>
+                        @if ((fileTypeErrorLogo || fileSizeErrorLogo))
+                        {
+                            <ul class="validation-errors mb-0">
+                                @if (fileTypeErrorLogo)
+                                {
+                                    <li class="validation-message">Only image files are accepted.</li>
+                                }
+                                @if (fileSizeErrorLogo)
+                                {
+                                    <li class="validation-message">The max file size is @MaxFileSizeMBLogo MB.</li>
+                                }
+                            </ul>
+                        }
+                        @if (selectedFilesLogo != null && uploadedImageBase64Logo != null)
+                        {
+                            <div class="col-12">
+                                @if (uploadedImageBase64Logo != null)
+                                {
+                                    var fileLogo = selectedFilesLogo.FirstOrDefault();
+                                    <ul class="p-0 m-0">
+                                        <li class="d-flex align-items-start justify-content-between">
+                                            <p class="p-0 m-0"> @fileNameLogo </p>
+                                            <button class="btn btn-link p-0 pl-1" type="button"
+                                                    @onclick="@(e => RemoveFileLogo(fileLogo))">
+                                                <small class="align-text-bottom">Remove</small>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+
+
+            <div class="col-md-6 px-1">
+                <div class="row">
+                    <div class="w-100">
+                        <label> Imagem Inicial </label>
+
+                        @{
+                            var upldImgHome = (uploadedImageBase64Home != null) ? "\u00A0" : "Carregar Imagem";
+
+                            var upldImgCssHome = (uploadedImageBase64Home != null) ?
+                            $"background-image: url('{uploadedImageBase64Home}'); background-size: contain; background-position: center; background-repeat: no-repeat;" :
+                            "background-color: #eee; box-shadow: inset 0 0 8px rgba(0,0,0,0.2);";
+                        }
+                        <div class="dropzone @dropClassHome rounded" style="@upldImgCssHome">
+                            <InputFile OnChange="HandleFileInputChangeHome"
+                                       accept="image/png,image/jpg,image/jpeg"
+                                       @ondragenter="HandleDragEnterHome"
+                                       @ondragleave="HandleDragLeaveHome" />
+
+                            @upldImgHome
+                        </div>
+                        @if ((fileTypeErrorHome || fileSizeErrorHome))
+                        {
+                            <ul class="validation-errors mb-0">
+                                @if (fileTypeErrorHome)
+                                {
+                                    <li class="validation-message">Only image files are accepted.</li>
+                                }
+                                @if (fileSizeErrorHome)
+                                {
+                                    <li class="validation-message">The max file size is @MaxFileSizeMBHome MB.</li>
+                                }
+                            </ul>
+                        }
+                        @if (selectedFilesHome != null && uploadedImageBase64Home != null)
+                        {
+                            <div class="col-12">
+                                @if (uploadedImageBase64Home != null)
+                                {
+                                    var fileHome = selectedFilesHome.FirstOrDefault();
+                                    <ul class="p-0 m-0">
+                                        <li class="d-flex align-items-start justify-content-between">
+                                            <p class="p-0 m-0"> @fileNameHome </p>
+                                            <button class="btn btn-link p-0 pl-1" type="button"
+                                                    @onclick="@(e => RemoveFileHome(fileHome))">
+                                                <small class="align-text-bottom">Remove</small>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-2">
+    </div>
+
+    <div class="w-100 mt-3 text-end pe-4">
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@(() => NavigationManager.NavigateTo($""))" Class="me-3">
+            <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Class="me-2" />
+            Cancelar
+        </MudButton>
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(async () => await SaveChangedInfos())" Class="me-3">
+            <MudIcon Icon="@Icons.Material.Filled.Save" Class="me-2" />
+            Guardar
+        </MudButton>
+    </div>
+</div>
+
+@code {
+    private EmpresaUserSession who = null;
+
+    [Parameter]
+    public string companyId { get; set; }
+
+    public int companyIntId { get; set; }
+
+    private CrmEmpresa company { get; set; }
+    private BaseControleContext dbContext { get; set; }
+
+    private static bool IsImage(string ct) =>
+        ct is "image/png" or "image/jpeg" or "image/jpg" or "image/gif";
+
+    protected override void OnInitialized()
+    {
+        who = (EmpresaUserSession)utils.AgSession["user"];
+        if (!(who.User.Isadmin ?? false))
+        {
+            //redirect to the choose company again
+            NavigationManager.NavigateTo($"");
+        }
+
+        var parseSuccess = int.TryParse(companyId, out int parsedCompanyIntId);
+        if (parseSuccess == false)
+        {
+            NavigationManager.NavigateTo($"");
+        }
+
+        companyIntId = parsedCompanyIntId;
+
+        dbContext = new BaseControleContext();
+        company = dbContext.CrmEmpresas.Where(e => e.Id == companyIntId).FirstOrDefault();
+        if (company == null)
+        {
+            NavigationManager.NavigateTo($"");
+        }
+
+        SetImagesIfExistante(company);
+
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+
+        }
+    }
+
+    private void SetImagesIfExistante(CrmEmpresa company)
+    {
+        if ((company.ImagemIndex ?? "") != "")
+        {
+            uploadedImageBase64Home = Utils.GetImgUrlFromName(company.ImagemIndex);
+            fileNameHome = Utils.GetImgNameWithoutType(company.ImagemIndex);
+        }
+
+        if ((company.ImagemCard ?? "") != "")
+        {
+            uploadedImageBase64 = Utils.GetImgUrlFromName(company.ImagemCard);
+            fileName = Utils.GetImgNameWithoutType(company.ImagemCard);
+        }
+
+        if ((company.LogoNavBar ?? "") != "")
+        {
+            uploadedImageBase64Logo = Utils.GetImgUrlFromName(company.LogoNavBar);
+            fileNameLogo = Utils.GetImgNameWithoutType(company.LogoNavBar);
+        }
+    }
+
+    private async Task SaveChangedInfos()
+    {
+        await UploadAndUpdateImages();
+        dbContext.SaveChanges();
+
+        NavigationManager.NavigateTo($"");
+    }
+
+    private async Task UploadAndUpdateImages()
+    {
+        var company = dbContext.CrmEmpresas.Where(c => c.Id == companyIntId).FirstOrDefault();
+
+        // Check if images were uploaded and update them
+        if (selectedFiles?.Any() == true)
+        {
+            var cardImg = selectedFiles.FirstOrDefault();
+            var newImgName = await Utils.UploadImg(cardImg);
+            if (newImgName != null)
+            {
+                //delete old image
+                var imgLoc = Utils.GetImgLocationFromName(company.ImagemCard);
+                utils.DeleteFile(imgLoc);
+
+                company.ImagemCard = newImgName;  //update the image name in the db
+            }
+        }
+
+        if (selectedFilesHome?.Any() == true)
+        {
+            var homeImg = selectedFilesHome.FirstOrDefault();
+            var newImgName2 = await Utils.UploadImg(homeImg);
+            if (newImgName2 != null)
+            {
+                var imgLoc = Utils.GetImgLocationFromName(company.ImagemIndex);
+                utils.DeleteFile(imgLoc);
+
+                company.ImagemIndex = newImgName2;
+            }
+        }
+
+        if (selectedFilesLogo?.Any() == true)
+        {
+            var logoImg = selectedFilesLogo.FirstOrDefault();
+            var newImgName3 = await Utils.UploadImg(logoImg);
+            if (newImgName3 != null)
+            {
+                var imgLoc = Utils.GetImgLocationFromName(company.LogoNavBar);
+                utils.DeleteFile(imgLoc);
+
+                company.LogoNavBar = newImgName3;
+            }
+        }
+
+        dbContext.SaveChanges();
+    }
+
+    //
+    //  PROFILE IMAGE (Card Image)
+    //
+    const int MaxFileSizeMB = 5;
+    const int MaxFileSize = MaxFileSizeMB * 1024 * 1024; // 5MB
+    private string dropClass = "";
+    private bool fileSizeError = false;
+    private bool fileTypeError = false;
+    private List<IBrowserFile> selectedFiles = new List<IBrowserFile>();
+    private string uploadedImageBase64 = null;
+    private string fileName = "";
+
+    private void HandleDragEnter()
+    {
+        dropClass = "dropzone-drag";
+    }
+
+    private void HandleDragLeave()
+    {
+        dropClass = "";
+    }
+
+    private async Task HandleFileInputChange(InputFileChangeEventArgs e)
+    {
+        dropClass = "";
+        fileSizeError = fileTypeError = false;
+
+        var file = e.File;
+        if (file is null) return;
+
+        if (file.Size > MaxFileSize) fileSizeError = true;
+        if (!IsImage(file.ContentType)) fileTypeError = true;
+        if (fileSizeError || fileTypeError) return;
+
+        using var ms = new MemoryStream();
+        await file.OpenReadStream(MaxFileSize).CopyToAsync(ms);
+
+        uploadedImageBase64 = $"data:{file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+        fileName = file.Name;
+
+        selectedFiles.Clear();
+        selectedFiles.Add(file);
+    }
+
+    private void RemoveFile(IBrowserFile file)
+    {
+        selectedFiles.Remove(file);
+        uploadedImageBase64 = null;
+        fileName = "";
+    }
+
+    //
+    //  LOGO IMAGE
+    //
+    const int MaxFileSizeMBLogo = 5;
+    const int MaxFileSizeLogo = MaxFileSizeMBLogo * 1024 * 1024; // 5MB
+    private string dropClassLogo = "";
+    private bool fileSizeErrorLogo = false;
+    private bool fileTypeErrorLogo = false;
+    private List<IBrowserFile> selectedFilesLogo = new List<IBrowserFile>();
+    private string uploadedImageBase64Logo = null;
+    private string fileNameLogo = "";
+
+    private void HandleDragEnterLogo()
+    {
+        dropClassLogo = "dropzone-drag";
+    }
+
+    private void HandleDragLeaveLogo()
+    {
+        dropClassLogo = "";
+    }
+
+    private async Task HandleFileInputChangeLogo(InputFileChangeEventArgs e)
+    {
+        dropClassLogo = "";
+        fileSizeErrorLogo = fileTypeErrorLogo = false;
+
+        var file = e.File;
+        if (file is null) return;
+
+        if (file.Size > MaxFileSizeLogo) fileSizeErrorLogo = true;
+        if (!IsImage(file.ContentType)) fileTypeErrorLogo = true;
+        if (fileSizeErrorLogo || fileTypeErrorLogo) return;
+
+        using var ms = new MemoryStream();
+        await file.OpenReadStream(MaxFileSizeLogo).CopyToAsync(ms);
+
+        uploadedImageBase64Logo = $"data:{file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+        fileNameLogo = file.Name;
+
+        selectedFilesLogo.Clear();
+        selectedFilesLogo.Add(file);
+    }
+
+    private void RemoveFileLogo(IBrowserFile file)
+    {
+        selectedFilesLogo.Remove(file);
+        uploadedImageBase64Logo = null;
+        fileNameLogo = "";
+    }
+
+    //
+    //  HOME IMAGE
+    //
+    const int MaxFileSizeMBHome = 5;
+    const int MaxFileSizeHome = MaxFileSizeMBHome * 1024 * 1024; // 5MB
+    private string dropClassHome = "";
+    private bool fileSizeErrorHome = false;
+    private bool fileTypeErrorHome = false;
+    private List<IBrowserFile> selectedFilesHome = new List<IBrowserFile>();
+    private string uploadedImageBase64Home = null;
+    private string fileNameHome = "";
+
+    private void HandleDragEnterHome()
+    {
+        dropClassHome = "dropzone-drag";
+    }
+
+    private void HandleDragLeaveHome()
+    {
+        dropClassHome = "";
+    }
+
+    private async Task HandleFileInputChangeHome(InputFileChangeEventArgs e)
+    {
+        dropClassHome = "";
+        fileSizeErrorHome = fileTypeErrorHome = false;
+
+        var file = e.File;
+        if (file is null) return;
+
+        if (file.Size > MaxFileSizeHome) fileSizeErrorHome = true;
+        if (!IsImage(file.ContentType)) fileTypeErrorHome = true;
+        if (fileSizeErrorHome || fileTypeErrorHome) return;
+
+        using var ms = new MemoryStream();
+        await file.OpenReadStream(MaxFileSizeHome).CopyToAsync(ms);
+
+        uploadedImageBase64Home = $"data:{file.ContentType};base64,{Convert.ToBase64String(ms.ToArray())}";
+        fileNameHome = file.Name;
+
+        selectedFilesHome.Clear();
+        selectedFilesHome.Add(file);
+    }
+
+    private void RemoveFileHome(IBrowserFile file)
+    {
+        selectedFilesHome.Remove(file);
+        uploadedImageBase64Home = null;
+        fileNameHome = "";
+    }
+}
